@@ -13,6 +13,7 @@ Repositorio para versionar configuraciones personales de varios entornos en un s
 - Cada entorno vive en una carpeta de primer nivel del repo.
 - Dentro de cada entorno usamos nombres visibles, sin `.` inicial.
 - Las rutas del repo representan rutas reales en `~` mediante una traduccion simple.
+- `home/` en cada entorno equivale a `~/` y conserva los nombres reales de dotfiles como `.bashrc`.
 - `config/` en el repo equivale a `~/.config/` en el sistema.
 - Si en el futuro hiciera falta, `local/` podria equivaler a `~/.local/`.
 - Ejemplo: `~/.config/hypr/hyprland.conf` para Omarchy vive como `omarchy/config/hypr/hyprland.conf`.

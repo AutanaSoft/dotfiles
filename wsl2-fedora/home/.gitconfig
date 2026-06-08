@@ -1,0 +1,27 @@
+[init]
+	defaultBranch = main
+
+[fetch]
+	prune = true
+
+[rebase]
+	autoStash = true
+
+[push]
+	default = simple
+
+[core]
+	autocrlf = input
+	eol = lf
+
+[color]
+	ui = auto
+
+[diff]
+	algorithm = histogram
+
+[merge]
+	conflictStyle = zdiff3
+
+[rerere]
+	enabled = true

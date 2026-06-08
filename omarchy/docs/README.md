@@ -16,10 +16,12 @@ This directory stores the user-managed Omarchy configuration tracked by this rep
 | Allowed changes | Change only user-level configuration files and user-level commands. |
 | Forbidden changes | Do not modify system files or Omarchy source files under `~/.local/share/omarchy/`. |
 | Removal policy | Do not delete existing configuration when deactivating behavior; comment it and explain why. |
+| Home mapping | `home/` in this repo maps to `~/.` in the user environment. |
 | Repo layout | `config/` in this repo maps to `~/.config/` in the user environment. |
 
 ## Current structure
 
+- `home/` — files that map to `~/` with their original dotfile names
 - `bin/` — user-level helper commands managed by the repo
 - `config/` — files that map to `~/.config/`
 - `docs/` — repository documentation for Omarchy-specific workflow and decisions
