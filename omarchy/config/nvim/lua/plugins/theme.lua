@@ -1,0 +1,1 @@
+/home/lcardenas/.config/omarchy/current/theme/neovim.lua
