@@ -1,0 +1,25 @@
+general.import = [ "~/.config/omarchy/current/theme/alacritty.toml" ]
+
+[env]
+TERM = "xterm-256color"
+
+[terminal]
+osc52 = "CopyPaste"
+
+[font]
+normal = { family = "Monaspace Krypton NF" }
+bold = { family = "Monaspace Krypton NF" }
+italic = { family = "Monaspace Krypton NF" }
+size = 9 
+
+[window]
+padding.x = 8
+padding.y = 8
+decorations = "None"
+
+[keyboard]
+bindings = [
+{ key = "Insert", mods = "Shift", action = "Paste" },
+{ key = "Insert", mods = "Control", action = "Copy" },
+{ key = "Return", mods = "Shift", chars = "\u001B\r" }
+]
