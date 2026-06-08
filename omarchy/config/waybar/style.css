@@ -109,3 +109,29 @@ tooltip {
 #custom-voxtype.recording {
   color: #a55555;
 }
+
+/* ------------------------------------------------------------------------------
+ * Icon size
+ * ------------------------------------------------------------------------------
+ * Override icon font size only at the end so the rest of the file matches the
+ * original Omarchy user style. Text remains at 12px from the global * rule.
+ */
+
+#workspaces button,
+#cpu,
+#battery,
+#pulseaudio,
+#custom-omarchy,
+#custom-update,
+#network,
+#bluetooth,
+#tray,
+#custom-expand-icon,
+#custom-screenrecording-indicator,
+#custom-idle-indicator,
+#custom-notification-silencing-indicator,
+#custom-voxtype,
+#custom-weather {
+  font-family: 'FiraMono Nerd Font';
+  font-size: 14px;
+}
