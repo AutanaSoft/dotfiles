@@ -11,7 +11,7 @@ Versioned user configuration for two environments in one repository.
 
 See each environment's index for the full picture:
 
-- Omarchy: [`omarchy/docs/README.md`](omarchy/docs/README.md)
+- Omarchy: [`omarchy/README.md`](omarchy/README.md)
 - WSL2 + Fedora: [`wsl2-fedora/README.md`](wsl2-fedora/README.md)
 
 ## Repository layout convention

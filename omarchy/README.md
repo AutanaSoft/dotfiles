@@ -11,11 +11,11 @@ convention and change workflow.
 
 | Doc | Purpose |
 | --- | --- |
-| [hypr](hypr.md) | Hyprland configuration: monitors, looknfeel, window rules, keybindings, idle. |
-| [symlinks](symlinks.md) | How the repo maps to the live system, change workflow, repairing broken symlinks. |
-| [bin](bin.md) | User scripts in `omarchy/bin/` (currently `monitor`). |
-| [zellij](zellij.md) | Zellij keybindings, layout, and theme. |
-| [nvim-opencode](nvim-opencode.md) | Neovim integration with the opencode CLI. |
+| [hypr](docs/hypr.md) | Hyprland configuration: monitors, looknfeel, window rules, keybindings, idle. |
+| [symlinks](docs/symlinks.md) | How the repo maps to the live system, change workflow, repairing broken symlinks. |
+| [bin](docs/bin.md) | User scripts in `omarchy/bin/` (currently `monitor`). |
+| [zellij](docs/zellij.md) | Zellij keybindings, layout, and theme. |
+| [nvim-opencode](docs/nvim-opencode.md) | Neovim integration with the opencode CLI. |
 
 ## Omarchy-specific rules
 
