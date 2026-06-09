@@ -2,7 +2,7 @@
 normal = { family = "Monaspace Krypton NF", style = "Regular" }
 bold = { family = "Monaspace Krypton NF", style = "Bold" }
 italic = { family = "Monaspace Krypton NF", style = "Italic" }
-size = 9
+size = 9.3
 
 [window]
 padding.x = 8
