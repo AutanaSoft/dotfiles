@@ -1,55 +1,57 @@
 # dotfiles
 
-Repositorio para versionar configuraciones personales de varios
-entornos en un solo lugar.
+Versioned user configuration for two environments in one repository.
 
-## Nombre recomendado
+## Environments
 
-- `dotfiles` (forma estándar, más reconocible).
-
-## Convención
-
-- Cada entorno vive en una carpeta de primer nivel del repo.
-- Dentro de cada entorno usamos nombres visibles, sin `.` inicial.
-- Las rutas del repo representan rutas reales en `~` mediante una
-  traducción simple.
-- `home/` en cada entorno equivale a `~/` y conserva los nombres
-  reales de dotfiles como `.bashrc`.
-- `config/` en el repo equivale a `~/.config/` en el sistema.
-- Si en el futuro hiciera falta, `local/` podría equivaler a `~/.local/`.
-- Ejemplo: `~/.config/hypr/hyprland.conf` para Omarchy vive como
-  `omarchy/config/hypr/hyprland.conf`.
-- No se debe editar nada de `~/.local/share/omarchy/` desde este repo.
-
-## Entornos incluidos
-
-| Entorno | Carpeta | Stack |
+| Environment | Folder | Stack |
 | --- | --- | --- |
 | Omarchy Linux (Arch + Hyprland) | `omarchy/` | Hyprland, Alacritty, Zellij, nvim, Mako, themes |
-| Fedora en WSL2 | `wsl2-fedora/` | WezTerm, Zellij, nvim, Zsh, Starship, SSH, Git |
+| Fedora on WSL2 | `wsl2-fedora/` | WezTerm, Zellij, nvim, Zsh, Starship, SSH, Git |
 
-## Documentación
+See each environment's index for the full picture:
 
-| Entorno | Índice |
+- Omarchy: [`omarchy/docs/README.md`](omarchy/docs/README.md)
+- WSL2 + Fedora: [`wsl2-fedora/README.md`](wsl2-fedora/README.md)
+
+## Repository layout convention
+
+Each environment is a top-level folder with the same shape:
+
+| Path in repo | Maps to |
 | --- | --- |
-| Omarchy | [`omarchy/docs/README.md`](omarchy/docs/README.md) |
-| WSL2 + Fedora | [`wsl2-fedora/README.md`](wsl2-fedora/README.md) |
+| `home/.<dotfile>` | `~/.<dotfile>` |
+| `config/<app>/<file>` | `~/.config/<app>/<file>` |
+| `bin/<name>` | User `PATH` (e.g. `~/.local/bin/<name>`) |
+| `docs/` | Per-environment reference docs |
 
-## Cómo funciona
+The repository is the **source of truth**: the live files at
+`~/.config/...` are symlinks pointing into the repo. Edit the repo
+and the running system sees the change. The Omarchy docs explain this
+in detail:
 
-El repositorio es la **fuente de verdad**. Los archivos en
-`~/.config/...` (y similares) son symlinks al repo, por lo que editar
-el repo impacta el sistema en vivo. Cada entorno documenta su propio
-workflow:
+- Workflow and symlink repair: [`omarchy/docs/symlinks.md`](omarchy/docs/symlinks.md)
+- WSL2 setup: [`wsl2-fedora/docs/setup.md`](wsl2-fedora/docs/setup.md)
 
-- Omarchy: [omarchy/docs/symlinks.md](omarchy/docs/symlinks.md)
-- WSL2 + Fedora: [wsl2-fedora/docs/setup.md](wsl2-fedora/docs/setup.md)
+## Change workflow
 
-## Estado actual
+1. Edit the file in the repo.
+2. The symlink makes the change visible to the live system
+   immediately.
+3. Reload the affected service and validate. For Hyprland:
+   `hyprctl reload` then `hyprctl configerrors` (must be empty).
 
-Omarchy ya quedó migrado, con archivos de Hyprland, Alacritty, Zellij,
-nvim, Mako y un theme (`tokyo-night-autana`) bajo control del repo.
-Detalle en [omarchy/docs/README.md](omarchy/docs/README.md).
+## Tracking policy
 
-WSL2 + Fedora está documentado y operativo; detalle en
-[wsl2-fedora/README.md](wsl2-fedora/README.md).
+Only files that **diverge from environment defaults** are tracked.
+Anything that matches the upstream default stays out of the repo even
+if it exists in `~/.config/`. This keeps the diff focused on what the
+user actually changed. See
+[`omarchy/docs/symlinks.md`](omarchy/docs/symlinks.md) for the
+inclusion policy used in this repo.
+
+## Forbidden paths
+
+Do not modify system files or Omarchy source files under
+`~/.local/share/omarchy/`. Those are managed by the system and any
+edit is overwritten on the next `omarchy update`.
