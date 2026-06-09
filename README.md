@@ -1,52 +1,55 @@
 # dotfiles
 
-Repositorio para versionar configuraciones personales de varios entornos en un solo lugar.
+Repositorio para versionar configuraciones personales de varios
+entornos en un solo lugar.
 
 ## Nombre recomendado
 
-- Usa `dotfiles`.
-- `dotfiles` es la forma estandar y mas reconocible.
-- `dotsfiles` no es habitual y suena a error tipografico.
+- `dotfiles` (forma estándar, más reconocible).
 
-## Convencion
+## Convención
 
 - Cada entorno vive en una carpeta de primer nivel del repo.
 - Dentro de cada entorno usamos nombres visibles, sin `.` inicial.
-- Las rutas del repo representan rutas reales en `~` mediante una traduccion simple.
-- `home/` en cada entorno equivale a `~/` y conserva los nombres reales de dotfiles como `.bashrc`.
+- Las rutas del repo representan rutas reales en `~` mediante una
+  traducción simple.
+- `home/` en cada entorno equivale a `~/` y conserva los nombres
+  reales de dotfiles como `.bashrc`.
 - `config/` en el repo equivale a `~/.config/` en el sistema.
-- Si en el futuro hiciera falta, `local/` podria equivaler a `~/.local/`.
-- Ejemplo: `~/.config/hypr/hyprland.conf` para Omarchy vive como `omarchy/config/hypr/hyprland.conf`.
+- Si en el futuro hiciera falta, `local/` podría equivaler a `~/.local/`.
+- Ejemplo: `~/.config/hypr/hyprland.conf` para Omarchy vive como
+  `omarchy/config/hypr/hyprland.conf`.
 - No se debe editar nada de `~/.local/share/omarchy/` desde este repo.
 
-## Estructura
+## Entornos incluidos
 
-- `omarchy/`
-- `wsl2-fedora/`
-- `fedora/`
+| Entorno | Carpeta | Stack |
+| --- | --- | --- |
+| Omarchy Linux (Arch + Hyprland) | `omarchy/` | Hyprland, Alacritty, Zellij, nvim, Mako, themes |
+| Fedora en WSL2 | `wsl2-fedora/` | WezTerm, Zellij, nvim, Zsh, Starship, SSH, Git |
 
-## Uso
+## Documentación
 
-- Todo lo especifico de Omarchy va en `omarchy/`.
-- Todo lo especifico de WSL2 con Fedora va en `wsl2-fedora/`.
-- Si luego tienes una instalacion Fedora normal, va en `fedora/`.
-- Si algun archivo termina siendo comun entre varios entornos, podemos despues extraerlo a una carpeta compartida, pero por ahora conviene empezar separado para evitar mezclar casos.
+| Entorno | Índice |
+| --- | --- |
+| Omarchy | [`omarchy/docs/README.md`](omarchy/docs/README.md) |
+| WSL2 + Fedora | [`wsl2-fedora/README.md`](wsl2-fedora/README.md) |
+
+## Cómo funciona
+
+El repositorio es la **fuente de verdad**. Los archivos en
+`~/.config/...` (y similares) son symlinks al repo, por lo que editar
+el repo impacta el sistema en vivo. Cada entorno documenta su propio
+workflow:
+
+- Omarchy: [omarchy/docs/symlinks.md](omarchy/docs/symlinks.md)
+- WSL2 + Fedora: [wsl2-fedora/docs/setup.md](wsl2-fedora/docs/setup.md)
 
 ## Estado actual
 
-La base inicial de Omarchy ya quedo movida a:
+Omarchy ya quedó migrado, con archivos de Hyprland, Alacritty, Zellij,
+nvim, Mako y un theme (`tokyo-night-autana`) bajo control del repo.
+Detalle en [omarchy/docs/README.md](omarchy/docs/README.md).
 
-- `omarchy/config/hypr/`
-- `omarchy/config/waybar/`
-- `omarchy/config/walker/`
-- `omarchy/config/alacritty/`
-- `omarchy/config/mako/`
-- `omarchy/config/omarchy/themes/`
-- `omarchy/config/omarchy/hooks/`
-
-## Siguiente paso natural
-
-Podemos hacer una de estas dos cosas:
-
-1. Crear la estructura base equivalente para `wsl2-fedora/`.
-2. Preparar una estrategia de despliegue con `stow` o symlinks por perfil.
+WSL2 + Fedora está documentado y operativo; detalle en
+[wsl2-fedora/README.md](wsl2-fedora/README.md).

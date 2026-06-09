@@ -1,11 +1,11 @@
 # Omarchy Dotfiles
 
-This directory stores the user-managed Omarchy configuration tracked by this repository.
+User-managed Omarchy configuration tracked by this repository.
 
 ## Quick path
 
 1. Edit files in this repository first.
-2. Link the real user paths to the repo-managed files with symlinks.
+2. The live system reads them through symlinks. See [symlinks.md](symlinks.md).
 3. Reload or restart the affected component to apply the change.
 
 ## Scope
@@ -26,6 +26,18 @@ This directory stores the user-managed Omarchy configuration tracked by this rep
 - `config/` — files that map to `~/.config/`
 - `docs/` — repository documentation for Omarchy-specific workflow and decisions
 
+## Documentation
+
+| Doc | Purpose |
+| --- | --- |
+| [hypr](hypr.md) | Hyprland configuration: monitors, looknfeel, window rules, keybindings, idle. |
+| [symlinks](symlinks.md) | How the repo maps to the live system, change workflow, repairing broken symlinks. |
+| [bin](bin.md) | User scripts in `omarchy/bin/` (currently `monitor`). |
+| [zellij](zellij.md) | Zellij keybindings, layout, and theme. |
+| [nvim-opencode](nvim-opencode.md) | Neovim integration with the opencode CLI. |
+
 ## Working rule
 
-Prefer small, explicit changes. Keep configuration in tracked files, then expose it to the live system through symlinks.
+Prefer small, explicit changes. Keep configuration in tracked files,
+then expose it to the live system through symlinks. See
+[symlinks.md](symlinks.md) for the full workflow.
