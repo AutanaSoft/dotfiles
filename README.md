@@ -21,9 +21,22 @@ Each environment is a top-level folder with the same shape:
 | Path in repo | Maps to |
 | --- | --- |
 | `home/.<dotfile>` | `~/.<dotfile>` |
-| `config/<app>/<file>` | `~/.config/<app>/<file>` |
+| `config/<app>/<file>` | `~/.config/<app>/<file>` (see [shared layer](#shared-layer) for shared configs) |
 | `bin/<name>` | User `PATH` (e.g. `~/.local/bin/<name>`) |
 | `docs/` | Per-environment reference docs |
+| `shared/<area>/<files>` | Shared configs used by both environments (see [`shared/README.md`](shared/README.md)) |
+
+### Shared layer
+
+A `shared/` directory at the repo root holds configs that are
+identical (or omarchy-canonical) across both environments. For
+shared files the live `~/.config/<app>/<file>` resolves through a
+two-level symlink chain: it points into
+`<env>/config/<app>/<file>`, which itself points into
+`shared/<app>/<file>`. The canonical-source rule (omarchy wins when
+configs diverge), the env-to-shared mapping, and the list of files
+forbidden in `shared/` all live in
+[`shared/README.md`](shared/README.md).
 
 The repository is the **source of truth**: the live files at
 `~/.config/...` are symlinks pointing into the repo. Edit the repo
