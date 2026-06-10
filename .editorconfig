@@ -1,0 +1,31 @@
+# EditorConfig: https://editorconfig.org
+# Declares formatting conventions for the dotfiles repo.
+# Read by editorconfig-vim (and most other editors) on file open.
+#
+# AI agents working in this repo (such as opencode) should respect
+# these rules when generating or editing files. The file is at the
+# repo root for easy discovery.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+max_line_length = 120
+
+# Markdown uses trailing spaces for hard line breaks; don't trim.
+[*.{md,markdown}]
+trim_trailing_whitespace = false
+
+# Makefiles require tabs (recipe lines must start with TAB).
+[Makefile]
+indent_style = tab
+
+# KDL (zellij), shell scripts (bin/, .zshrc, .bashrc), and
+# Hyprland hyprlang (*.conf) use 4-space indent.
+[*.{kdl,sh,bash,zsh,conf}]
+indent_size = 4
