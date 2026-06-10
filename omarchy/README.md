@@ -17,6 +17,13 @@ convention and change workflow.
 | [zellij](docs/zellij.md) | Zellij keybindings, layout, and theme. |
 | [nvim-opencode](docs/nvim-opencode.md) | Neovim integration with the opencode CLI. |
 
+Cross-environment docs (live at the repo root, not under `omarchy/`):
+
+| Doc | Purpose |
+| --- | --- |
+| [shared/README.md](../../shared/README.md) | The `shared/` layer: canonical-source rule, env-to-shared mapping, forbidden list. |
+| [shared/zellij/README.md](../../shared/zellij/README.md) | Zellij-specific shared mapping and add-theme/layout procedure. |
+
 ## Omarchy-specific rules
 
 These extend the [tracking policy](../../README.md#tracking-policy)

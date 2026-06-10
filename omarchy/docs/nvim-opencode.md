@@ -12,7 +12,8 @@ This setup uses [`nickjvandyke/opencode.nvim`](https://github.com/nickjvandyke/o
 
 | Area | Path |
 |------|------|
-| Plugin spec | `omarchy/config/nvim/lua/plugins/opencode.lua` |
+| Plugin spec | `omarchy/config/nvim/lua/plugins/opencode.lua` (per-env) |
+| Nvim base config | `shared/nvim/lua/config/{lazy,autocmds,keymaps,options}.lua` (symlinked into each env) |
 | Live Neovim config | `~/.config/nvim` -> symlink to `omarchy/config/nvim` |
 
 ## Why this plugin
