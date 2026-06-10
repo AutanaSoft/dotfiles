@@ -78,10 +78,11 @@ Example, current state of `~/.config/hypr/`:
 | File in `~/.config/hypr/` | Symlinked? | In repo? |
 | --- | --- | --- |
 | `hyprland.conf` | yes | yes |
-| `monitors.conf` | yes | yes |
-| `bindings.conf` | yes | yes |
-| `looknfeel.conf` | yes | yes |
-| `rules.conf` | yes | yes |
+| `p-index.conf` | yes | yes (sourced by `hyprland.conf` to apply personal customizations) |
+| `p-monitors.conf` | yes | yes |
+| `p-looknfeel.conf` | yes | yes |
+| `p-bindings.conf` | yes | yes |
+| `p-rules.conf` | yes | yes |
 | `hypridle.conf` | yes | yes |
 | `autostart.conf` | no | no (matches Omarchy default) |
 | `envs.conf` | no | no |
@@ -89,6 +90,11 @@ Example, current state of `~/.config/hypr/`:
 | `hyprlock.conf` | no | no |
 | `hyprsunset.conf` | no | no |
 | `xdph.conf` | no | no |
+
+The actual Hyprland customizations live in `p-` prefixed files
+because Omarchy does not touch `p-` files on `omarchy update`. See
+[hypr.md](hypr.md#the-p--prefix-convention) for the full
+explanation of the `p-` prefix convention.
 
 To audit the current state at any time:
 

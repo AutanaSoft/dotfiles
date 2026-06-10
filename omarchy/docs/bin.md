@@ -20,7 +20,7 @@ Implementation: `omarchy/bin/monitor`.
 
 | Command | Mechanism |
 | --- | --- |
-| `on` | `hyprctl reload` — Hyprland re-reads the sourced `monitors.conf` from this repo, restoring the full dual-monitor layout. |
+| `on` | `hyprctl reload` — Hyprland re-reads the config (sourced via `p-index.conf` from `p-monitors.conf` in this repo), restoring the full dual-monitor layout. |
 | `off` | `hyprctl keyword monitor "HDMI-A-1,disable"` — temporarily disable just that monitor. Hyprland moves its workspaces and windows to the remaining active monitor. |
 
 ### Why a wrapper
