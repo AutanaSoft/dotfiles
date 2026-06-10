@@ -1,8 +1,8 @@
-# Symlinks — Tabla de archivos
+# Symlinks — file reference
 
-## Tabla de symlinks
+## Symlink table
 
-| Archivo en el repo | Symlink en tu sistema |
+| Repo file | Symlink on your system |
 | --- | --- |
 | `omarchy/config/hypr/hypr.conf` | `~/.config/hypr/hypr.conf` |
 | `omarchy/config/waybar/config` | `~/.config/waybar/config` |
@@ -11,36 +11,37 @@
 | `omarchy/home/.zshrc` | `~/.zshrc` |
 | `omarchy/bin/omarchy-sync` | `~/.local/bin/omarchy-sync` |
 
-## Cómo crear un symlink
+## Creating a symlink
 
 ```bash
-ln -sf /home/lcardenas/Projects/autanasoft/dotfiles/omarchy/config/hypr/hypr.conf ~/.config/hypr/hypr.conf
+ln -sf ~/Projects/autanasoft/dotfiles/omarchy/config/hypr/hypr.conf ~/.config/hypr/hypr.conf
 ```
 
-Formato:
+Format:
+
 ```
-ln -sf <ruta-al-repo> <ruta-donde-quiere-el-symlink>
+ln -sf <path-in-repo> <where-you-want-the-symlink>
 ```
 
-- `ln` — comando de symlink
-- `-s` — simbólico (no hard link)
-- `-f` — fuerza: sobreescribe si ya existe
+- `ln` — symlink command
+- `-s` — symbolic (not a hard link)
+- `-f` — force: overwrite if it already exists
 
-## Verificar que está bien
+## Verifying the symlink
 
 ```bash
 ls -la ~/.config/hypr/hypr.conf
 ```
 
-Si muestra `lrwxrwxrwx` al inicio, el symlink está OK. Si muestra `-rw-r--r--`, es un archivo normal ( roto).
+If the first column shows `lrwxrwxrwx`, the symlink is OK. If it shows `-rw-r--r--`, it is a regular file (the symlink was broken).
 
-## Si `omarchy refresh` lo rompe
+## If `omarchy refresh` breaks it
 
-`omarchy refresh` reemplaza symlinks con archivos normales. Para reparar:
+`omarchy refresh` replaces symlinks with regular files. To repair:
 
 ```bash
 rm ~/.config/hypr/hypr.conf
-ln -sf /home/lcardenas/Projects/autanasoft/dotfiles/omarchy/config/hypr/hypr.conf ~/.config/hypr/hypr.conf
+ln -sf ~/Projects/autanasoft/dotfiles/omarchy/config/hypr/hypr.conf ~/.config/hypr/hypr.conf
 ```
 
-Eso es todo.
+Done.
