@@ -11,18 +11,47 @@ into this repo. The mapping is simple:
 
 | Repo path | Live path |
 | --- | --- |
-| `omarchy/config/<app>/<file>` | `~/.config/<app>/<file>` |
+| `omarchy/config/<app>/<file>` | `~/.config/<app>/<file>` (per-env) |
 | `omarchy/home/.<dotfile>` | `~/.<dotfile>` |
 | `omarchy/bin/<name>` | `~/.local/bin/<name>` (or wherever `$PATH` resolves) |
+| `shared/<area>/<files>` | Source for configs shared across both envs (see [Shared layer](#shared-layer)) |
 
-A typical example, fully expanded:
+### Shared layer
+
+For configs that are identical (or omarchy-canonical) across both
+environments, the symlink chain is two levels deep. The repo has a
+`shared/` directory at its root that holds the source of truth for
+these configs; each env's `config/<app>/<file>` for shared content is
+a symlink into `../shared/<app>/<file>`. The canonical-source rule
+(omarchy wins when configs diverge), the env-to-shared mapping, and
+the list of files forbidden in `shared/` all live in
+[`shared/README.md`](../../shared/README.md).
+
+A typical per-env example, fully expanded:
 
 ```
 omarchy/config/hypr/looknfeel.conf  ─symlink─►  ~/.config/hypr/looknfeel.conf
 ```
 
-When Hyprland reads `~/.config/hypr/looknfeel.conf`, it follows the
-symlink into the repo. There is exactly one file; there is no copy.
+A typical shared example, fully expanded (two-level chain):
+
+```
+shared/zellij/config.kdl
+    ▲
+    │ symlink
+    │
+omarchy/config/zellij/config.kdl
+    ▲
+    │ symlink
+    │
+~/.config/zellij/config.kdl
+```
+
+When Hyprland reads `~/.config/hypr/looknfeel.conf` (or Zellij reads
+`~/.config/zellij/config.kdl`), it follows the symlink chain into
+the repo. There is exactly one source of truth per file — either in
+`omarchy/`, in `shared/`, or in a host-only override — and there is
+no copy.
 
 ## Why symlinks (not a copy, not stow)
 
@@ -80,8 +109,14 @@ done
 
 For any tracked file:
 
-1. Edit the file in the repo (`omarchy/config/.../...`).
-2. The symlink makes the edit visible to the live system immediately.
+1. Edit the file in the repo. Per-env files live in
+   `omarchy/config/.../...` (or `omarchy/home/...` or
+   `omarchy/bin/...`). Shared files live in `shared/...` — edit
+   them there, not in the per-env symlink target. See the
+   [Shared layer](#shared-layer) section above.
+2. The symlink chain (one level for per-env files, two levels for
+   shared files) makes the edit visible to the live system
+   immediately.
 3. Reload the affected service. For Hyprland: `hyprctl reload`.
 4. Validate: `hyprctl configerrors` (must be empty).
 5. Smoke-test the change in the running session.
@@ -125,6 +160,38 @@ override it:
 5. **Commit** the new tracked file and the symlink replacement is
    just a host-side concern, not a repo concern.
 
+## Adding a new shared file
+
+When a config becomes identical (or omarchy-canonical) across both
+environments, move it into `shared/` so both envs can use the same
+source of truth:
+
+1. **Choose the right `shared/` path.** The mapping for existing
+   shared areas (zellij, nvim, starship, etc.) is documented in
+   [`shared/README.md`](../../shared/README.md). For a new area,
+   create the directory under `shared/<area>/` and add a row to
+   the mapping table.
+2. **Move the file** from its env path to the corresponding
+   `shared/` path. `git mv` preserves history; a plain `mv` + later
+   `git add` is fine too.
+3. **Replace the original env path with a symlink** to the new
+   `shared/` location. From `omarchy/config/<app>/`:
+
+   ```bash
+   ln -s ../../shared/<app>/<file> <file>
+   ```
+
+   The relative depth depends on the env's directory tree; use
+   `realpath --relative-to=` to compute it.
+4. **Repeat the symlink in the other env** if the file is used
+   there. For configs that only matter in one env, the file stays
+   per-env — do not move it to `shared/`.
+5. **Validate** per the change workflow above (reload the affected
+   service, smoke-test, etc.).
+6. **Commit** the move + symlink creates in a single commit with a
+   conventional-commit message like `refactor(<app>): move <file> to
+   shared/`.
+
 ## Removing a tracked file
 
 If you stop customizing a file and want it to fall back to Omarchy
@@ -149,7 +216,11 @@ file containing the current default. Symptom: a file you have been
 editing stops responding to your changes because Hyprland is reading
 the regular file, not the symlink.
 
-Detect:
+For shared files the chain has two levels, so a break can happen at
+either the env level (`omarchy/config/<app>/<file>`) or, less
+commonly, the shared level (`shared/<app>/<file>` itself).
+
+### Detect (per-env file)
 
 ```bash
 ls -la ~/.config/hypr/whatever.conf
@@ -157,7 +228,7 @@ ls -la ~/.config/hypr/whatever.conf
 # the symlink was broken.
 ```
 
-Repair:
+### Repair (per-env file)
 
 ```bash
 # Back up the broken regular file (it might have Omarchy default changes)
@@ -169,6 +240,39 @@ ln -sf ~/Projects/autanasoft/dotfiles/omarchy/config/hypr/whatever.conf \
 
 # Verify
 ls -la ~/.config/hypr/whatever.conf
+```
+
+### Detect (shared file)
+
+Check the env-level link first, then the shared target:
+
+```bash
+ls -la ~/Projects/autanasoft/dotfiles/omarchy/config/zellij/config.kdl
+ls -la ~/Projects/autanasoft/dotfiles/shared/zellij/config.kdl
+```
+
+If the env-level path is a regular file, the env-level symlink was
+broken. If the shared file itself is missing or modified, the host
+touched `shared/` (rare — usually a manual mistake).
+
+### Repair (shared file, env-level break)
+
+```bash
+cd ~/Projects/autanasoft/dotfiles/omarchy/config/zellij
+# Back up the broken regular file
+cp config.kdl config.kdl.bak.$(date +%s)
+# Re-create the env-level symlink
+ln -sf ../../../shared/zellij/config.kdl config.kdl
+ls -la config.kdl
+```
+
+### Repair (shared file, shared-level break)
+
+Restore from git (the shared file is a tracked repo file):
+
+```bash
+cd ~/Projects/autanasoft/dotfiles
+git checkout shared/zellij/config.kdl
 ```
 
 If you find this happening often, audit which Omarchy commands you
