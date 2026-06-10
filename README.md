@@ -63,6 +63,22 @@ user actually changed. See
 [`omarchy/docs/symlinks.md`](omarchy/docs/symlinks.md) for the
 inclusion policy used in this repo.
 
+## Editor formatting
+
+The repo declares formatting conventions in
+[`.editorconfig`](.editorconfig) at the repo root. Editors that
+respect EditorConfig (including Neovim with the
+[`editorconfig-vim`](https://github.com/editorconfig/editorconfig-vim)
+plugin) pick up the conventions automatically.
+
+The Neovim plugin spec lives at
+[`shared/nvim/lua/plugins/editorconfig.lua`](shared/nvim/lua/plugins/editorconfig.lua)
+and is symlinked into both envs (per-env path → shared target).
+
+**AI agents** working in this repo (such as opencode) should respect
+the `.editorconfig` rules when generating or editing files. The file
+is at the repo root for easy discovery.
+
 ## Forbidden paths
 
 Do not modify system files or Omarchy source files under
