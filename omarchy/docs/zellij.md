@@ -65,17 +65,23 @@ the plugin includes every default binding and the popup can wrap entries into tw
 
 ## Plugins
 
-The Zellij plugin binaries are versioned in this repo under `config/zellij/plugins/`:
+The Zellij plugin binaries live in this repo under
+`shared/zellij/plugins/` (canonical source) and are exposed in omarchy
+via the per-env symlink `omarchy/config/zellij/plugins/`:
 
 - `zellij_forgot.wasm`
 - `zjframes.wasm`
 - `zjstatus.wasm`
 
-Copying `config/zellij/` into `~/.config/zellij/` installs both the config and the plugin binaries.
+The symlink chain (`~/.config/zellij/plugins/` →
+`omarchy/config/zellij/plugins/` → `shared/zellij/plugins/`) installs
+both the config and the plugin binaries — no copy step needed. See
+[symlinks.md](symlinks.md) for the symlink workflow.
 
 ## Related Files
 
-- `config/zellij/config.kdl`
-- `config/zellij/plugins/README.md`
-- `config/zellij/layouts/autanasoft.kdl`
-- `config/zellij/themes/tokyo-night.kdl`
+- `omarchy/config/zellij/config.kdl` → symlink to `shared/zellij/config.kdl`
+- `omarchy/config/zellij/plugins/` → symlink to `shared/zellij/plugins/`
+- `omarchy/config/zellij/layouts/autanasoft.kdl` → symlink to `shared/zellij/layouts/autanasoft.kdl`
+- `omarchy/config/zellij/themes/tokyo-night.kdl` → symlink to `shared/zellij/themes/tokyo-night.kdl`
+- See [`shared/zellij/README.md`](../../shared/zellij/README.md) for the canonical source and the add-theme/layout procedure.
