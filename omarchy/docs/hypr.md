@@ -9,19 +9,46 @@ Reference: <https://wiki.hypr.land/Configuring/>
 
 ## Files
 
+Customizations live in `p-` prefixed files (see
+[The `p-` prefix convention](#the-p--prefix-convention) below). The
+actual files tracked in this repo are:
+
 | File | Purpose | Symlinked to |
 | --- | --- | --- |
-| `hyprland.conf` | Main entry point. Sources defaults and user files in order. | `~/.config/hypr/hyprland.conf` |
-| `monitors.conf` | Monitor layout and resolutions. | `~/.config/hypr/monitors.conf` |
-| `bindings.conf` | Custom keybindings (app launchers, webapps, Logitech MX Keys). | `~/.config/hypr/bindings.conf` |
-| `looknfeel.conf` | Visual overrides (gaps, border, rounding, dim). | `~/.config/hypr/looknfeel.conf` |
-| `rules.conf` | Window rules per class/title (float, center, size). | `~/.config/hypr/rules.conf` |
-| `hypridle.conf` | Idle and lock behavior. | `~/.config/hypr/hypridle.conf` |
+| `hyprland.conf` | Main entry point. Sources Omarchy defaults, then `p-index.conf`. | `~/.config/hypr/hyprland.conf` |
+| `p-index.conf` | Personal config index. Sources the 4 `p-` files below in order. | `~/.config/hypr/p-index.conf` |
+| `p-monitors.conf` | Monitor layout and resolutions. | `~/.config/hypr/p-monitors.conf` |
+| `p-looknfeel.conf` | Visual overrides (gaps, border, rounding, dim). | `~/.config/hypr/p-looknfeel.conf` |
+| `p-bindings.conf` | Custom keybindings (app launchers, webapps, Logitech MX Keys). | `~/.config/hypr/p-bindings.conf` |
+| `p-rules.conf` | Window rules per class/title (float, center, size). | `~/.config/hypr/p-rules.conf` |
+| `hypridle.conf` | Idle and lock behavior. (Not `p-` prefixed because Hyprland reads it directly, not via the `hyprland.conf` source chain.) | `~/.config/hypr/hypridle.conf` |
 
 Other Hyprland files (`autostart.conf`, `envs.conf`, `input.conf`,
 `hyprlock.conf`, `hyprsunset.conf`, `xdph.conf`) exist in the system
 but are not tracked here because they match the Omarchy defaults. See
 [symlinks.md](symlinks.md) for the inclusion policy.
+
+## The `p-` prefix convention
+
+Files prefixed with `p-` are **user-personal customizations** that
+survive `omarchy update` because Omarchy does not touch files with
+that prefix. The flow:
+
+1. `hyprland.conf` sources the Omarchy defaults
+   (`~/.local/share/omarchy/default/hypr/*.conf`) first.
+2. It then sources the standard user-file names (`monitors.conf`,
+   `input.conf`, `bindings.conf`, `looknfeel.conf`, `autostart.conf`)
+   — these do not exist in this repo. The `source =` lines still
+   parse but resolve to nothing.
+3. It then sources `~/.config/hypr/p-index.conf` last.
+4. `p-index.conf` sources the 4 `p-` files in order, applying
+   customizations on top of the defaults.
+
+The `p-` prefix lets the user keep full control of monitor layout,
+look-and-feel, keybindings, and window rules without fighting
+`omarchy update` overwriting stock files. If you need to add another
+customization file, prefix it with `p-` and add a `source =` line in
+`p-index.conf`.
 
 ## Hyprland version
 
@@ -29,7 +56,7 @@ Pinned by Omarchy. Verified compatible with **0.55.2** running in
 hyprlang compatibility mode (the new lua syntax `hl.config({...})` is
 not used here). See [Syntax compatibility](#syntax-compatibility) below.
 
-## Monitors (`monitors.conf`)
+## Monitors (`p-monitors.conf`)
 
 Dual-monitor desk setup. Primary on `HDMI-A-1` (27" 2560x1440 @ 144Hz),
 secondary on `DP-2` (24" 1920x1080 @ 165Hz) positioned to the right
@@ -45,7 +72,7 @@ This is the only monitor layout used at the desk. See
 [bin.md](bin.md#monitor) for the helper that toggles the secondary
 monitor on/off.
 
-## Look and feel (`looknfeel.conf`)
+## Look and feel (`p-looknfeel.conf`)
 
 Conservative overrides over Omarchy defaults. Every default kept
 commented for traceability.
@@ -82,7 +109,7 @@ For more on these variables see:
 <https://wiki.hypr.land/Configuring/Basics/Variables/#general> and
 <https://wiki.hypr.land/Configuring/Basics/Variables/#layout>.
 
-## Window rules (`rules.conf`)
+## Window rules (`p-rules.conf`)
 
 Per-class window behavior. In Hyprland 0.55+ the unified `windowrule`
 keyword is used (`windowrulev2` is deprecated). Effect flags that take
@@ -139,7 +166,7 @@ hyprctl clients -j | python3 -c "import json,sys; [print(f\"class={c['class']} t
 
 To list installed webapps: `ls ~/.local/share/applications/ | grep -i webapp`.
 
-## Keybindings (`bindings.conf`)
+## Keybindings (`p-bindings.conf`)
 
 Custom bindd entries. The file is ordered by modifier (SUPER < SUPER
 ALT < SUPER SHIFT < SUPER ALT SHIFT), then alphabetically by key.
