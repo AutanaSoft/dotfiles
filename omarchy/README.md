@@ -9,20 +9,18 @@ convention and change workflow.
 
 ## Documentation
 
-| Doc | Purpose |
-| --- | --- |
-| [hypr](./docs/hypr.md) | Hyprland configuration: monitors, looknfeel, window rules, keybindings, idle. |
-| [symlinks](./docs/symlinks.md) | How the repo maps to the live system, change workflow, repairing broken symlinks. |
-| [bin](./docs/bin.md) | User scripts in `omarchy/bin/` (currently `monitor`). |
-| [zellij](./docs/zellij.md) | Zellij keybindings, layout, and theme. |
-| [nvim-opencode](./docs/nvim-opencode.md) | Neovim integration with the opencode CLI. |
-
-Cross-environment docs (live at the repo root, not under `omarchy/`):
+All docs are organized by tool at [`docs/`](../docs/). The entries
+most relevant to this env:
 
 | Doc | Purpose |
 | --- | --- |
-| [shared/README.md](../shared/README.md) | The `shared/` layer: canonical-source rule, env-to-shared mapping, forbidden list. |
-| [shared/zellij/README.md](../shared/zellij/README.md) | Zellij-specific shared mapping and add-theme/layout procedure. |
+| [hypr](../docs/hypr.md) | Hyprland configuration: monitors, looknfeel, window rules, keybindings, idle. |
+| [setup](../docs/setup.md#omarchy) | Symlink workflow, `omarchy refresh` repair, change workflow. |
+| [bin](../docs/bin.md) | User scripts in `omarchy/bin/` (currently `monitor`). |
+| [zellij](../docs/zellij.md) | Zellij keybindings, layout, and theme (shared with WSL2). |
+| [nvim/opencode](../docs/nvim/opencode.md) | Neovim integration with the opencode CLI. |
+| [conventions](../docs/conventions.md) | Style guide and repo rules. |
+| [shared-layer](../docs/shared-layer.md) | The `shared/` layer: canonical-source rule, env-to-shared mapping, forbidden list. |
 
 ## Omarchy-specific rules
 

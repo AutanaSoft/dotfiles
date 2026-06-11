@@ -47,4 +47,4 @@ The following content MUST NOT be placed in `shared/`:
 | `omarchy/config/nvim/lua/config/{lazy,autocmds,keymaps,options}.lua` | `shared/nvim/lua/config/<name>.lua` | symlink | omarchy canonical |
 | `wsl2-fedora/config/nvim/lua/config/{lazy,autocmds,keymaps,options}.lua` | `shared/nvim/lua/config/<name>.lua` | symlink | same target as omarchy |
 
-For the zellij-specific mapping (which includes the procedure for adding a new theme or layout), see [`shared/zellij/README.md`](zellij/README.md).
+For the zellij-specific mapping (which includes the procedure for adding a new theme or layout), see [`docs/zellij.md`](zellij.md#maintenance).

@@ -23,8 +23,8 @@ Each environment is a top-level folder with the same shape:
 | `home/.<dotfile>` | `~/.<dotfile>` |
 | `config/<app>/<file>` | `~/.config/<app>/<file>` (see [shared layer](#shared-layer) for shared configs) |
 | `bin/<name>` | User `PATH` (e.g. `~/.local/bin/<name>`) |
-| `docs/` | Per-environment reference docs |
-| `shared/<area>/<files>` | Shared configs used by both environments (see [`shared/README.md`](shared/README.md)) |
+| `docs/` | Per-tool reference docs (organized by tool, not by env) |
+| `shared/<area>/<files>` | Shared configs used by both environments (see [`docs/shared-layer.md`](docs/shared-layer.md)) |
 
 ### Shared layer
 
@@ -36,15 +36,15 @@ two-level symlink chain: it points into
 `shared/<app>/<file>`. The canonical-source rule (omarchy wins when
 configs diverge), the env-to-shared mapping, and the list of files
 forbidden in `shared/` all live in
-[`shared/README.md`](shared/README.md).
+[`docs/shared-layer.md`](docs/shared-layer.md).
 
 The repository is the **source of truth**: the live files at
 `~/.config/...` are symlinks pointing into the repo. Edit the repo
-and the running system sees the change. The Omarchy docs explain this
-in detail:
+and the running system sees the change. The unified setup doc
+explains this in detail:
 
-- Workflow and symlink repair: [`omarchy/docs/symlinks.md`](omarchy/docs/symlinks.md)
-- WSL2 setup: [`wsl2-fedora/docs/setup.md`](wsl2-fedora/docs/setup.md)
+- WSL2 + Fedora setup: [`docs/setup.md`](docs/setup.md#wsl2--fedora)
+- Omarchy symlink workflow: [`docs/setup.md`](docs/setup.md#omarchy)
 
 ## Change workflow
 
@@ -60,8 +60,8 @@ Only files that **diverge from environment defaults** are tracked.
 Anything that matches the upstream default stays out of the repo even
 if it exists in `~/.config/`. This keeps the diff focused on what the
 user actually changed. See
-[`omarchy/docs/symlinks.md`](omarchy/docs/symlinks.md) for the
-inclusion policy used in this repo.
+[`docs/setup.md`](docs/setup.md#omarchy) for the inclusion policy
+used in this repo.
 
 ## Editor formatting
 
