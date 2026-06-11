@@ -9,34 +9,114 @@ convention and change workflow.
 
 ## Setup on a new machine
 
-Start with [docs/setup.md](docs/setup.md) for the restore procedure,
-and [docs/conventions.md](docs/conventions.md) for the file
-organization rules used in this folder.
+### Quick Path
+
+1. Clone this repo (see [root README](../README.md#setup)).
+1. Create target directories.
+1. Create home and config symlinks.
+1. Copy and customize the SSH config.
+1. Install the required tools and restart the affected applications.
+
+### Clone the repo
+
+```bash
+git clone git@github.com:AutanaSoft/autanasoft-dots.git dotfiles
+cd dotfiles
+```
+
+### Create target directories
+
+```bash
+mkdir -p ~/.config ~/.config/zellij ~/.config/nvim ~/.ssh
+```
+
+### Create home symlinks
+
+```bash
+ln -sf wsl2-fedora/home/.zshrc      ~/.zshrc
+ln -sf wsl2-fedora/home/.zshenv     ~/.zshenv
+ln -sf wsl2-fedora/home/.gitconfig  ~/.gitconfig
+ln -sf wsl2-fedora/home/.wezterm.lua ~/.wezterm.lua
+```
+
+### Create config symlinks
+
+```bash
+ln -sf wsl2-fedora/config/starship.toml ~/.config/starship.toml
+ln -sf wsl2-fedora/config/zellij       ~/.config/zellij
+ln -sf wsl2-fedora/config/nvim         ~/.config/nvim
+```
+
+> `config/zellij` and `config/nvim` are directories; symlinking the directory itself
+> creates a single link that points to the whole tree.
+
+### Create the SSH config
+
+The SSH config must be a real file (not a symlink) because each user customizes it.
+
+```bash
+cp wsl2-fedora/home/.ssh/config.example ~/.ssh/config
+chmod 700 ~/.ssh
+chmod 600 ~/.ssh/config
+```
+
+### Required manual edits
+
+| File | What to change |
+| --- | --- |
+| `~/.gitconfig` | Add your real Git name and email |
+| `~/.ssh/config` | Replace example hosts, users, and identity files |
+| `~/.wezterm.lua` | Remove or adjust `default_domain` if not using WSL |
+
+### Required tools
+
+These dotfiles assume the following tools exist:
+
+| Tool | Why it matters |
+| --- | --- |
+| `zsh` | Main shell |
+| `zsh-autosuggestions` | Fish-style autosuggestions for `.zshrc` (Fedora package) |
+| `zsh-syntax-highlighting` | Command-line syntax highlighting for `.zshrc` (Fedora package) |
+| `starship` | Prompt |
+| `zellij` | Terminal workspace manager |
+| `nvim` | Editor |
+| `git` | Version control |
+| `mise` | Runtime activation from shell |
+| `eza` | Replaces `ls` aliases |
+| `fd` | Fast file search used by nvim picker |
+| `ripgrep` | Fast text search used by nvim picker |
+| `lazygit` | Git terminal UI inside Neovim |
+
+### Restart steps
+
+- restart the shell for `zsh`, `starship`, and `git`
+- restart `zellij` to pick up its new config
+- restart `nvim`
+- restart WezTerm on Windows if you changed `~/.wezterm.lua`
 
 ## Included configurations
 
 | Tool | Repo path | Doc |
 | --- | --- | --- |
-| Zsh | `home/.zshrc`, `home/.zshenv` | [zsh](docs/zsh.md) |
-| Git | `home/.gitconfig` | [git](docs/git.md) |
-| WezTerm | `home/.wezterm.lua` | [wezterm](docs/wezterm.md) |
-| SSH | `home/.ssh/config.example` | [ssh](docs/ssh.md) |
-| Starship | `config/starship.toml` | [starship](docs/starship.md) |
-| Zellij | `config/zellij/` | [zellij](docs/zellij.md) |
-| Neovim | `config/nvim/` | [nvim](docs/nvim.md) |
-| Lazygit | via snacks.nvim in Neovim | [nvim/lazygit](docs/nvim/lazygit.md) |
+| Zsh | `home/.zshrc`, `home/.zshenv` | [zsh](../docs/zsh.md) |
+| Git | `home/.gitconfig` | [git](../docs/git.md) |
+| WezTerm | `home/.wezterm.lua` | [wezterm](../docs/wezterm.md) |
+| SSH | `home/.ssh/config.example` | [ssh](../docs/ssh.md) |
+| Starship | `config/starship.toml` | [starship](../docs/starship.md) |
+| Zellij | `config/zellij/` | [zellij](../docs/zellij.md) |
+| Neovim | `config/nvim/` | [nvim](../docs/nvim.md) |
+| Lazygit | via snacks.nvim in Neovim | [nvim/lazygit](../docs/nvim/lazygit.md) |
 
 ## Documentation index
 
 | Doc | Purpose |
 | --- | --- |
-| [setup](docs/setup.md) | Restore these dotfiles on a new machine. |
-| [conventions](docs/conventions.md) | Repo rules and file organization. |
-| [nvim](docs/nvim.md) | Neovim reference by mode (Normal, Insert, Visual). |
-| [nvim/lazygit](docs/nvim/lazygit.md) | Lazygit inside Neovim. |
-| [zellij](docs/zellij.md) | Zellij keybindings and workflow. |
-| [zsh](docs/zsh.md) | Shell behavior and aliases. |
-| [git](docs/git.md) | Git config defaults and local customization. |
-| [starship](docs/starship.md) | Prompt structure and editing points. |
-| [wezterm](docs/wezterm.md) | Windows WezTerm behavior. |
-| [ssh](docs/ssh.md) | Safe SSH template usage. |
+| [conventions](../docs/conventions.md) | Style guide and repo rules. |
+| [nvim](../docs/nvim.md) | Neovim reference by mode (Normal, Insert, Visual). |
+| [nvim/lazygit](../docs/nvim/lazygit.md) | Lazygit inside Neovim. |
+| [zellij](../docs/zellij.md) | Zellij keybindings and workflow. |
+| [zsh](../docs/zsh.md) | Shell behavior and aliases. |
+| [git](../docs/git.md) | Git config defaults and local customization. |
+| [starship](../docs/starship.md) | Prompt structure and editing points. |
+| [wezterm](../docs/wezterm.md) | Windows WezTerm behavior. |
+| [ssh](../docs/ssh.md) | Safe SSH template usage. |
