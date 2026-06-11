@@ -5,8 +5,8 @@ Versioned user configuration for two environments in one repository.
 ## Quick Path
 
 1. Clone the repo (see [Setup](#setup)).
-2. Follow the per-env setup (WSL2 + Fedora or Omarchy).
-3. Edit, reload, validate on every change.
+1. Follow the per-env setup (WSL2 + Fedora or Omarchy).
+1. Edit, reload, validate on every change.
 
 ## Environments
 
@@ -63,9 +63,9 @@ and the running system sees the change.
 ## Change workflow
 
 1. Edit the file in the repo.
-2. The symlink makes the change visible to the live system
+1. The symlink makes the change visible to the live system
    immediately.
-3. Reload the affected service and validate. For Hyprland:
+1. Reload the affected service and validate. For Hyprland:
    `hyprctl reload` then `hyprctl configerrors` (must be empty).
 
 ## Tracking policy
@@ -76,22 +76,6 @@ if it exists in `~/.config/`. This keeps the diff focused on what the
 user actually changed. The shared layer's stricter tracking rules
 (see [`docs/shared-layer.md`](docs/shared-layer.md#tracking-policy))
 extend this for the `shared/` folder.
-
-## Editor formatting
-
-The repo declares formatting conventions in
-[`.editorconfig`](.editorconfig) at the repo root. Editors that
-respect EditorConfig (including Neovim with the
-[`editorconfig-vim`](https://github.com/editorconfig/editorconfig-vim)
-plugin) pick up the conventions automatically.
-
-The Neovim plugin spec lives at
-[`shared/nvim/lua/plugins/editorconfig.lua`](shared/nvim/lua/plugins/editorconfig.lua)
-and is symlinked into both envs (per-env path → shared target).
-
-**AI agents** working in this repo (such as opencode) should respect
-the `.editorconfig` rules when generating or editing files. The file
-is at the repo root for easy discovery.
 
 ## Forbidden paths
 
