@@ -1,20 +1,20 @@
 # OpenCode in Neovim
 
-This setup uses [`nickjvandyke/opencode.nvim`](https://github.com/nickjvandyke/opencode.nvim) inside the repo-managed LazyVim configuration.
+This setup uses [`nickjvandyke/opencode.nvim`](https://github.com/nickjvandyke/opencode.nvim) inside the repo-managed LazyVim configuration. The plugin spec is shared via the symlink chain, so both envs get the same keymaps.
 
 ## Quick path
 
 1. Open Neovim.
-2. Let `lazy.nvim` install the plugin if needed.
-3. Use the keymaps under `<leader>o`.
+1. Let `lazy.nvim` install the plugin if needed.
+1. Use the keymaps under `<leader>o`.
 
 ## Plugin location
 
 | Area | Path |
 |------|------|
-| Plugin spec | `omarchy/config/nvim/lua/plugins/opencode.lua` (per-env) |
-| Nvim base config | `shared/nvim/lua/config/{lazy,autocmds,keymaps,options}.lua` (symlinked into each env) |
-| Live Neovim config | `~/.config/nvim` -> symlink to `omarchy/config/nvim` |
+| Plugin spec | `shared/nvim/lua/plugins/opencode.lua` (shared, omarchy-canonical) |
+| Nvim base config | `shared/nvim/lua/config/{lazy,autocmds,keymaps,options}.lua` (shared) |
+| Live Neovim config | `~/.config/nvim` → symlink to `<env>/config/nvim` → symlinks into `shared/nvim/` for the shared parts |
 
 ## Why this plugin
 
@@ -37,7 +37,7 @@ It was chosen instead of alternative `opencode.nvim` plugins because it is simpl
 
 - `<leader>` is the LazyVim leader key and is mapped to `Space`.
 - The OpenCode mappings were moved under `<leader>o` to match the existing LazyVim keymap style.
-- Previous global remaps for `+` and `-` were removed to avoid changing default Neovim behavior.
+- WSL2 used to have a divergent `opencode.lua` with 2 keymaps (`<Space>aa`, `<Space>as`) and auto-submit; the configs were unified in favor of the omarchy version (6 keymaps, confirm-before-send).
 
 ## Verification
 

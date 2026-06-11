@@ -7,10 +7,64 @@ specific mode or tool. See [`docs/shared-layer.md`](shared-layer.md) for the sha
 ## Quick Path
 
 1. Press `Esc` to return to normal mode.
-2. Use `Space e` to open or close the file explorer.
-3. Use `Ctrl+h/j/k/l` to move between windows.
-4. Use `Shift+h` and `Shift+l` to switch buffers.
-5. Use `Ctrl+s` to save.
+1. Use `Space e` to open or close the file explorer.
+1. Use `Ctrl+h/j/k/l` to move between windows.
+1. Use `Shift+h` and `Shift+l` to switch buffers.
+1. Use `Ctrl+s` to save.
+
+## Quick Reference
+
+The 25 keys that cover ~90% of daily editing. For full reference, see the subdocs.
+
+### Movement & Edit
+
+| Action | Shortcut |
+| --- | --- |
+| Move | `h` `j` `k` `l` |
+| Word forward / back | `w` / `b` |
+| Line start / end | `0` / `$` |
+| File start / end | `gg` / `G` |
+| Insert / append | `i` / `a` |
+| New line below / above | `o` / `O` |
+| Delete line | `dd` |
+| Copy / paste | `yy` / `p` |
+| Undo / redo | `u` / `Ctrl+r` |
+
+### Navigation
+
+| Action | Shortcut |
+| --- | --- |
+| Search | `/` then `n` / `N` |
+| Find files | `Space ff` |
+| Live grep | `Space /` |
+| File explorer | `Space e` |
+| Previous / next buffer | `Shift+h` / `Shift+l` |
+| Move window | `Ctrl+h` `j` `k` `l` |
+
+### Save & Quit
+
+| Action | Shortcut |
+| --- | --- |
+| Save | `Ctrl+s` |
+| Quit / save and quit | `:q` / `:wq` |
+
+### Code (LSP)
+
+| Action | Shortcut |
+| --- | --- |
+| Go to definition | `gd` |
+| Find references | `gr` |
+| Hover docs | `K` |
+| Code actions | `Space ca` |
+| Rename symbol | `Space cr` |
+
+### Project-specific
+
+| Action | Shortcut |
+| --- | --- |
+| Toggle spelllang `es/en` | `Space sp` |
+| Open Lazygit | `Space gg` |
+| Ask opencode | `Space oa` |
 
 ## Modes
 
@@ -24,33 +78,23 @@ specific mode or tool. See [`docs/shared-layer.md`](shared-layer.md) for the sha
 
 | Page | Content |
 | --- | --- |
-| [Normal Mode](nvim/normal-mode.md) | Movement, editing, copy/paste, undo, search, windows, buffers, LSP |
+| [Normal Mode](nvim/normal-mode.md) | Full normal-mode reference (movement, edit, search, windows, buffers, LSP) |
 | [Insert Mode](nvim/insert-mode.md) | Quick edits while typing, `Ctrl+o` trick |
 | [Visual Mode](nvim/visual-mode.md) | Selection types, operations, text objects |
-| [Explorer](nvim/explorer.md) | File tree navigation and file operations |
-| [Lazygit](nvim/lazygit.md) | Git operations inside Neovim (WSL2 + Fedora) |
-| [OpenCode](nvim/opencode.md) | OpenCode CLI integration via `opencode.nvim` (Omarchy) |
-
-## Project-Specific Keys
-
-| Action | Shortcut |
-| --- | --- |
-| Toggle spell priority `es/en` | `Space u e` |
+| [Explorer](nvim/explorer.md) | File tree navigation and file operations (snacks.nvim) |
+| [Lazygit](nvim/lazygit.md) | Git operations inside Neovim |
+| [OpenCode](nvim/opencode.md) | OpenCode CLI integration via `opencode.nvim` |
 
 ## Notes
 
 - This setup uses `LazyVim`.
 - The project explorer is provided by `snacks.nvim`.
 - If something feels wrong, press `Esc` first.
-- A word (`iw` / `aw`) includes letters, digits, and underscores.
-- `W` / `B` / `E` (uppercase) move by whitespace-delimited WORDs, ignoring punctuation.
-- `ci"` means: **c**hange **i**nside **"**. Works with `(`, `{`, `[`, `<`, `'`, `` ` ``, and `t` (HTML tag).
 
 ## Related Files
 
-- `config/nvim/init.lua`
-- `config/nvim/lua/config/options.lua`
-- `config/nvim/lua/config/keymaps.lua`
-- `config/nvim/lua/config/autocmds.lua`
-- `config/nvim/lua/config/lazy.lua`
-- `config/nvim/lua/plugins/init.lua`
+- `shared/nvim/lua/config/options.lua` — shared options + the one custom keymap (`Space sp`)
+- `shared/nvim/lua/plugins/opencode.lua` — shared opencode keymaps
+- `shared/nvim/lua/config/keymaps.lua` — empty by design (LazyVim provides defaults)
+- `shared/nvim/lua/config/lazy.lua`, `autocmds.lua` — shared lazy/autocmd config
+- `omarchy/config/nvim/lua/plugins/`, `wsl2-fedora/config/nvim/lua/plugins/` — per-env extensions

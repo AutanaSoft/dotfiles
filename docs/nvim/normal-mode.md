@@ -7,118 +7,72 @@ Normal mode is where you spend most of your time. Use `Esc` from any other mode 
 | Action | Shortcut |
 | --- | --- |
 | Left, down, up, right | `h`, `j`, `k`, `l` |
-| Next word | `w` |
-| Previous word | `b` |
+| Word forward / back | `w` / `b` |
 | End of word | `e` |
-| Start of line | `0` |
-| First non-blank | `^` (`Shift+6`) |
-| End of line | `$` (`Shift+4`) |
-| Start of file | `gg` |
-| End of file | `G` |
-| Go to line `N` | `Ng` or `Ngg` |
-| Paragraph down | `}` |
-| Paragraph up | `{` |
-| Page down | `Ctrl+f` |
-| Page up | `Ctrl+b` |
-| Half-page down | `Ctrl+d` |
-| Half-page up | `Ctrl+u` |
+| Start / end of line | `0` / `$` |
+| Start / end of file | `gg` / `G` |
+| Half-page down / up | `Ctrl+d` / `Ctrl+u` |
 
 ## Entering Insert Mode
 
 | From | Shortcut |
 | --- | --- |
-| Before cursor | `i` |
-| After cursor | `a` |
-| Start of line | `I` |
-| End of line | `A` |
-| New line below | `o` |
-| New line above | `O` |
+| Before / after cursor | `i` / `a` |
+| New line below / above | `o` / `O` |
 
-## Delete and Change
+## Edit
 
 | Action | Shortcut |
 | --- | --- |
-| Delete character under cursor | `x` |
-| Delete character before cursor | `X` |
+| Delete character | `x` |
 | Delete line | `dd` |
-| Delete to end of line | `D` or `d$` |
-| Delete word | `dw` |
-| Delete to end of word | `de` |
-| Delete previous word | `db` |
-| Delete current word | `diw` |
-| Delete inside parentheses | `di(` or `di)` |
-| Delete inside braces | `di{` or `di}` |
-| Delete inside quotes | `di"` or `di'` |
-| Delete around braces | `da{` or `da}` |
-| Delete around quotes | `da"` or `da'` |
-| Delete entire paragraph | `dip` or `dap` |
-| Change line | `cc` |
-| Change to end of line | `C` |
-| Change current word | `ciw` |
-| Change inside braces | `ci{` |
+| Delete to end of line | `D` |
+| Change inside word | `ciw` |
+| Change inside parens | `ci(` |
 | Change inside quotes | `ci"` |
-| Change entire paragraph | `cip` |
-| Replace single character | `r` |
-| Replace multiple characters | `R` (replace mode, `Esc` to stop) |
+| Delete inside quotes | `di"` |
 | Join line below to current | `J` |
 
-## Copy and Paste (Yank and Put)
+## Copy and Paste
 
 | Action | Shortcut |
 | --- | --- |
 | Copy line | `yy` |
-| Copy to end of line | `y$` |
-| Copy current word | `yiw` |
-| Copy inside braces | `yi{` |
-| Copy inside quotes | `yi"` |
-| Copy entire paragraph | `yip` |
-| Paste after cursor | `p` |
-| Paste before cursor | `P` |
+| Copy inside word | `yiw` |
+| Paste after / before | `p` / `P` |
 | Paste from system clipboard | `"+p` |
 
 ## Undo and Redo
 
 | Action | Shortcut |
 | --- | --- |
-| Undo | `u` |
-| Redo | `Ctrl+r` |
+| Undo / redo | `u` / `Ctrl+r` |
 
 ## Search
 
 | Action | Shortcut |
 | --- | --- |
 | Search forward | `/text` then `Enter` |
-| Search backward | `?text` then `Enter` |
-| Next result | `n` |
-| Previous result | `N` |
+| Next / previous result | `n` / `N` |
 | Search word under cursor | `*` (forward), `#` (backward) |
-| Find files by name | `Space Space` |
+| Find files by name | `Space ff` |
 | Find text in project | `Space /` |
 
 ## Windows
 
 | Action | Shortcut |
 | --- | --- |
-| Move to left window | `Ctrl+h` |
-| Move to lower window | `Ctrl+j` |
-| Move to upper window | `Ctrl+k` |
-| Move to right window | `Ctrl+l` |
-| Increase height | `Ctrl+Up` |
-| Decrease height | `Ctrl+Down` |
-| Increase width | `Ctrl+Right` |
-| Decrease width | `Ctrl+Left` |
+| Move to left / down / up / right window | `Ctrl+h` `j` `k` `l` |
 
 ## Buffers
 
 | Action | Shortcut |
 | --- | --- |
-| Previous buffer | `Shift+h` or `[b` |
-| Next buffer | `Shift+l` or `]b` |
-| Switch to last buffer | `Space b b` or `Space \`` |
-| Close current buffer | `Space b d` |
-| New empty file | `Space f n` |
+| Previous / next buffer | `Shift+h` / `Shift+l` |
+| Switch to last buffer | `Space bb` |
+| Close current buffer | `Space bd` |
 
-## File Operations
+## Save and Quit
 
 | Action | Shortcut |
 | --- | --- |
@@ -134,9 +88,6 @@ Normal mode is where you spend most of your time. Use `Esc` from any other mode 
 | Go to definition | `gd` |
 | Show references | `gr` |
 | Hover (documentation) | `K` |
-| Code actions | `Space c a` |
-| Rename symbol | `Space c r` |
-| Go to implementation | `gI` |
-| Go to type definition | `gy` |
-| Format buffer | `Space c f` |
-| Show diagnostics | `Space x x` |
+| Code actions | `Space ca` |
+| Rename symbol | `Space cr` |
+| Format buffer | `Space cf` |
