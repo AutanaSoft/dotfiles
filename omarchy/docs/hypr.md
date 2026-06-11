@@ -81,11 +81,11 @@ The file has `unbind` entries at the top (defaults removed) and
 
 | Key | App | Status |
 | --- | --- | --- |
-| SUPER ALT RETURN | Zellij terminal | Reassigned (was Terminal) |
+| SUPER RETURN | Terminal (Zellij) | Reassigned (was default terminal) |
+| SUPER ALT RETURN | Terminal (Zellij Work) | Reassigned (was Terminal) |
 | SUPER SHIFT B | Browser (private) | Reassigned (was Browser) |
 | SUPER SHIFT C | Calculator | Reassigned (was Calculator) |
 | SUPER SHIFT E | Editor | Reassigned (was Editor) |
-| SUPER SHIFT F | File manager | New |
 | SUPER SHIFT N | Netflix | Reassigned |
 | SUPER SHIFT R | Raadio TUI | Reassigned (was print-screen) |
 | SUPER SHIFT S | Spotify | New |
@@ -98,7 +98,8 @@ from this repo — see `p-bindings.conf` for the `unbind` lines):
 
 | Key | App | Status |
 | --- | --- | --- |
-| SUPER ALT RETURN | Terminal | Reassigned → Zellij terminal |
+| SUPER RETURN | Terminal | Reassigned → Terminal (Zellij) |
+| SUPER ALT RETURN | Terminal | Reassigned → Terminal (Zellij Work) |
 | SUPER SHIFT A | — | Removed |
 | SUPER SHIFT ALT A | — | Removed |
 | SUPER SHIFT B | Browser | Reassigned → Browser (private) |
