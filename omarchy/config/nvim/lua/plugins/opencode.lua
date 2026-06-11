@@ -1,0 +1,1 @@
+../../../../../shared/nvim/lua/plugins/opencode.lua

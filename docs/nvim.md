@@ -93,8 +93,20 @@ The 25 keys that cover ~90% of daily editing. For full reference, see the subdoc
 
 ## Related Files
 
+All plugin specs live in `shared/nvim/lua/plugins/`. Each env's `lua/plugins/` is a mirror of
+symlinks to the shared files (lazy.nvim discovers plugins via `{ import = "plugins" }`, so the
+symlinks make shared files appear in the per-env plugin directory).
+
 - `shared/nvim/lua/config/options.lua` — shared options + the one custom keymap (`Space sp`)
-- `shared/nvim/lua/plugins/opencode.lua` — shared opencode keymaps
 - `shared/nvim/lua/config/keymaps.lua` — empty by design (LazyVim provides defaults)
 - `shared/nvim/lua/config/lazy.lua`, `autocmds.lua` — shared lazy/autocmd config
-- `omarchy/config/nvim/lua/plugins/`, `wsl2-fedora/config/nvim/lua/plugins/` — per-env extensions
+- `shared/nvim/lua/plugins/opencode.lua` — opencode.nvim keymaps (`<Space>oa/oo/or/ol/ou/od`)
+- `shared/nvim/lua/plugins/theme.lua` — tokyonight colorscheme spec
+- `shared/nvim/lua/plugins/theme-hotreload.lua` — theme hot-reload on `LazyReload`
+- `shared/nvim/lua/plugins/all-themes.lua` — preloads all theme plugins for hot-reload
+- `shared/nvim/lua/plugins/editorconfig.lua` — `.editorconfig` support
+- `shared/nvim/lua/plugins/conform-mdformat.lua` — mdformat as markdown formatter
+- `shared/nvim/lua/plugins/snacks-animated-scrolling-off.lua` — disables snacks scroll animations
+- `shared/nvim/lua/plugins/nvim-lint-config.lua` — wires nvim-lint to the shared lint config
+- `shared/nvim/lua/plugins/disable-news-alert.lua` — disables LazyVim/Neovim news popups
+- `omarchy/config/nvim/lua/plugins/`, `wsl2-fedora/config/nvim/lua/plugins/` — per-env symlink mirrors of the above

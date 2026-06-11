@@ -1,0 +1,1 @@
+../../../../../shared/nvim/lua/plugins/theme-hotreload.lua
