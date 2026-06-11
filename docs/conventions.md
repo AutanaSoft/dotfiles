@@ -130,10 +130,6 @@ Pure keybinding reference. No intro paragraph, no Quick Path, no Related Files.
 
 ## Current Decisions
 
-> This section lives in each environment's own `docs/conventions.md` because decisions are
-> environment-specific. The entries below are the wsl2-fedora set; replicate this table in
-> `omarchy/docs/conventions.md` (or equivalent) with omarchy-specific decisions.
-
 | Topic                 | Decision                                                             |
 | --------------------- | -------------------------------------------------------------------- |
 | Zsh comments          | Uniform section headers with minimal comments                        |
