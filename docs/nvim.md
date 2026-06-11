@@ -1,6 +1,8 @@
 # Neovim Quick Reference
 
-This setup uses `LazyVim` with a mostly stock configuration. Each page covers a specific mode or tool.
+This setup uses `LazyVim` with a mostly stock configuration. The base config is shared via
+`shared/nvim/` (omarchy-canonical); each env adds its own plugins. Each page below covers a
+specific mode or tool. See [`docs/shared-layer.md`](shared-layer.md) for the shared mapping.
 
 ## Quick Path
 
@@ -26,7 +28,8 @@ This setup uses `LazyVim` with a mostly stock configuration. Each page covers a 
 | [Insert Mode](nvim/insert-mode.md) | Quick edits while typing, `Ctrl+o` trick |
 | [Visual Mode](nvim/visual-mode.md) | Selection types, operations, text objects |
 | [Explorer](nvim/explorer.md) | File tree navigation and file operations |
-| [Lazygit](nvim/lazygit.md) | Git operations inside Neovim |
+| [Lazygit](nvim/lazygit.md) | Git operations inside Neovim (WSL2 + Fedora) |
+| [OpenCode](nvim/opencode.md) | OpenCode CLI integration via `opencode.nvim` (Omarchy) |
 
 ## Project-Specific Keys
 

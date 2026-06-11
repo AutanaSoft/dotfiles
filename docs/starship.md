@@ -1,18 +1,22 @@
 # Starship Guide
 
-This prompt is organized by module groups, but keeps the original behavior intact.
+This prompt is organized by module groups, but keeps the original behavior intact. The same
+`shared/starship.toml` is used in both `omarchy/` and `wsl2-fedora/` via the shared layer
+(omarchy-canonical). See [`docs/shared-layer.md`](shared-layer.md) for the mapping.
 
 ## Quick Path
 
 1. Install `starship`.
-2. Copy `config/starship.toml` to `~/.config/starship.toml`.
+2. The dotfiles symlink `~/.config/starship.toml` to `shared/starship.toml` (already set up
+   by `omarchy refresh` on Omarchy, or by following the WSL2 setup in
+   [`docs/setup.md`](setup.md)).
 3. Open a new shell.
 
 ## File
 
 | File | Purpose |
 | --- | --- |
-| `config/starship.toml` | Prompt configuration |
+| `shared/starship.toml` | Prompt configuration (canonical, used by both envs) |
 
 ## Organization
 
