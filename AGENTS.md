@@ -19,7 +19,7 @@ The structure follows a symbolic link hierarchy:
 - Each environment may have specific configurations that diverge from shared.
 - Only files diverging from upstream defaults are versioned.
 
----
+______________________________________________________________________
 
 ## Applied Conventions
 
@@ -42,30 +42,33 @@ The structure follows a symbolic link hierarchy:
 ### Main Tools
 
 **Shared across both environments:**
+
 - **Zellij** — terminal workspace manager, `Alt-first` keybindings, `locked` mode by default
 - **Starship** — cross-shell prompt with modules for AWS, Docker, Git, Go, Node, Python, Rust, etc.
 - **Neovim + LazyVim** — plugin manager with `lazy-lock.json` versioned
 - **opencode.nvim** — AI integration, different keybindings per environment
 
 **Omarchy (Arch + Hyprland):**
+
 - Hyprland (Wayland compositor), Alacritty/Foot (terminals), Mako (notifications)
 - Waybar, Walker (app launcher), custom Omarchy theme
 - `hyprctl` for reload and monitor control
 
 **WSL2-Fedora:**
+
 - WezTerm, Zsh (with autosuggestions and syntax highlighting)
 - Homebrew Linuxbrew at `/home/linuxbrew/.linuxbrew`
 - `mise` for runtime activation, `direnv`, `fzf`
 
----
+______________________________________________________________________
 
 ## Conventions to Follow
 
 ### Before Making Changes
 
 1. **Verify the canonical source** — if the file exists in `shared/`, that is the canonical source. Specific environments only diverge when necessary.
-2. **Understand the symlink flow** — any change in `shared/` affects both environments.
-3. **Comment instead of delete** — use `# Reason:` to document why something is disabled.
+1. **Understand the symlink flow** — any change in `shared/` affects both environments.
+1. **Comment instead of delete** — use `# Reason:` to document why something is disabled.
 
 ### After Making Changes
 
@@ -73,15 +76,15 @@ The structure follows a symbolic link hierarchy:
    - Hyprland: `hyprctl reload` followed by `hyprctl configerrors`
    - Zellij: close and reopen the session or `zellij -l <layout>`
    - Neovim: restart or `:Lazy reload` if it's a plugin
-2. **Validate** — confirm there are no configuration errors.
+1. **Validate** — confirm there are no configuration errors.
 
 ### Change Workflow
 
 1. Edit the file in the repository
-2. The symlink makes the change immediately visible to the live system
-3. Reload the affected service and validate
+1. The symlink makes the change immediately visible to the live system
+1. Reload the affected service and validate
 
----
+______________________________________________________________________
 
 ## Forbidden Paths
 
@@ -91,7 +94,7 @@ These paths are managed by the system and overwritten on updates:
 - SSH private keys, `known_hosts`, machine-specific tokens
 - Hyprland/Mako/Waybar/Walker configs specific to omarchy (not shared)
 
----
+______________________________________________________________________
 
 ## Communication Rules
 
@@ -105,8 +108,8 @@ These paths are managed by the system and overwritten on updates:
 ### Execution Rules
 
 1. **Do not commit, push, or PR** without explicit request from the developer
-2. **If there are doubts about the requirement,** clarify with the developer before executing
-3. **Verify before affirming** — if the developer makes an incorrect technical claim, explain why with evidence
+1. **If there are doubts about the requirement,** clarify with the developer before executing
+1. **Verify before affirming** — if the developer makes an incorrect technical claim, explain why with evidence
 
 ### Response Format
 
@@ -114,7 +117,7 @@ These paths are managed by the system and overwritten on updates:
 - Expand only when the developer asks or the task genuinely requires it
 - One question at a time; wait for answer before continuing
 
----
+______________________________________________________________________
 
 ## Artifacts and Documentation
 
