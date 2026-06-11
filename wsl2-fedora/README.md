@@ -12,18 +12,16 @@ convention and change workflow.
 ### Quick Path
 
 1. Clone this repo.
-2. Create target directories.
-3. Create home and config symlinks.
-4. Copy and customize the SSH config.
-5. Install the required tools and restart the affected applications.
+1. Create target directories.
+1. Create home and config symlinks.
+1. Copy and customize the SSH config.
+1. Install the required tools and restart the affected applications.
 
 ### Clone the repo
 
-> Replace `<path-to-clone-dir>` with the directory where you cloned the repo (e.g. `Projects/autanasoft`). The repo folder name is `dotfiles` (must match the actual folder name on disk).
-
 ```bash
-git clone git@github.com:AutanaSoft/autanasoft-dots.git ~/<path-to-clone-dir>/dotfiles
-cd ~/<path-to-clone-dir>/dotfiles
+git clone git@github.com:AutanaSoft/autanasoft-dots.git dotfiles
+cd dotfiles
 ```
 
 ### Create target directories
@@ -35,18 +33,18 @@ mkdir -p ~/.config ~/.config/zellij ~/.config/nvim ~/.ssh
 ### Create home symlinks
 
 ```bash
-ln -sf ~/<path-to-clone-dir>/dotfiles/wsl2-fedora/home/.zshrc      ~/.zshrc
-ln -sf ~/<path-to-clone-dir>/dotfiles/wsl2-fedora/home/.zshenv     ~/.zshenv
-ln -sf ~/<path-to-clone-dir>/dotfiles/wsl2-fedora/home/.gitconfig  ~/.gitconfig
-ln -sf ~/<path-to-clone-dir>/dotfiles/wsl2-fedora/home/.wezterm.lua ~/.wezterm.lua
+ln -sf wsl2-fedora/home/.zshrc      ~/.zshrc
+ln -sf wsl2-fedora/home/.zshenv     ~/.zshenv
+ln -sf wsl2-fedora/home/.gitconfig  ~/.gitconfig
+ln -sf wsl2-fedora/home/.wezterm.lua ~/.wezterm.lua
 ```
 
 ### Create config symlinks
 
 ```bash
-ln -sf ~/<path-to-clone-dir>/dotfiles/wsl2-fedora/config/starship.toml ~/.config/starship.toml
-ln -sf ~/<path-to-clone-dir>/dotfiles/wsl2-fedora/config/zellij       ~/.config/zellij
-ln -sf ~/<path-to-clone-dir>/dotfiles/wsl2-fedora/config/nvim         ~/.config/nvim
+ln -sf wsl2-fedora/config/starship.toml ~/.config/starship.toml
+ln -sf wsl2-fedora/config/zellij       ~/.config/zellij
+ln -sf wsl2-fedora/config/nvim         ~/.config/nvim
 ```
 
 > `config/zellij` and `config/nvim` are directories; symlinking the directory itself

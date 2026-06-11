@@ -35,10 +35,8 @@ per-env path in `omarchy/config/...` is itself a symlink into `shared/...`. Two-
 
 ### Creating a symlink
 
-> Replace `<path-to-clone-dir>` with the directory where you cloned the repo (e.g. `Projects/autanasoft`).
-
 ```bash
-ln -sf ~/<path-to-clone-dir>/dotfiles/omarchy/config/hypr/hypr.conf ~/.config/hypr/hypr.conf
+ln -sf omarchy/config/hypr/hypr.conf ~/.config/hypr/hypr.conf
 ```
 
 Format:
@@ -65,7 +63,7 @@ If the first column shows `lrwxrwxrwx`, the symlink is OK. If it shows `-rw-r--r
 
 ```bash
 rm ~/.config/hypr/hypr.conf
-ln -sf ~/<path-to-clone-dir>/dotfiles/omarchy/config/hypr/hypr.conf ~/.config/hypr/hypr.conf
+ln -sf omarchy/config/hypr/hypr.conf ~/.config/hypr/hypr.conf
 ```
 
 ## Documentation
