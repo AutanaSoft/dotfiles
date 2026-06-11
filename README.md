@@ -2,6 +2,12 @@
 
 Versioned user configuration for two environments in one repository.
 
+## Quick Path
+
+1. Clone the repo (see [Setup](#setup)).
+2. Follow the per-env setup (WSL2 + Fedora or Omarchy).
+3. Edit, reload, validate on every change.
+
 ## Environments
 
 | Environment | Folder | Stack |
@@ -9,10 +15,22 @@ Versioned user configuration for two environments in one repository.
 | Omarchy Linux (Arch + Hyprland) | `omarchy/` | Hyprland, Alacritty, Zellij, nvim, Mako, themes |
 | Fedora on WSL2 | `wsl2-fedora/` | WezTerm, Zellij, nvim, Zsh, Starship, SSH, Git |
 
-See each environment's index for the full picture:
+See each environment's README for the full per-tool index.
 
-- Omarchy: [`omarchy/README.md`](omarchy/README.md)
-- WSL2 + Fedora: [`wsl2-fedora/README.md`](wsl2-fedora/README.md)
+## Setup
+
+Clone the repo to start using these dotfiles on any machine:
+
+```bash
+git clone git@github.com:AutanaSoft/autanasoft-dots.git dotfiles
+cd dotfiles
+```
+
+All per-env setup assumes CWD is the repo root. After cloning, follow the env-specific
+guide:
+
+- WSL2 + Fedora: [`wsl2-fedora/README.md`](wsl2-fedora/README.md#setup-on-a-new-machine)
+- Omarchy: [`omarchy/README.md`](omarchy/README.md#setup-on-a-new-machine)
 
 ## Repository layout convention
 
@@ -40,11 +58,7 @@ forbidden in `shared/` all live in
 
 The repository is the **source of truth**: the live files at
 `~/.config/...` are symlinks pointing into the repo. Edit the repo
-and the running system sees the change. Each env's README explains
-the setup and symlink workflow in detail:
-
-- WSL2 + Fedora setup: [`wsl2-fedora/README.md`](wsl2-fedora/README.md#setup-on-a-new-machine)
-- Omarchy symlink workflow: [`omarchy/README.md`](omarchy/README.md#setup-on-a-new-machine)
+and the running system sees the change.
 
 ## Change workflow
 
@@ -59,9 +73,9 @@ the setup and symlink workflow in detail:
 Only files that **diverge from environment defaults** are tracked.
 Anything that matches the upstream default stays out of the repo even
 if it exists in `~/.config/`. This keeps the diff focused on what the
-user actually changed. See
-[`omarchy/README.md`](omarchy/README.md#setup-on-a-new-machine) for
-the inclusion policy used in this repo.
+user actually changed. The shared layer's stricter tracking rules
+(see [`docs/shared-layer.md`](docs/shared-layer.md#tracking-policy))
+extend this for the `shared/` folder.
 
 ## Editor formatting
 
@@ -83,4 +97,14 @@ is at the repo root for easy discovery.
 
 Do not modify system files or Omarchy source files under
 `~/.local/share/omarchy/`. Those are managed by the system and any
-edit is overwritten on the next `omarchy update`.
+edit is overwritten on the next `omarchy update`. The full forbidden
+list (per-host secrets, omarchy-only paths, per-terminal configs that
+legitimately differ) lives in
+[`docs/shared-layer.md`](docs/shared-layer.md#forbidden-content).
+
+## Related Files
+
+- [`AGENTS.md`](AGENTS.md) — repo-wide AI agent and contributor guidance.
+- [`docs/conventions.md`](docs/conventions.md) — style guide and Current Decisions.
+- [`docs/shared-layer.md`](docs/shared-layer.md) — shared config layer rules.
+- [`wsl2-fedora/README.md`](wsl2-fedora/README.md), [`omarchy/README.md`](omarchy/README.md) — per-env setup and doc index.

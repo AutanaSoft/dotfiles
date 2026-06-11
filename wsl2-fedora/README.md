@@ -11,7 +11,7 @@ convention and change workflow.
 
 ### Quick Path
 
-1. Clone this repo.
+1. Clone this repo (see [root README](../README.md#setup)).
 1. Create target directories.
 1. Create home and config symlinks.
 1. Copy and customize the SSH config.

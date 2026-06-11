@@ -11,7 +11,7 @@ convention and change workflow.
 
 ### Quick Path
 
-1. Clone this repo.
+1. Clone this repo (see [root README](../README.md#setup)).
 2. Run `omarchy refresh` to create the env-side symlinks.
 3. Use `ln -sf` for any symlink that `omarchy refresh` does not manage.
 
