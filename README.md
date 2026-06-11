@@ -40,11 +40,11 @@ forbidden in `shared/` all live in
 
 The repository is the **source of truth**: the live files at
 `~/.config/...` are symlinks pointing into the repo. Edit the repo
-and the running system sees the change. The unified setup doc
-explains this in detail:
+and the running system sees the change. Each env's README explains
+the setup and symlink workflow in detail:
 
-- WSL2 + Fedora setup: [`docs/setup.md`](docs/setup.md#wsl2--fedora)
-- Omarchy symlink workflow: [`docs/setup.md`](docs/setup.md#omarchy)
+- WSL2 + Fedora setup: [`wsl2-fedora/README.md`](wsl2-fedora/README.md#setup-on-a-new-machine)
+- Omarchy symlink workflow: [`omarchy/README.md`](omarchy/README.md#setup-on-a-new-machine)
 
 ## Change workflow
 
@@ -60,8 +60,8 @@ Only files that **diverge from environment defaults** are tracked.
 Anything that matches the upstream default stays out of the repo even
 if it exists in `~/.config/`. This keeps the diff focused on what the
 user actually changed. See
-[`docs/setup.md`](docs/setup.md#omarchy) for the inclusion policy
-used in this repo.
+[`omarchy/README.md`](omarchy/README.md#setup-on-a-new-machine) for
+the inclusion policy used in this repo.
 
 ## Editor formatting
 

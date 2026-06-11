@@ -41,4 +41,4 @@ The example covers these patterns:
 ## Related Files
 
 - `home/.ssh/config.example`
-- `docs/setup.md`
+- `wsl2-fedora/README.md#setup-on-a-new-machine`

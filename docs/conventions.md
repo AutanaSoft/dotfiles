@@ -51,7 +51,7 @@ Use docs for:
 
 All docs in this repo follow a rigid skeleton for consistency. Three categories exist:
 
-1. **Runbook** — step-by-step restoration or operational procedure. One per environment: `setup.md`.
+1. **Runbook** — step-by-step restoration or operational procedure. Lives in the per-environment `README.md` (`wsl2-fedora/README.md` and `omarchy/README.md`), under a "Setup on a new machine" section. Not in `docs/`.
 2. **Conventions** — repo rules and current decisions log. This file.
 3. **Reference** — looks up specific decisions taken in this repo, not the tool in general. Not a tutorial.
 
@@ -111,7 +111,7 @@ Pure keybinding reference. No intro paragraph, no Quick Path, no Related Files.
 
 - The environment's `README.md` is the entry point with two tables: tool→doc mapping and a doc index.
 - Hub-and-spoke for grouped tools (e.g. `nvim.md` → `nvim/normal-mode.md`): the parent doc lists subdocs in a "Reference Pages" table.
-- Most root docs link to `docs/setup.md` from `Related Files` because setup is the global restoration node.
+- Per-environment tool docs (e.g. `docs/git.md`, `docs/ssh.md`, `docs/wezterm.md`) link to their env's `README.md#setup-on-a-new-machine` from `Related Files` for restoration context.
 - Links are explicit and one-directional. No orphan docs.
 
 ### Length budgets

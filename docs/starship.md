@@ -9,7 +9,7 @@ This prompt is organized by module groups, but keeps the original behavior intac
 1. Install `starship`.
 2. The dotfiles symlink `~/.config/starship.toml` to `shared/starship.toml` (already set up
    by `omarchy refresh` on Omarchy, or by following the WSL2 setup in
-   [`docs/setup.md`](setup.md)).
+   [`wsl2-fedora/README.md`](../wsl2-fedora/README.md#setup-on-a-new-machine)).
 3. Open a new shell.
 
 ## File
