@@ -20,7 +20,7 @@ documentation.
 
 ## Configuration Files
 
-Configuration files use consistent section headers with minimal comments.
+Configuration files use consistent section headers:
 
 ```txt
 # ------------------------------------------------------------------------------
@@ -28,24 +28,10 @@ Configuration files use consistent section headers with minimal comments.
 # ------------------------------------------------------------------------------
 ```
 
-Rules:
-
-- Use clear section names.
-- Keep comments minimal.
-- Prefer organizing by purpose over by tool internals.
-- Avoid auto generated noise when a cleaner source version can be maintained.
-
 ## Documentation
 
-Documentation belongs in `docs/`, not inside `config/`, unless the file is part of the tool's native
-config format.
-
-Use docs for:
-
-- keybinding references
-- setup notes
-- workflow explanations
-- repo-level conventions
+Documentation belongs in `docs/`, not inside `config/`, unless the file is part of
+the tool's native config format.
 
 ## Doc Style Guide
 
@@ -98,21 +84,24 @@ Pure keybinding reference. No intro paragraph, no Quick Path, no Related Files.
 
 ### Hard rules
 
-- H1 always in the form `<Tool> <Type>`.
-- Opening paragraph is always 1-3 sentences: what it covers, where the file lives, one key fact.
-- `Quick Path` is mandatory in root docs (3-5 numbered steps, high level).
-- Tables over prose for any reference content. Use `| Action | Shortcut |` or `| File | Purpose |` style.
-- `Notes` section at the end (bullets, gotchas).
-- `Related Files` at the bottom: paths to source files and links to related docs.
-- Code blocks only in `setup.md` (bash) and `conventions.md` (template example). Tool docs are tables.
-- Grouped subdocs (e.g. `nvim/`) are deliberately minimal: pure keybinding tables.
+- **H1 format**: always `<Tool> <Type>`, with a 1-3 sentence opening paragraph
+  (what it covers, where the file lives, one key fact).
+- **Root doc sections**: `Quick Path` (3-5 steps, high level), `Notes` (bullets,
+  gotchas), and `Related Files` (paths to source files + links to related docs)
+  are mandatory.
+- **Tables over prose**: use `| Action | Shortcut |` or `| File | Purpose |`
+  style for any reference content.
+- **Code blocks scope**: only in `setup.md` (bash) and `conventions.md` (this
+  template). Tool docs are tables.
+- **Grouped subdocs are minimal**: pure keybinding tables, no intro, no
+  `Quick Path`, no `Related Files`.
 
 ### Cross-linking
 
-- The environment's `README.md` is the entry point with two tables: tool→doc mapping and a doc index.
-- Hub-and-spoke for grouped tools (e.g. `nvim.md` → `nvim/normal-mode.md`): the parent doc lists subdocs in a "Reference Pages" table.
-- Per-environment tool docs (e.g. `docs/git.md`, `docs/ssh.md`, `docs/wezterm.md`) link to their env's `README.md#setup-on-a-new-machine` from `Related Files` for restoration context.
-- Links are explicit and one-directional. No orphan docs.
+- The environment's `README.md` is the entry point with two tables: tool→doc
+  mapping and a doc index.
+- Hub-and-spoke for grouped tools (e.g. `nvim.md` → `nvim/normal-mode.md`): the
+  parent doc lists subdocs in a "Reference Pages" table.
 
 ### Length budgets
 
@@ -127,12 +116,3 @@ Pure keybinding reference. No intro paragraph, no Quick Path, no Related Files.
 | Active shell dotfiles        | `home/`         |
 | Tool configs under `.config` | `config/`       |
 | Human-readable guidance      | `docs/`         |
-
-## Current Decisions
-
-| Topic                 | Decision                                                             |
-| --------------------- | -------------------------------------------------------------------- |
-| Zsh comments          | Uniform section headers with minimal comments                        |
-| Starship organization | Keep behavior intact, group modules by category                      |
-| Zellij keybindings    | `Alt-first`; `Ctrl g` opens `Normal`, and actions return to `locked` |
-| Zellij binaries       | Version the `.wasm` plugins used by `config/zellij/config.kdl`       |
