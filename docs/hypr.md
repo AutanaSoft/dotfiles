@@ -19,16 +19,17 @@ Reference: <https://wiki.hypr.land/Configuring/>
 | `p-rules.conf` | Window rules per class/title (float, center, size). |
 | `hypridle.conf` | Idle and lock behavior. |
 
+Other Hyprland files (`autostart.conf`, `envs.conf`, `input.conf`,
+`hyprlock.conf`, `hyprsunset.conf`, `xdph.conf`) match Omarchy
+defaults and are not tracked. See [AGENTS.md](../AGENTS.md) for the
+general inclusion policy.
 
 ## The `p-` prefix convention
 
 Files prefixed with `p-` are user-personal customizations that
-survive `omarchy update` (Omarchy does not touch them). `hyprland.conf`
-sources Omarchy defaults, then sources the standard user-file names
-(which do not exist in this repo), then sources `p-index.conf`,
-which in turn sources the 4 `p-` files in order. To add another
-customization file, prefix it with `p-` and add a `source =` line in
-`p-index.conf`.
+survive `omarchy update` and are sourced by `p-index.conf` after
+Omarchy's defaults. To add a new one, name it `p-*.conf` and add a
+`source =` line to `p-index.conf`.
 
 ## Customizations
 
@@ -59,6 +60,11 @@ Floating windows (1043×587, user-preferred 16:9 size):
 | WhatsApp (webapp) | 1043×587 |
 | YouTube (webapp) | 1043×587 |
 
+**Two non-obvious overrides in this file**: Calculator has no
+explicit size (opens at natural dimensions), and the bottom
+5 lines tag PiP windows and force `size 1043 587` instead of
+Omarchy's `apps/pip.conf` default. See `p-rules.conf` for the
+inline rationale.
 
 ### Keybindings — `p-bindings.conf`
 
@@ -106,7 +112,6 @@ from this repo — see `p-bindings.conf` for the `unbind` lines):
 | SUPER SHIFT W | — | Reassigned → WhatsApp |
 | SUPER SHIFT X | — | Removed |
 | SUPER SHIFT ALT X | — | Removed |
-
 
 ### Idle and lock — `hypridle.conf`
 
