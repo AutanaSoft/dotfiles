@@ -27,8 +27,7 @@ connect the live `~/.config/...` tree to this repo.
 
 Do **not** run `omarchy refresh` after step 2. That command
 replaces symlinks with regular files and disconnects the live
-system from this repo. See
-[Repairing a symlink](#repairing-a-symlink) if it ever happens.
+system from this repo.
 
 ### Symlink table
 
@@ -61,62 +60,6 @@ is created at install time.
 (Omarchy ships mako config in `~/.local/share/omarchy/default/mako/`)
 and is not symlinked from this repo.
 
-### Creating a symlink
-
-From the repo root:
-
-```bash
-ln -sfn omarchy/config/hypr/hyprland.conf ~/.config/hypr/hyprland.conf
-```
-
-Format:
-
-```
-ln -sfn <path-in-repo> <where-you-want-the-symlink>
-```
-
-- `ln` — create a symlink
-- `-s` — symbolic (not a hard link)
-- `-f` — force: overwrite an existing file or symlink
-- `-n` — **important**: treat the destination as a regular
-  target even if it is a directory. Without `-n`, `ln` creates
-  the symlink *inside* an existing directory instead of replacing
-  it, which silently breaks the chain. Always use `-sfn`.
-
-### Verifying the symlink
-
-```bash
-ls -la ~/.config/hypr/hyprland.conf
-```
-
-The first column must read `lrwxrwxrwx` (the `l` means it is a
-link) and the arrow must point into this repo. If you see:
-
-- `-rw-r--r--` — it is a regular file (a process replaced the
-  symlink).
-- `drwxr-xr-x` for a target that should be a symlink to a
-  directory (for example `~/.config/nvim/`) — the symlink landed
-  *inside* an existing directory instead of replacing it. See
-  [Repairing a symlink](#repairing-a-symlink).
-
-### Repairing a symlink
-
-If `omarchy refresh` or any other process replaces a symlink
-with a regular file or directory, recreate it with `ln -sfn`:
-
-```bash
-rm ~/.config/hypr/hyprland.conf   # use rm -rf for a directory
-ln -sfn omarchy/config/hypr/hyprland.conf ~/.config/hypr/hyprland.conf
-hyprctl reload
-```
-
-For directory targets, `rm -rf` is required: a directory that
-should be a symlink to a directory (for example `~/.config/nvim/`)
-is itself the broken symlink target, not the wrong content. If
-you took a `~/.config/` snapshot before bootstrapping (for
-example `~/.config.bak-<date>/`), restore the original from
-there.
-
 ## Documentation
 
 All docs are organized by tool at [`docs/`](../docs/). The
@@ -130,25 +73,3 @@ entries most relevant to this env:
 | [nvim/opencode](../docs/nvim/opencode.md) | Neovim integration with the opencode CLI. |
 | [conventions](../docs/conventions.md) | Style guide and repo rules. |
 | [shared-layer](../docs/shared-layer.md) | The `shared/` layer: canonical-source rule, env-to-shared mapping, forbidden list. |
-
-## Omarchy-specific rules
-
-These extend the [tracking policy](../README.md#tracking-policy)
-and the forbidden paths in the root README:
-
-- **Removal policy** — do not delete an existing configuration
-  line when deactivating behavior. Comment it out and add a
-  `# Reason:` line. This keeps the history of what was tried
-  and why.
-- **Default comment block** — for every override, keep the
-  original Omarchy default commented above. Example:
-
-  ```ini
-  # Omarchy default (kept for reference)
-  # monitor=,preferred,auto,auto
-
-  # Personal override
-  # Reason: explicit dual-monitor layout for the current desk setup
-  monitor = HDMI-A-1, 2560x1440@143.91, 0x0, 1
-  monitor = DP-2, 1920x1080@165, 2560x180, 1
-  ```
