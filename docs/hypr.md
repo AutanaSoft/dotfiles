@@ -21,8 +21,8 @@ Reference: <https://wiki.hypr.land/Configuring/>
 
 Other Hyprland files (`autostart.conf`, `envs.conf`, `input.conf`,
 `hyprlock.conf`, `hyprsunset.conf`, `xdph.conf`) match Omarchy
-defaults and are not tracked. See [symlinks.md](symlinks.md) for the
-inclusion policy.
+defaults and are not tracked. See [AGENTS.md](../AGENTS.md) for the
+general inclusion policy.
 
 ## The `p-` prefix convention
 

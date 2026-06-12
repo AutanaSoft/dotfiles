@@ -10,7 +10,7 @@ host's PATH conventions.
 Toggle the secondary monitor on or off without restarting Hyprland.
 
 ```bash
-monitor on   # re-read monitors.conf and re-enable HDMI-A-1
+monitor on   # re-read p-monitors.conf and re-enable HDMI-A-1
 monitor off  # disable HDMI-A-1 and let Hyprland migrate its workspaces
 ```
 
@@ -33,9 +33,9 @@ single-command mnemonics and makes the target monitor explicit
 ### Caveats
 
 - `monitor off` is **session state**, not persistent. After a Hyprland
-  reload or restart, `monitors.conf` is re-read and the secondary
+  reload or restart, `p-monitors.conf` is re-read and the secondary
   monitor comes back. Use `monitor off` to save power on the fly; do
-  not edit `monitors.conf` to disable a monitor.
+  not edit `p-monitors.conf` to disable a monitor.
 - The script has no effect if `HDMI-A-1` is not connected. Run
   `hyprctl monitors` to confirm what is currently attached.
 

@@ -46,7 +46,7 @@ ______________________________________________________________________
 - **Zellij** — terminal workspace manager, `Alt-first` keybindings, `locked` mode by default
 - **Starship** — cross-shell prompt with modules for AWS, Docker, Git, Go, Node, Python, Rust, etc.
 - **Neovim + LazyVim** — plugin manager with `lazy-lock.json` versioned
-- **opencode.nvim** — AI integration, different keybindings per environment
+- **opencode.nvim** — AI integration, unified keymaps via `shared/nvim/lua/plugins/opencode.lua`
 
 **Omarchy (Arch + Hyprland):**
 
