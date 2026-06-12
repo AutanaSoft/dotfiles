@@ -19,10 +19,6 @@ Reference: <https://wiki.hypr.land/Configuring/>
 | `p-rules.conf` | Window rules per class/title (float, center, size). |
 | `hypridle.conf` | Idle and lock behavior. |
 
-Other Hyprland files (`autostart.conf`, `envs.conf`, `input.conf`,
-`hyprlock.conf`, `hyprsunset.conf`, `xdph.conf`) match Omarchy
-defaults and are not tracked. See [AGENTS.md](../AGENTS.md) for the
-general inclusion policy.
 
 ## The `p-` prefix convention
 
@@ -48,30 +44,21 @@ for the decision log.
 
 ### Window rules — `p-rules.conf`
 
-Floating windows (1152×648 = 60% of the smallest monitor):
+Floating windows (1043×587, user-preferred 16:9 size):
 
 | App | Size |
 | --- | --- |
-| Nautilus (file manager) | 1152×648 |
-| Calculator | default |
-| Spotify | 1152×648 |
-| Cliamp (Omarchy radio) | 1152×648 |
-| Nvim (Omarchy editor wrapper) | 1152×648 |
-| Alacritty (any window) | 1152×648 |
-| Discord (desktop app) | 1152×648 |
-| Netflix (webapp) | 1152×648 |
-| WhatsApp (webapp) | 1152×648 |
-| YouTube (webapp) | 1152×648 |
+| Nautilus (file manager) | 1043×587 |
+| Calculator | natural |
+| Spotify | 1043×587 |
+| Cliamp (Omarchy radio) | 1043×587 |
+| Nvim (Omarchy editor wrapper) | 1043×587 |
+| Alacritty (any window) | 1043×587 |
+| Discord (desktop app) | 1043×587 |
+| Netflix (webapp) | 1043×587 |
+| WhatsApp (webapp) | 1043×587 |
+| YouTube (webapp) | 1043×587 |
 
-**Decisions:**
-
-- **All Alacritty windows get the same rule** (no zellij
-  differentiation). A previous attempt using `match:title ^[^|]+$`
-  failed because zellij updates the title AFTER Hyprland evaluates
-  rules. Treating all Alacritty windows uniformly is the only
-  reliable approach without a hook or wrapper.
-- **Webapps** use the Chrome PWA class format
-  `chrome-<domain>__-Default`.
 
 ### Keybindings — `p-bindings.conf`
 
@@ -120,17 +107,6 @@ from this repo — see `p-bindings.conf` for the `unbind` lines):
 | SUPER SHIFT X | — | Removed |
 | SUPER SHIFT ALT X | — | Removed |
 
-**`omarchy-launch-or-focus` footguns** (these bite every new
-contributor at least once):
-
-1. The first arg is **regex on class or title**. `org.gnome.Calculator`
-   means "any char between every letter". Use the simple word
-   `Calculator` instead.
-2. The second arg is a **binary command**, not a class. Use
-   `gnome-calculator`, not `org.gnome.Calculator`.
-
-The Calculator bind in `p-bindings.conf` follows the correct
-pattern: `omarchy-launch-or-focus Calculator gnome-calculator`.
 
 ### Idle and lock — `hypridle.conf`
 
