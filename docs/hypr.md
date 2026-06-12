@@ -58,6 +58,7 @@ Floating windows (1152×648 = 60% of the smallest monitor):
 | Cliamp (Omarchy radio) | 1152×648 |
 | Nvim (Omarchy editor wrapper) | 1152×648 |
 | Alacritty (any window) | 1152×648 |
+| Discord (desktop app) | 1152×648 |
 | Netflix (webapp) | 1152×648 |
 | WhatsApp (webapp) | 1152×648 |
 | YouTube (webapp) | 1152×648 |
@@ -85,6 +86,7 @@ The file has `unbind` entries at the top (defaults removed) and
 | SUPER ALT RETURN | Terminal (Zellij Work) | Reassigned (was Terminal) |
 | SUPER SHIFT B | Browser (private) | Reassigned (was Browser) |
 | SUPER SHIFT C | Calculator | Reassigned (was Calculator) |
+| SUPER SHIFT D | Discord | New |
 | SUPER SHIFT E | Editor | Reassigned (was Editor) |
 | SUPER SHIFT N | Netflix | Reassigned |
 | SUPER SHIFT R | Raadio TUI | Reassigned (was print-screen) |
@@ -92,6 +94,7 @@ The file has `unbind` entries at the top (defaults removed) and
 | SUPER SHIFT T | Tmux | New |
 | SUPER SHIFT W | WhatsApp | Reassigned |
 | SUPER SHIFT Y | YouTube | New |
+| SUPER SHIFT CTRL D | Docker (lazydocker) | Reassigned (was SUPER SHIFT D) |
 
 **Removed defaults** (original Omarchy app not always recoverable
 from this repo — see `p-bindings.conf` for the `unbind` lines):
@@ -104,6 +107,7 @@ from this repo — see `p-bindings.conf` for the `unbind` lines):
 | SUPER SHIFT ALT A | — | Removed |
 | SUPER SHIFT B | Browser | Reassigned → Browser (private) |
 | SUPER SHIFT C | Calculator | Reassigned → Calculator (corrected) |
+| SUPER SHIFT D | Docker (lazydocker) | Reassigned → Discord |
 | SUPER SHIFT CTRL G | — | Removed |
 | SUPER SHIFT E | Editor | Reassigned → Editor |
 | SUPER SHIFT G | — | Removed |
