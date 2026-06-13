@@ -26,8 +26,16 @@ git clone git@github.com:AutanaSoft/autanasoft-dots.git dotfiles
 cd dotfiles
 ```
 
-All per-env setup assumes CWD is the repo root. After cloning, follow the env-specific
-guide:
+All per-env setup assumes CWD is the repo root. The root entrypoint
+`./setup` dispatches to the executors in `scripts/`:
+
+```bash
+./setup --fonts                         # fonts only
+./setup --omarchy [--fonts] [--dry-run] # Omarchy env
+./setup --wsl2   [--fonts] [--dry-run] # WSL2 + Fedora env (env executor not yet implemented)
+```
+
+After cloning, follow the env-specific guide for the full runbook:
 
 - WSL2 + Fedora: [`wsl2-fedora/README.md`](wsl2-fedora/README.md#setup-on-a-new-machine)
 - Omarchy: [`omarchy/README.md`](omarchy/README.md#setup-on-a-new-machine)

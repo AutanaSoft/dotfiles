@@ -1,0 +1,224 @@
+#!/usr/bin/env bash
+# scripts/setup-fonts — install Nerd Fonts used by the Autanasoft dotfiles.
+#
+# This script is the fonts executor. It is normally invoked by the root
+# `./setup --omarchy --fonts` (or `./setup --wsl2 --fonts`) orchestrator,
+# but it can also be run directly:
+#
+#     scripts/setup-fonts [--dry-run] [--help]
+#
+# Fonts installed (all Nerd Fonts variants; user-local, no sudo):
+#   - Monaspace Nerd Fonts (provides 'Monaspace Krypton NF' used in alacritty,
+#     waybar, walker, and wezterm)
+#   - FiraCode Nerd Font
+#   - FiraMono Nerd Font
+#
+# Default install location: $HOME/.local/share/fonts/autanasoft/<family>/
+# fontconfig picks this up automatically on standard XDG setups, so no
+# system-wide installation (/usr/share/fonts) is required.
+#
+# Idempotent: re-running overwrites existing files and refreshes the cache.
+
+set -euo pipefail
+
+# ---------------------------------------------------------------------------
+# Resolve script path (CWD-independent). REPO_ROOT is informational; this
+# script does not depend on repo contents. When DOTFILES_ROOT is exported by
+# the root `./setup` orchestrator, prefer it.
+# ---------------------------------------------------------------------------
+SCRIPT_PATH="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -n "${DOTFILES_ROOT:-}" ]]; then
+    REPO_ROOT="$DOTFILES_ROOT"
+else
+    REPO_ROOT="$(cd -- "$SCRIPT_PATH/.." && pwd)"
+fi
+
+# ---------------------------------------------------------------------------
+# Defaults
+# ---------------------------------------------------------------------------
+DRY_RUN=0
+FONT_BASE="${HOME}/.local/share/fonts/autanasoft"
+
+# Monaspace: pinned to the exact URL requested.
+MONASPACE_URL="https://github.com/githubnext/monaspace/releases/download/v1.400/monaspace-nerdfonts-v1.400.zip"
+
+# FiraCode / FiraMono: Nerd Fonts `latest/download/...` resolves to the current
+# stable release. Pinned-by-version would require tracking ryanoasis/nerd-fonts
+# releases manually; the `latest` redirect is the documented stable download
+# endpoint for this project.
+FIRACODE_URL="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/FiraCode.zip"
+FIRAMONO_URL="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/FiraMono.zip"
+
+# ---------------------------------------------------------------------------
+# Usage
+# ---------------------------------------------------------------------------
+usage() {
+    cat <<EOF
+Usage: $0 [--dry-run] [--help]
+
+Installs Nerd Fonts used by the Autanasoft dotfiles into
+\$HOME/.local/share/fonts/autanasoft/ and refreshes the fontconfig cache.
+
+This script is the fonts executor. Prefer invoking it via the root
+entrypoint: \`./setup --<env> --fonts [--dry-run]\`.
+
+Fonts installed:
+  - Monaspace Nerd Fonts (Monaspace Krypton NF, Neon NF, Radon NF, Xenon NF)
+  - FiraCode Nerd Font
+  - FiraMono Nerd Font
+
+Options:
+  --dry-run    Print the actions that would run, but do NOT download,
+               extract, copy, or run 'fc-cache'.
+  --help, -h   Show this help and exit.
+
+Install location: $FONT_BASE
+EOF
+}
+
+# ---------------------------------------------------------------------------
+# Argument parsing
+# ---------------------------------------------------------------------------
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dry-run)
+            DRY_RUN=1
+            shift
+            ;;
+        --help | -h)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "Unknown argument: $1" >&2
+            usage >&2
+            exit 2
+            ;;
+    esac
+done
+
+# ---------------------------------------------------------------------------
+# Logging helpers
+# ---------------------------------------------------------------------------
+log() {
+    echo "[setup-fonts] $*"
+}
+
+warn() {
+    echo "[setup-fonts] WARN: $*" >&2
+}
+
+fail() {
+    echo "[setup-fonts] ERROR: $*" >&2
+    exit 1
+}
+
+# ---------------------------------------------------------------------------
+# Pre-flight
+# ---------------------------------------------------------------------------
+require_command() {
+    local cmd="$1"
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+        fail "Required command '$cmd' is not on PATH. Install it before running this script."
+    fi
+}
+
+# Only the commands actually used in non-dry-run mode are required up front.
+if [[ "$DRY_RUN" -eq 0 ]]; then
+    require_command curl
+    require_command unzip
+    require_command fc-cache
+fi
+
+# ---------------------------------------------------------------------------
+# Install one font archive
+# ---------------------------------------------------------------------------
+# Args:
+#   $1 - label (e.g. "MonaspaceNerdFont")
+#   $2 - URL
+#   $3 - workdir (always created by main)
+install_font() {
+    local label="$1"
+    local url="$2"
+    local workdir="$3"
+    local dest="$FONT_BASE/$label"
+    local zip_path="$workdir/$label.zip"
+    local extract_dir="$workdir/$label-extract"
+
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        log "[dry-run] would download: $url"
+        log "[dry-run]   curl -fL --retry 3 -o $zip_path $url"
+        log "[dry-run] would extract: $zip_path -> $extract_dir"
+        log "[dry-run]   unzip -q -o $zip_path -d $extract_dir"
+        log "[dry-run] would copy *.ttf/*.otf from $extract_dir to $dest"
+        log "[dry-run] would ensure directory exists: $dest"
+        return 0
+    fi
+
+    log "Downloading $label from $url"
+    if ! curl -fL --retry 3 -o "$zip_path" "$url"; then
+        fail "Download failed for $label: $url"
+    fi
+
+    log "Extracting $label"
+    mkdir -p "$extract_dir"
+    unzip -q -o "$zip_path" -d "$extract_dir"
+
+    log "Installing $label into $dest"
+    mkdir -p "$dest"
+
+    # Copy only font files; overwrite is fine (idempotent reruns).
+    local copied=0
+    while IFS= read -r -d '' font_file; do
+        cp -f -- "$font_file" "$dest/"
+        copied=$((copied + 1))
+    done < <(find "$extract_dir" -type f \( -iname '*.ttf' -o -iname '*.otf' \) -print0)
+
+    if [[ "$copied" -eq 0 ]]; then
+        fail "No .ttf or .otf files found in $label archive (source: $url)"
+    fi
+    log "Installed $copied font file(s) to $dest"
+}
+
+# ---------------------------------------------------------------------------
+# Refresh fontconfig cache
+# ---------------------------------------------------------------------------
+refresh_cache() {
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        log "[dry-run] would run: fc-cache -f $FONT_BASE/.."
+        return 0
+    fi
+    log "Refreshing fontconfig cache"
+    # Cache the parent of FONT_BASE so fontconfig indexes all families at once.
+    fc-cache -f "$FONT_BASE/.."
+}
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+main() {
+    # Always create a tempdir so dry-run output can show real, copy-pasteable
+    # paths. The trap cleans it up on exit regardless of mode.
+    local workdir
+    workdir="$(mktemp -d)"
+    # shellcheck disable=SC2064
+    trap "rm -rf '$workdir'" EXIT
+
+    log "Repo root:  $REPO_ROOT"
+    log "Install base: $FONT_BASE"
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        log "Mode:        DRY-RUN (no downloads, copies, or fc-cache)"
+    else
+        log "Workdir:     $workdir (auto-cleaned on exit)"
+    fi
+
+    install_font "MonaspaceNerdFont" "$MONASPACE_URL" "$workdir"
+    install_font "FiraCodeNerdFont"  "$FIRACODE_URL"  "$workdir"
+    install_font "FiraMonoNerdFont"  "$FIRAMONO_URL"  "$workdir"
+
+    refresh_cache
+
+    log "Setup complete."
+}
+
+main "$@"

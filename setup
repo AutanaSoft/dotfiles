@@ -1,0 +1,280 @@
+#!/usr/bin/env bash
+# setup — root orchestrator for applying this repo to a target environment.
+#
+# This is the single entrypoint for new-machine setup. It dispatches to
+# the executor scripts in `scripts/` in the correct order:
+#
+#   1. (optional) scripts/setup-fonts   — Nerd Fonts
+#   2. (optional) scripts/setup-<env>   — environment-specific symlinks
+#
+# The Omarchy executor exists today; the WSL2 executor is not implemented
+# yet. Use `--wsl2 --fonts` to install fonts on a WSL2 host (the env
+# configuration step is skipped with a clear message).
+#
+# Examples:
+#   ./setup --fonts                    # install fonts only
+#   ./setup --omarchy                  # apply Omarchy env only
+#   ./setup --omarchy --fonts          # install fonts, then apply env
+#   ./setup --wsl2 --fonts             # install fonts on WSL2 (env not yet wired)
+#   ./setup --dry-run --omarchy --fonts  # preview every action
+
+set -euo pipefail
+
+# ---------------------------------------------------------------------------
+# Resolve repo root from this script's path (CWD-independent).
+# ---------------------------------------------------------------------------
+SCRIPT_PATH="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+DOTFILES_ROOT="$SCRIPT_PATH"
+SCRIPTS_DIR="$DOTFILES_ROOT/scripts"
+
+# ---------------------------------------------------------------------------
+# Defaults
+# ---------------------------------------------------------------------------
+DOTFILES_ENV=""
+PARSED_DRY_RUN=0
+REQUEST_FONTS=0
+REQUEST_HELP=0
+ENV_FLAG_COUNT=0
+
+# ---------------------------------------------------------------------------
+# Usage
+# ---------------------------------------------------------------------------
+usage() {
+    cat <<EOF
+Usage: $0 [--omarchy|--wsl2] [--fonts] [--dry-run] [--help]
+
+Apply this dotfiles repo to a target environment.
+
+Environment (optional when only installing fonts):
+  --omarchy       Apply the Omarchy env configuration.
+  --wsl2          Apply the WSL2 + Fedora env configuration. Note: the
+                  WSL2 executor is not implemented yet. Use --wsl2 --fonts
+                  to install fonts on a WSL2 host while it is a no-op for
+                  the env step.
+
+Options:
+  --fonts, --font Install Nerd Fonts (Monaspace, FiraCode, FiraMono) into
+                  \$HOME/.local/share/fonts/autanasoft/. Runs BEFORE the
+                  env configuration step.
+  --dry-run       Print the actions that would run; do not modify the
+                  system, download files, or run yay / omarchy / hyprctl.
+  --help, -h      Show this help and exit.
+
+Environment variables exported to executor scripts:
+  DOTFILES_ROOT       Absolute path to the repo root.
+  DOTFILES_ENV        Selected environment (omarchy | wsl2).
+  DOTFILES_DRY_RUN    "1" when --dry-run was passed, otherwise unset.
+  DOTFILES_BACKUP_DIR Per-run backup directory under \$DOTFILES_ROOT/backup.
+
+Examples:
+  $0 --fonts
+  $0 --omarchy
+  $0 --omarchy --fonts
+  $0 --dry-run --omarchy --fonts
+  $0 --wsl2 --fonts
+EOF
+}
+
+# ---------------------------------------------------------------------------
+# Argument parsing
+# ---------------------------------------------------------------------------
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --omarchy)
+            DOTFILES_ENV="omarchy"
+            ENV_FLAG_COUNT=$((ENV_FLAG_COUNT + 1))
+            shift
+            ;;
+        --wsl2)
+            DOTFILES_ENV="wsl2"
+            ENV_FLAG_COUNT=$((ENV_FLAG_COUNT + 1))
+            shift
+            ;;
+        --fonts | --font)
+            REQUEST_FONTS=1
+            shift
+            ;;
+        --dry-run)
+            PARSED_DRY_RUN=1
+            shift
+            ;;
+        --help | -h)
+            REQUEST_HELP=1
+            shift
+            ;;
+        *)
+            echo "Unknown argument: $1" >&2
+            usage >&2
+            exit 2
+            ;;
+    esac
+done
+
+if [[ "$REQUEST_HELP" -eq 1 ]]; then
+    usage
+    exit 0
+fi
+
+# ---------------------------------------------------------------------------
+# Validation
+# ---------------------------------------------------------------------------
+if [[ "$ENV_FLAG_COUNT" -eq 0 && "$REQUEST_FONTS" -eq 0 ]]; then
+    echo "ERROR: choose an environment (--omarchy or --wsl2), --fonts, or both." >&2
+    usage >&2
+    exit 2
+fi
+
+if [[ "$ENV_FLAG_COUNT" -gt 1 ]]; then
+    echo "ERROR: --omarchy and --wsl2 are mutually exclusive." >&2
+    usage >&2
+    exit 2
+fi
+
+# ---------------------------------------------------------------------------
+# Logging helpers
+# ---------------------------------------------------------------------------
+log() {
+    echo "[setup] $*"
+}
+
+warn() {
+    echo "[setup] WARN: $*" >&2
+}
+
+fail() {
+    echo "[setup] ERROR: $*" >&2
+    exit 1
+}
+
+# ---------------------------------------------------------------------------
+# Sanity checks
+# ---------------------------------------------------------------------------
+if [[ ! -d "$SCRIPTS_DIR" ]]; then
+    fail "Scripts directory not found: $SCRIPTS_DIR"
+fi
+
+# ---------------------------------------------------------------------------
+# Export context for executor scripts.
+#   - DOTFILES_ROOT     : repo root (executor scripts use it instead of
+#                         resolving their own location when set).
+#   - DOTFILES_ENV      : omarchy | wsl2
+#   - DOTFILES_DRY_RUN  : "1" only when --dry-run was passed.
+#   - DOTFILES_BACKUP_DIR : per-run backup directory; executors that back
+#                         up before replacing symlinks can place files
+#                         here. The directory itself is not created unless
+#                         a real (non-dry-run) backup happens.
+# ---------------------------------------------------------------------------
+export DOTFILES_ROOT
+export DOTFILES_ENV
+
+# Export DOTFILES_DRY_RUN only when --dry-run was passed, so executors
+# (which check the env var) see a clean state. Use the separate parse-time
+# flag (PARSED_DRY_RUN) for all internal logic so `set -u` never trips on
+# an unset name.
+unset DOTFILES_DRY_RUN
+if [[ "$PARSED_DRY_RUN" -eq 1 ]]; then
+    export DOTFILES_DRY_RUN=1
+fi
+
+DOTFILES_BACKUP_DIR="$DOTFILES_ROOT/backup/$(date -u +%Y%m%dT%H%M%SZ)"
+export DOTFILES_BACKUP_DIR
+
+# ---------------------------------------------------------------------------
+# Dispatch helpers
+# ---------------------------------------------------------------------------
+run_fonts() {
+    local script="$SCRIPTS_DIR/setup-fonts"
+    if [[ ! -e "$script" ]]; then
+        fail "Fonts script not found: $script"
+    fi
+    if [[ ! -x "$script" ]]; then
+        fail "Fonts script is not executable: $script (run: chmod +x $script)"
+    fi
+
+    if [[ "$PARSED_DRY_RUN" -eq 1 ]]; then
+        log "Step 1/2: install fonts (dry-run)"
+        "$script" --dry-run
+    else
+        log "Step 1/2: install fonts"
+        "$script"
+    fi
+}
+
+run_env() {
+    local env="$1"
+    case "$env" in
+        omarchy)
+            local script="$SCRIPTS_DIR/setup-omarchy"
+            if [[ ! -e "$script" ]]; then
+                fail "Omarchy script not found: $script"
+            fi
+            if [[ ! -x "$script" ]]; then
+                fail "Omarchy script is not executable: $script (run: chmod +x $script)"
+            fi
+            if [[ "$PARSED_DRY_RUN" -eq 1 ]]; then
+                log "Step 2/2: apply Omarchy env (dry-run)"
+                "$script" --dry-run
+            else
+                log "Step 2/2: apply Omarchy env"
+                "$script"
+            fi
+            ;;
+        wsl2)
+            local script="$SCRIPTS_DIR/setup-wsl2"
+            if [[ ! -e "$script" ]]; then
+                if [[ "$REQUEST_FONTS" -eq 1 ]]; then
+                    if [[ "$PARSED_DRY_RUN" -eq 1 ]]; then
+                        warn "WSL2 setup is not implemented yet. Fonts were previewed; skipping env configuration."
+                    else
+                        warn "WSL2 setup is not implemented yet. Fonts were installed; skipping env configuration."
+                    fi
+                    return 0
+                fi
+                fail "WSL2 setup is not implemented yet. (No scripts/setup-wsl2 present.)"
+            fi
+            # If the script exists in the future, this branch runs it.
+            if [[ ! -x "$script" ]]; then
+                fail "WSL2 script is not executable: $script (run: chmod +x $script)"
+            fi
+            if [[ "$PARSED_DRY_RUN" -eq 1 ]]; then
+                log "Step 2/2: apply WSL2 env (dry-run)"
+                "$script" --dry-run
+            else
+                log "Step 2/2: apply WSL2 env"
+                "$script"
+            fi
+            ;;
+        *)
+            fail "Unknown environment: $env"
+            ;;
+    esac
+}
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+log "Repo root:  $DOTFILES_ROOT"
+if [[ -n "$DOTFILES_ENV" ]]; then
+    log "Env:        $DOTFILES_ENV"
+else
+    log "Env:        none"
+fi
+if [[ "$PARSED_DRY_RUN" -eq 1 ]]; then
+    log "Mode:       DRY-RUN (no system changes)"
+fi
+if [[ "$REQUEST_FONTS" -eq 1 ]]; then
+    log "Fonts:      yes (before env)"
+else
+    log "Fonts:      no"
+fi
+log "Backup dir: $DOTFILES_BACKUP_DIR"
+
+if [[ "$REQUEST_FONTS" -eq 1 ]]; then
+    run_fonts
+fi
+
+if [[ -n "$DOTFILES_ENV" ]]; then
+    run_env "$DOTFILES_ENV"
+fi
+
+log "Setup complete."

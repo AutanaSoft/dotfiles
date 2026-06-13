@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# setup-omarchy — apply this repo's Omarchy config to a local Omarchy install.
+# scripts/setup-omarchy — apply this repo's Omarchy config to a local Omarchy install.
+#
+# This script is the Omarchy-specific executor. It is normally invoked by the
+# root `./setup --omarchy` orchestrator, but it can also be run directly:
+#
+#     scripts/setup-omarchy [--dry-run] [--help]
 #
 # Supports installs created from the Omarchy ISO, Arch + Omarchy layer, and
 # CachyOS minimal + Omarchy layer. This script does NOT install Omarchy; it
@@ -15,19 +20,33 @@
 # Existing files at symlink targets are moved to
 #   <repo>/backup/<timestamp>/<home-relative-path>
 # before being replaced by symlinks pointing into the repo.
+#
+# Font installation is NOT handled here. Use the root `./setup --omarchy --fonts`
+# (or run `scripts/setup-fonts` directly) to install the Nerd Fonts used by
+# this repo (Monaspace, FiraCode, FiraMono).
 
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
 # Resolve repo root from this script's path (CWD-independent).
+# When invoked by the root `./setup` orchestrator, DOTFILES_ROOT is exported
+# and used as the source of truth; otherwise we derive it from this file's
+# location (scripts/..).
 # ---------------------------------------------------------------------------
-SCRIPT_PATH="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$SCRIPT_PATH"
+if [[ -n "${DOTFILES_ROOT:-}" ]]; then
+    REPO_ROOT="$DOTFILES_ROOT"
+else
+    SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+    REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+fi
 
 # ---------------------------------------------------------------------------
 # Mode parsing
 # ---------------------------------------------------------------------------
 DRY_RUN=0
+if [[ -n "${DOTFILES_DRY_RUN:-}" && "$DOTFILES_DRY_RUN" == "1" ]]; then
+    DRY_RUN=1
+fi
 
 usage() {
     cat <<EOF
@@ -35,9 +54,13 @@ Usage: $0 [--dry-run] [--help]
 
 Applies the Omarchy dotfiles in this repo to the local Omarchy install.
 
+This script is the Omarchy executor. Prefer invoking it via the root
+entrypoint: \`./setup --omarchy [--fonts] [--dry-run]\`.
+
 Options:
   --dry-run    Print actions without modifying the system. Skips
-               'yay', symlink moves, 'omarchy theme', and 'hyprctl'.
+               'yay', symlink moves, 'omarchy theme', 'hyprctl',
+               and font downloads.
   --help, -h   Show this help and exit.
 
 Pre-requisites (not installed by this script):
@@ -49,6 +72,10 @@ Initial dependency installed on first run: zellij.
 
 Existing targets are moved to:
   $REPO_ROOT/backup/<timestamp>/<home-relative-path>
+
+Fonts are NOT installed by this script. Use:
+  ./setup --omarchy --fonts          # install fonts, then apply env
+  scripts/setup-fonts --help         # for font install details
 EOF
 }
 

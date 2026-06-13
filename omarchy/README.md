@@ -16,21 +16,41 @@ connect the live `~/.config/...` tree to this repo.
 
 ### Automated setup
 
-From the repo root:
+From the repo root, run the root entrypoint `./setup`:
 
 ```bash
-./setup-omarchy
+./setup --fonts                  # install fonts only
+./setup --omarchy                # apply the Omarchy env configuration
+./setup --omarchy --fonts        # install fonts first, then apply the env
+./setup --dry-run --omarchy --fonts   # preview every action
 ```
 
-The script verifies that `omarchy`, `yay`, and `hyprctl` are on
-`PATH`; installs `zellij` via `yay -S --needed` if missing; creates
-the symlinks listed in the [table below](#symlink-table); moves any
-existing file at a target to `backup/<timestamp>/<home-relative-path>`
-before replacing it; then applies the `tokyo-night-autana` theme and
-reloads Hyprland. Use `./setup-omarchy --dry-run` to preview the
-actions without modifying the system, and `./setup-omarchy --help`
-for a flag summary. The script does not install Omarchy itself and
-will not touch `omarchy/local/bin/monitor` (a personal/manual script).
+`./setup` is a thin orchestrator: it dispatches to `scripts/setup-fonts`
+(Nerd Fonts into `~/.local/share/fonts/autanasoft/`) and then to
+`scripts/setup-omarchy` (env symlinks + theme + Hyprland reload). Order
+is fonts first, env second. Use `./setup --help` for the full flag
+summary. The script does not install Omarchy itself and will not touch
+`omarchy/local/bin/monitor` (a personal/manual script).
+
+#### Fonts
+
+The Alacritty, Waybar, and Walker configs in this repo reference
+`Monaspace Krypton NF` (and a `JetBrainsMono Nerd Font` fallback),
+so a working fontconfig setup is part of the install. `./setup`
+does **not** install fonts by default; opt in with `--fonts` (alias
+`--font`):
+
+```bash
+./setup --fonts                    # install fonts only
+./setup --omarchy --fonts          # install fonts, then apply env
+./setup --dry-run --omarchy --fonts # preview the font install
+```
+
+The fonts step runs the executor at `scripts/setup-fonts`, which
+installs the Nerd Fonts (Monaspace, FiraCode, FiraMono) into
+`~/.local/share/fonts/autanasoft/` — no sudo, no system-wide
+`/usr/share/fonts` changes. You can also run that executor
+directly: `scripts/setup-fonts --help`.
 
 ### Quick Path
 
@@ -54,7 +74,7 @@ this env. Shared tools such as `nvim/` and `zellij/` are folder
 symlinks into `shared/`; at install time, create only the live
 `~/.config/...` symlink shown below.
 
-| Repo path | Symlink on your system | Applied by `setup-omarchy` |
+| Repo path | Symlink on your system | Applied by `./setup --omarchy` |
 | --- | --- | --- |
 | `omarchy/config/hypr/hyprland.conf` | `~/.config/hypr/hyprland.conf` | Yes |
 | `omarchy/config/hypr/hypridle.conf` | `~/.config/hypr/hypridle.conf` | Yes |
