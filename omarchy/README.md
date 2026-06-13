@@ -40,7 +40,7 @@ will not touch `omarchy/local/bin/monitor` (a personal/manual script).
 2. Clone this repo into a stable path (see [root README](../README.md#setup)).
 3. Create the symlinks from the table below using `ln -sfn`.
 4. Reload Hyprland: `hyprctl reload && hyprctl configerrors` (must be empty).
-5. Apply the custom theme: `omarchy theme tokyo-night-autana`.
+5. Apply the custom theme: `omarchy theme set tokyo-night-autana`.
 6. Restart waybar: `killall waybar && waybar &`.
 
 Do **not** run `omarchy refresh` after step 2. That command

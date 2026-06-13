@@ -271,7 +271,7 @@ apply_symlinks() {
 # ---------------------------------------------------------------------------
 validate_system() {
     if [[ "$DRY_RUN" -eq 1 ]]; then
-        log "[dry-run] would run: omarchy theme tokyo-night-autana"
+        log "[dry-run] would run: omarchy theme set tokyo-night-autana"
         log "[dry-run] would run: hyprctl reload"
         log "[dry-run] would run: hyprctl configerrors"
         log "[dry-run] would run: zellij --version"
@@ -279,7 +279,7 @@ validate_system() {
     fi
 
     log "Applying Omarchy theme: tokyo-night-autana"
-    omarchy theme tokyo-night-autana
+    omarchy theme set tokyo-night-autana
 
     log "Reloading Hyprland config"
     hyprctl reload
