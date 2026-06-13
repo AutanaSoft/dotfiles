@@ -1,7 +1,7 @@
-# User scripts (`omarchy/bin/`)
+# User scripts (`omarchy/local/bin/`)
 
 Executable scripts shipped in this repository. Each script lives at
-`omarchy/bin/<name>` and is meant to be exposed on the user's `$PATH`
+`omarchy/local/bin/<name>` and is meant to be exposed on the user's `$PATH`
 via a symlink in `~/.local/bin` (or similar). Adjust to match the
 host's PATH conventions.
 
@@ -14,7 +14,7 @@ monitor on   # re-read p-monitors.conf and re-enable HDMI-A-1
 monitor off  # disable HDMI-A-1 and let Hyprland migrate its workspaces
 ```
 
-Implementation: `omarchy/bin/monitor`.
+Implementation: `omarchy/local/bin/monitor`.
 
 ### How it works
 
@@ -41,6 +41,6 @@ single-command mnemonics and makes the target monitor explicit
 
 ### Adding new bin scripts
 
-1. Place the file in `omarchy/bin/<name>` (no extension, executable).
+1. Place the file in `omarchy/local/bin/<name>` (no extension, executable).
 2. Add a symlink in `~/.local/bin` (or wherever `$PATH` resolves).
 3. Document it here in a new `## <name>` section.

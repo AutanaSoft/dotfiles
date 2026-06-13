@@ -54,7 +54,7 @@ is created at install time.
 | `omarchy/config/omarchy/themes/tokyo-night-autana/` | `~/.config/omarchy/themes/tokyo-night-autana` |
 | `omarchy/config/starship.toml` | `~/.config/starship.toml` |
 | `omarchy/home/.bashrc` | `~/.bashrc` |
-| `omarchy/bin/monitor` | `~/.local/bin/monitor` |
+| `omarchy/local/bin/monitor` | `~/.local/bin/monitor` |
 
 `~/.config/mako/` is intentionally left at the Omarchy default
 (Omarchy ships mako config in `~/.local/share/omarchy/default/mako/`)
@@ -68,7 +68,7 @@ entries most relevant to this env:
 | Doc | Purpose |
 | --- | --- |
 | [hypr](../docs/hypr.md) | Hyprland configuration: monitors, looknfeel, window rules, keybindings, idle. |
-| [bin](../docs/bin.md) | User scripts in `omarchy/bin/` (currently `monitor`). |
+| [bin](../docs/bin.md) | User scripts in `omarchy/local/bin/` (currently `monitor`). |
 | [zellij](../docs/zellij.md) | Zellij keybindings, layout, and theme (shared with WSL2). |
 | [nvim/opencode](../docs/nvim/opencode.md) | Neovim integration with the opencode CLI. |
 | [conventions](../docs/conventions.md) | Style guide and repo rules. |
