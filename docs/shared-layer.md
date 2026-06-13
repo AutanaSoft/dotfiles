@@ -44,8 +44,22 @@ The following content MUST NOT be placed in `shared/`:
 | `wsl2-fedora/config/starship.toml`                                            | `shared/starship.toml`                       | symlink   | same target as omarchy                      |
 | `omarchy/config/nvim/stylua.toml`                                             | `shared/nvim/stylua.toml`                    | symlink   | omarchy canonical                           |
 | `wsl2-fedora/config/nvim/stylua.toml`                                         | `shared/nvim/stylua.toml`                    | symlink   | same target as omarchy                      |
+| `omarchy/config/nvim/init.lua`                                                | `shared/nvim/init.lua`                       | symlink   | omarchy canonical                           |
+| `wsl2-fedora/config/nvim/init.lua`                                            | `shared/nvim/init.lua`                       | symlink   | same target as omarchy                      |
+| `omarchy/config/nvim/lazyvim.json`                                            | `shared/nvim/lazyvim.json`                   | symlink   | omarchy canonical; extras identical         |
+| `wsl2-fedora/config/nvim/lazyvim.json`                                        | `shared/nvim/lazyvim.json`                   | symlink   | same target as omarchy                      |
+| `omarchy/config/nvim/lazy-lock.json`                                          | `shared/nvim/lazy-lock.json`                 | symlink   | **shared lockfile** — no per-env duplicates |
+| `wsl2-fedora/config/nvim/lazy-lock.json`                                      | `shared/nvim/lazy-lock.json`                 | symlink   | same target as omarchy                      |
+| `omarchy/config/nvim/.neoconf.json`                                           | `shared/nvim/.neoconf.json`                  | symlink   | omarchy canonical                           |
+| `wsl2-fedora/config/nvim/.neoconf.json`                                       | `shared/nvim/.neoconf.json`                  | symlink   | same target as omarchy                      |
+| `omarchy/config/nvim/LICENSE`                                                 | `shared/nvim/LICENSE`                        | symlink   | Apache 2.0 (LazyVim attribution)            |
+| `wsl2-fedora/config/nvim/LICENSE`                                             | `shared/nvim/LICENSE`                        | symlink   | same target as omarchy                      |
+| `omarchy/config/nvim/plugin/after/transparency.lua`                           | `shared/nvim/plugin/after/transparency.lua`  | symlink   | makes highlight groups transparent          |
+| `wsl2-fedora/config/nvim/plugin/after/transparency.lua`                       | `shared/nvim/plugin/after/transparency.lua`  | symlink   | same target as omarchy                      |
 | `omarchy/config/nvim/lua/config/{lazy,autocmds,keymaps,lint,options}.lua`     | `shared/nvim/lua/config/<name>.lua`          | symlink   | omarchy canonical                           |
 | `wsl2-fedora/config/nvim/lua/config/{lazy,autocmds,keymaps,lint,options}.lua` | `shared/nvim/lua/config/<name>.lua`          | symlink   | same target as omarchy                      |
+| `omarchy/config/nvim/lua/plugins/*.lua`                                       | `shared/nvim/lua/plugins/<name>.lua`         | symlink   | omarchy canonical                           |
+| `wsl2-fedora/config/nvim/lua/plugins/*.lua`                                   | `shared/nvim/lua/plugins/<name>.lua`         | symlink   | same target as omarchy                      |
 | `omarchy/config/nvim/markdownlint.json`                                       | `shared/nvim/markdownlint.json`              | symlink   | read by `nvim-lint` via `stdpath('config')` |
 | `wsl2-fedora/config/nvim/markdownlint.json`                                   | `shared/nvim/markdownlint.json`              | symlink   | same target as omarchy                      |
 

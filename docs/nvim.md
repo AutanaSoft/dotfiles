@@ -1,8 +1,10 @@
 # Neovim Quick Reference
 
-This setup uses `LazyVim` with a mostly stock configuration. The base config is shared via
-`shared/nvim/` (omarchy-canonical); each env adds its own plugins. Each page below covers a
-specific mode or tool. See [`docs/shared-layer.md`](shared-layer.md) for the shared mapping.
+This setup uses `LazyVim` with a mostly stock configuration. The full config is shared via
+`shared/nvim/` (omarchy-canonical). Per-env trees at `omarchy/config/nvim/` and
+`wsl2-fedora/config/nvim/` are **relative symlinks** into `shared/nvim/`; there are no per-env
+overrides by default. Each page below covers a specific mode or tool. See
+[`docs/shared-layer.md`](shared-layer.md) for the shared mapping.
 
 ## Quick Path
 
@@ -142,17 +144,38 @@ project's own `devDependencies` — do not install them globally.
 
 ## Related Files
 
-All plugin specs live in `shared/nvim/lua/plugins/`. Each env's `lua/plugins/` is a mirror of
-symlinks to the shared files (lazy.nvim discovers plugins via `{ import = "plugins" }`, so the
-symlinks make shared files appear in the per-env plugin directory).
+**Canonical location:** every Neovim config file (plugin specs, LazyVim extras, lockfile,
+runtime config) lives in `shared/nvim/`. Per-env paths are relative symlinks into `shared/`. Any
+edit in `shared/nvim/` is visible to both environments on next launch.
+
+**Ignore policy:** Neovim config is shared, but ignore policy is repository-level only. The
+only `.gitignore` in this repo is the root one; per-tool `.gitignore` files carried over from
+upstream starters (e.g. the LazyVim starter's scratch-file rules) are not part of this repo's
+policy and are not tracked.
+
+### Shared root files (`shared/nvim/`)
+
+- `init.lua` — entry point, `require("config.lazy")` (identical in both envs)
+- `lazyvim.json` — LazyVim extras; `linting.eslint` is enabled (identical in both envs)
+- `lazy-lock.json` — **shared lockfile** (omarchy-canonical). Keep it in sync; do not duplicate
+  per env. Any plugin present here is installed in both envs.
+- `.neoconf.json` — neodev/neoconf config (lua_ls enabled)
+- `LICENSE` — Apache 2.0 (LazyVim attribution; required when distributing)
+- `plugin/after/transparency.lua` — makes a curated set of highlight groups transparent so the
+  terminal background shows through. Loaded after LazyVim's own `plugin/after/*.lua`.
+
+### Shared plugin/config sources (`shared/nvim/lua/`)
+
+All plugin specs and LazyVim config overrides live in `shared/nvim/lua/`. Each env's
+`lua/config/` and `lua/plugins/` is a per-file relative symlink mirror so lazy.nvim's
+`{ import = "plugins" }` discovery sees the shared files at the expected paths.
 
 - `shared/nvim/lua/config/options.lua` — shared options + the one custom keymap (`Space sp`)
 - `shared/nvim/lua/config/keymaps.lua` — empty by design (LazyVim provides defaults)
 - `shared/nvim/lua/config/lazy.lua`, `autocmds.lua` — shared lazy/autocmd config
 - `shared/nvim/lua/config/lint.lua` — wires `nvim-lint` to `markdownlint-cli2` + the shared config
 - `shared/nvim/markdownlint.json` — shared `markdownlint-cli2` config (rules, line length, etc.)
-- `<env>/config/nvim/markdownlint.json` — per-env symlink into the shared file (read by `nvim-lint` via `stdpath('config')`)
-- `omarchy/config/nvim/lazyvim.json`, `wsl2-fedora/config/nvim/lazyvim.json` — LazyVim extras; `linting.eslint` is enabled in both
+- `shared/nvim/stylua.toml` — shared Lua formatter config
 - `shared/nvim/lua/plugins/opencode.lua` — opencode.nvim keymaps (`<Space>oa/oo/or/ol/ou/od`)
 - `shared/nvim/lua/plugins/theme.lua` — tokyonight colorscheme spec
 - `shared/nvim/lua/plugins/theme-hotreload.lua` — theme hot-reload on `LazyReload`
@@ -161,4 +184,25 @@ symlinks make shared files appear in the per-env plugin directory).
 - `shared/nvim/lua/plugins/snacks-animated-scrolling-off.lua` — disables snacks scroll animations
 - `shared/nvim/lua/plugins/nvim-lint-config.lua` — wires nvim-lint to the shared lint config
 - `shared/nvim/lua/plugins/disable-news-alert.lua` — disables LazyVim/Neovim news popups
-- `omarchy/config/nvim/lua/plugins/`, `wsl2-fedora/config/nvim/lua/plugins/` — per-env symlink mirrors of the above
+
+### Per-env mirror paths
+
+These exist **only** as relative symlinks to `shared/nvim/...` — never as actual files. To
+override a file, replace the symlink with a real file in that env (and update the shared-layer
+mapping to mark it as per-env).
+
+- `omarchy/config/nvim/{init.lua,lazyvim.json,lazy-lock.json,.neoconf.json,LICENSE,plugin/after/transparency.lua}`
+- `wsl2-fedora/config/nvim/{init.lua,lazyvim.json,lazy-lock.json,.neoconf.json,LICENSE,plugin/after/transparency.lua}`
+- `omarchy/config/nvim/lua/config/*.lua`, `omarchy/config/nvim/lua/plugins/*.lua`
+- `wsl2-fedora/config/nvim/lua/config/*.lua`, `wsl2-fedora/config/nvim/lua/plugins/*.lua`
+- `omarchy/config/nvim/{markdownlint.json,stylua.toml}`,
+  `wsl2-fedora/config/nvim/{markdownlint.json,stylua.toml}`
+
+## Lockfile policy
+
+`shared/nvim/lazy-lock.json` is the single source of truth for plugin versions. **Do not
+duplicate the lockfile per env** and do not introduce environment-specific plugins there. If
+a plugin must be enabled in only one env, the right place is a per-env spec file under
+`<env>/config/nvim/lua/plugins/` (replacing the symlink with a real file), not a per-env
+lockfile. Past drift between the omarchy and WSL2 lockfiles was resolved by unifying on the
+shared lockfile; per-env lockfile entries are no longer permitted.
