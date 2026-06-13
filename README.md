@@ -5,7 +5,7 @@ Versioned user configuration for two environments in one repository.
 ## Quick Path
 
 1. Clone the repo (see [Setup](#setup)).
-1. Follow the per-env setup (WSL2 + Fedora or Omarchy).
+1. Follow the per-env setup (Fedora or Omarchy).
 1. Edit, reload, validate on every change.
 
 ## Environments
@@ -13,7 +13,7 @@ Versioned user configuration for two environments in one repository.
 | Environment | Folder | Stack |
 | --- | --- | --- |
 | Omarchy Linux (Arch + Hyprland) | `omarchy/` | Hyprland, Alacritty, Zellij, nvim, Mako, themes |
-| Fedora on WSL2 | `wsl2-fedora/` | WezTerm, Zellij, nvim, Zsh, Starship, SSH, Git |
+| Fedora | `fedora/` | WezTerm, Zellij, nvim, Zsh, Starship, SSH, Git |
 
 See each environment's README for the full per-tool index.
 
@@ -32,12 +32,12 @@ All per-env setup assumes CWD is the repo root. The root entrypoint
 ```bash
 ./setup --fonts                         # fonts only
 ./setup --omarchy [--fonts] [--dry-run] # Omarchy env
-./setup --wsl2   [--fonts] [--dry-run] # WSL2 + Fedora env (env executor not yet implemented)
+./setup --fedora [--fonts] [--dry-run] # Fedora env (env executor not yet implemented)
 ```
 
 After cloning, follow the env-specific guide for the full runbook:
 
-- WSL2 + Fedora: [`wsl2-fedora/README.md`](wsl2-fedora/README.md#setup-on-a-new-machine)
+- Fedora: [`fedora/README.md`](fedora/README.md#setup-on-a-new-machine)
 - Omarchy: [`omarchy/README.md`](omarchy/README.md#setup-on-a-new-machine)
 
 ## Repository layout convention
@@ -96,4 +96,4 @@ legitimately differ) lives in
 - [`AGENTS.md`](AGENTS.md) — repo-wide AI agent and contributor guidance.
 - [`docs/conventions.md`](docs/conventions.md) — style guide and Current Decisions.
 - [`docs/shared-layer.md`](docs/shared-layer.md) — shared config layer rules.
-- [`wsl2-fedora/README.md`](wsl2-fedora/README.md), [`omarchy/README.md`](omarchy/README.md) — per-env setup and doc index.
+- [`fedora/README.md`](fedora/README.md), [`omarchy/README.md`](omarchy/README.md) — per-env setup and doc index.

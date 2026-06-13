@@ -1,12 +1,12 @@
 # `shared/` — config layer shared across environments
 
-This directory holds config files that are **identical (or canonical-resolved to omarchy)** across both `omarchy/` and `wsl2-fedora/` environments. For tools fully shared across envs (`zellij/`, `nvim/`, `starship.toml`), the per-env path at `<env>/config/<tool>/` is a **relative folder symlink** into this directory.
+This directory holds config files that are **identical (or canonical-resolved to omarchy)** across both `omarchy/` and `fedora/` environments. For tools fully shared across envs (`zellij/`, `nvim/`, `starship.toml`), the per-env path at `<env>/config/<tool>/` is a **relative folder symlink** into this directory.
 
 The live `~/.config/...` paths in the omarchy env are also symlinks into the per-env repo path, which in turn symlinks into `shared/`. The repo is the source of truth; the live copy is never edited.
 
 ## Canonical source rule
 
-For any file in `shared/`, the **omarchy content is the source of truth** (refined rev 2, 2026-06-10). If the wsl2 working copy of a shared file ever diverges from omarchy, the shared file is authored from the omarchy version; wsl2-specific content is either folded in (and recorded in the PR description) or kept as a documented per-env override.
+For any file in `shared/`, the **omarchy content is the source of truth** (refined rev 2, 2026-06-10). If the fedora working copy of a shared file ever diverges from omarchy, the shared file is authored from the omarchy version; fedora-specific content is either folded in (and recorded in the PR description) or kept as a documented per-env override.
 
 ## Symlink model
 
@@ -35,7 +35,7 @@ The following content MUST NOT be placed in `shared/`:
 
 ## Mapping table (overview)
 
-`<env>` is one of `omarchy`, `wsl2-fedora` (or any future env added at repo root). `nvim/` and `zellij/` are
+`<env>` is one of `omarchy`, `fedora` (or any future env added at repo root). `nvim/` and `zellij/` are
 **folder symlinks** so the mapping collapses to one row per tool:
 
 | Env path                       | Shared path          | Mechanism | Notes                                                  |

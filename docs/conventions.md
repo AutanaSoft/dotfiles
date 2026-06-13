@@ -37,7 +37,7 @@ the tool's native config format.
 
 All docs in this repo follow a rigid skeleton for consistency. Three categories exist:
 
-1. **Runbook** — step-by-step restoration or operational procedure. Lives in the per-environment `README.md` (`wsl2-fedora/README.md` and `omarchy/README.md`), under a "Setup on a new machine" section. Not in `docs/`.
+1. **Runbook** — step-by-step restoration or operational procedure. Lives in the per-environment `README.md` (`fedora/README.md` and `omarchy/README.md`), under a "Setup on a new machine" section. Not in `docs/`.
 2. **Conventions** — repo rules and current decisions log. This file.
 3. **Reference** — looks up specific decisions taken in this repo, not the tool in general. Not a tutorial.
 

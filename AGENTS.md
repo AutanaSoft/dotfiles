@@ -7,7 +7,7 @@ This repository contains personal configuration files (dotfiles) for two work en
 | Environment | Main Stack |
 |-------------|------------|
 | **Omarchy** (Arch + Hyprland) | Hyprland, Alacritty/Foot, Zellij, Neovim/LazyVim, Mako, Waybar, Walker |
-| **WSL2-Fedora** | WezTerm, Zellij, Neovim/LazyVim, Zsh, Starship, Git, SSH |
+| **Fedora** | WezTerm, Zellij, Neovim/LazyVim, Zsh, Starship, Git, SSH |
 
 The structure follows a symbolic link hierarchy. For tools fully shared across envs
 (`zellij/`, `nvim/`, `starship.toml`), the symlink sits at the **tool folder** level:
@@ -29,7 +29,7 @@ ______________________________________________________________________
 | Convention | Details |
 |------------|---------|
 | **`p-` prefix** | In Hyprland, files with `p-` prefix are personal and survive `omarchy update` |
-| **Canonical source** | `shared/` content is signed from omarchy; wsl2 follows omarchy |
+| **Canonical source** | `shared/` content is signed from omarchy; fedora follows omarchy |
 | **Removal policy** | Comment lines with `# Reason:` instead of deleting |
 
 ### Formatting Conventions
@@ -59,7 +59,7 @@ and document the exception in [`docs/shared-layer.md`](docs/shared-layer.md).
 - Waybar, Walker (app launcher), custom Omarchy theme
 - `hyprctl` for reload and monitor control
 
-**WSL2-Fedora:**
+**Fedora:**
 
 - WezTerm, Zsh (with autosuggestions and syntax highlighting)
 - Homebrew Linuxbrew at `/home/linuxbrew/.linuxbrew`

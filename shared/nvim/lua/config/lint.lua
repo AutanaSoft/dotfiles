@@ -1,7 +1,7 @@
 -- nvim-lint configuration
 -- Wires the markdown linter to a shared config file
 -- (shared/nvim/markdownlint.json, symlinked into the per-env nvim config root)
--- so the same rules apply in omarchy and wsl2-fedora.
+-- so the same rules apply in omarchy and fedora.
 
 -- Register markdownlint-cli2 as the markdown linter
 require("lint").linters_by_ft.markdown = { "markdownlint-cli2" }

@@ -37,7 +37,7 @@ It was chosen instead of alternative `opencode.nvim` plugins because it is simpl
 
 - `<leader>` is the LazyVim leader key and is mapped to `Space`.
 - The OpenCode mappings were moved under `<leader>o` to match the existing LazyVim keymap style.
-- WSL2 used to have a divergent `opencode.lua` with 2 keymaps (`<Space>aa`, `<Space>as`) and auto-submit; the configs were unified in favor of the omarchy version (6 keymaps, confirm-before-send).
+- Fedora used to have a divergent `opencode.lua` with 2 keymaps (`<Space>aa`, `<Space>as`) and auto-submit; the configs were unified in favor of the omarchy version (6 keymaps, confirm-before-send).
 
 ## Verification
 

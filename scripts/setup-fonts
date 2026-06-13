@@ -2,7 +2,7 @@
 # scripts/setup-fonts — install Nerd Fonts used by the Autanasoft dotfiles.
 #
 # This script is the fonts executor. It is normally invoked by the root
-# `./setup --omarchy --fonts` (or `./setup --wsl2 --fonts`) orchestrator,
+# `./setup --omarchy --fonts` (or `./setup --fedora --fonts`) orchestrator,
 # but it can also be run directly:
 #
 #     scripts/setup-fonts [--dry-run] [--help]

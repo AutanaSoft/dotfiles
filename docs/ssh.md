@@ -12,8 +12,8 @@ local file is never overwritten.
 
 1. Run `./setup --omarchy`. Setup copies the template to
    `~/.ssh/config` (`700`/`600` modes) only if it is missing.
-1. On WSL2, run the manual copy in
-   [`wsl2-fedora/README.md`](../wsl2-fedora/README.md#create-the-ssh-config).
+1. On Fedora, run the manual copy in
+   [`fedora/README.md`](../fedora/README.md#create-the-ssh-config).
 1. Edit `~/.ssh/config` directly to add real per-host values.
 
 ## Never commit

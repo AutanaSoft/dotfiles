@@ -1,15 +1,15 @@
 # Starship Guide
 
 This prompt is organized by module groups, but keeps the original behavior intact. The same
-`shared/starship.toml` is used in both `omarchy/` and `wsl2-fedora/` via the shared layer
+`shared/starship.toml` is used in both `omarchy/` and `fedora/` via the shared layer
 (omarchy-canonical). See [`docs/shared-layer.md`](shared-layer.md) for the mapping.
 
 ## Quick Path
 
 1. Install `starship`.
 2. The dotfiles symlink `~/.config/starship.toml` to `shared/starship.toml` (already set up
-   by `omarchy refresh` on Omarchy, or by following the WSL2 setup in
-   [`wsl2-fedora/README.md`](../wsl2-fedora/README.md#setup-on-a-new-machine)).
+   by `omarchy refresh` on Omarchy, or by following the Fedora setup in
+   [`fedora/README.md`](../fedora/README.md#setup-on-a-new-machine).
 3. Open a new shell.
 
 ## File

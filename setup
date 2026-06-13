@@ -7,15 +7,15 @@
 #   1. (optional) scripts/setup-fonts   — Nerd Fonts
 #   2. (optional) scripts/setup-<env>   — environment-specific symlinks
 #
-# The Omarchy executor exists today; the WSL2 executor is not implemented
-# yet. Use `--wsl2 --fonts` to install fonts on a WSL2 host (the env
+# The Omarchy executor exists today; the Fedora executor is not implemented
+# yet. Use `--fedora --fonts` to install fonts on the Fedora host (the env
 # configuration step is skipped with a clear message).
 #
 # Examples:
 #   ./setup --fonts                    # install fonts only
 #   ./setup --omarchy                  # apply Omarchy env only
 #   ./setup --omarchy --fonts          # install fonts, then apply env
-#   ./setup --wsl2 --fonts             # install fonts on WSL2 (env not yet wired)
+#   ./setup --fedora --fonts           # install fonts on Fedora (env not yet wired)
 #   ./setup --dry-run --omarchy --fonts  # preview every action
 
 set -euo pipefail
@@ -41,16 +41,16 @@ ENV_FLAG_COUNT=0
 # ---------------------------------------------------------------------------
 usage() {
     cat <<EOF
-Usage: $0 [--omarchy|--wsl2] [--fonts] [--dry-run] [--help]
+Usage: $0 [--omarchy|--fedora] [--fonts] [--dry-run] [--help]
 
 Apply this dotfiles repo to a target environment.
 
 Environment (optional when only installing fonts):
   --omarchy       Apply the Omarchy env configuration.
-  --wsl2          Apply the WSL2 + Fedora env configuration. Note: the
-                  WSL2 executor is not implemented yet. Use --wsl2 --fonts
-                  to install fonts on a WSL2 host while it is a no-op for
-                  the env step.
+  --fedora        Apply the Fedora env configuration. Note: the
+                  Fedora executor is not implemented yet. Use
+                  --fedora --fonts to install fonts on the Fedora
+                  host while it is a no-op for the env step.
 
 Options:
   --fonts, --font Install Nerd Fonts (Monaspace, FiraCode, FiraMono) into
@@ -62,7 +62,7 @@ Options:
 
 Environment variables exported to executor scripts:
   DOTFILES_ROOT       Absolute path to the repo root.
-  DOTFILES_ENV        Selected environment (omarchy | wsl2).
+  DOTFILES_ENV        Selected environment (omarchy | fedora).
   DOTFILES_DRY_RUN    "1" when --dry-run was passed, otherwise unset.
   DOTFILES_BACKUP_DIR Per-run backup directory under \$DOTFILES_ROOT/backup.
 
@@ -71,7 +71,7 @@ Examples:
   $0 --omarchy
   $0 --omarchy --fonts
   $0 --dry-run --omarchy --fonts
-  $0 --wsl2 --fonts
+  $0 --fedora --fonts
 EOF
 }
 
@@ -85,8 +85,8 @@ while [[ $# -gt 0 ]]; do
             ENV_FLAG_COUNT=$((ENV_FLAG_COUNT + 1))
             shift
             ;;
-        --wsl2)
-            DOTFILES_ENV="wsl2"
+        --fedora)
+            DOTFILES_ENV="fedora"
             ENV_FLAG_COUNT=$((ENV_FLAG_COUNT + 1))
             shift
             ;;
@@ -119,13 +119,13 @@ fi
 # Validation
 # ---------------------------------------------------------------------------
 if [[ "$ENV_FLAG_COUNT" -eq 0 && "$REQUEST_FONTS" -eq 0 ]]; then
-    echo "ERROR: choose an environment (--omarchy or --wsl2), --fonts, or both." >&2
+    echo "ERROR: choose an environment (--omarchy or --fedora), --fonts, or both." >&2
     usage >&2
     exit 2
 fi
 
 if [[ "$ENV_FLAG_COUNT" -gt 1 ]]; then
-    echo "ERROR: --omarchy and --wsl2 are mutually exclusive." >&2
+    echo "ERROR: --omarchy and --fedora are mutually exclusive." >&2
     usage >&2
     exit 2
 fi
@@ -157,7 +157,7 @@ fi
 # Export context for executor scripts.
 #   - DOTFILES_ROOT     : repo root (executor scripts use it instead of
 #                         resolving their own location when set).
-#   - DOTFILES_ENV      : omarchy | wsl2
+#   - DOTFILES_ENV      : omarchy | fedora
 #   - DOTFILES_DRY_RUN  : "1" only when --dry-run was passed.
 #   - DOTFILES_BACKUP_DIR : per-run backup directory; executors that back
 #                         up before replacing symlinks can place files
@@ -219,28 +219,28 @@ run_env() {
                 "$script"
             fi
             ;;
-        wsl2)
-            local script="$SCRIPTS_DIR/setup-wsl2"
+        fedora)
+            local script="$SCRIPTS_DIR/setup-fedora"
             if [[ ! -e "$script" ]]; then
                 if [[ "$REQUEST_FONTS" -eq 1 ]]; then
                     if [[ "$PARSED_DRY_RUN" -eq 1 ]]; then
-                        warn "WSL2 setup is not implemented yet. Fonts were previewed; skipping env configuration."
+                        warn "Fedora setup is not implemented yet. Fonts were previewed; skipping env configuration."
                     else
-                        warn "WSL2 setup is not implemented yet. Fonts were installed; skipping env configuration."
+                        warn "Fedora setup is not implemented yet. Fonts were installed; skipping env configuration."
                     fi
                     return 0
                 fi
-                fail "WSL2 setup is not implemented yet. (No scripts/setup-wsl2 present.)"
+                fail "Fedora setup is not implemented yet. (No scripts/setup-fedora present.)"
             fi
             # If the script exists in the future, this branch runs it.
             if [[ ! -x "$script" ]]; then
-                fail "WSL2 script is not executable: $script (run: chmod +x $script)"
+                fail "Fedora script is not executable: $script (run: chmod +x $script)"
             fi
             if [[ "$PARSED_DRY_RUN" -eq 1 ]]; then
-                log "Step 2/2: apply WSL2 env (dry-run)"
+                log "Step 2/2: apply Fedora env (dry-run)"
                 "$script" --dry-run
             else
-                log "Step 2/2: apply WSL2 env"
+                log "Step 2/2: apply Fedora env"
                 "$script"
             fi
             ;;

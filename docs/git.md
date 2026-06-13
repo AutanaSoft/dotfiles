@@ -33,4 +33,4 @@ This repo keeps a portable Git base in `home/.gitconfig`. Local identity can be 
 ## Related Files
 
 - `home/.gitconfig`
-- `wsl2-fedora/README.md#setup-on-a-new-machine`
+- `fedora/README.md#setup-on-a-new-machine`
