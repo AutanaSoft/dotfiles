@@ -32,19 +32,21 @@ The following content MUST NOT be placed in `shared/`:
 
 ## Mapping table (overview)
 
-| Env path | Shared path | Mechanism | Notes |
-| --- | --- | --- | --- |
-| `omarchy/config/zellij/config.kdl` | `shared/zellij/config.kdl` | symlink | canonical (post-`pane_frames` decision) |
-| `omarchy/config/zellij/themes/tokyo-night.kdl` | `shared/zellij/themes/tokyo-night.kdl` | symlink | bit-identical |
-| `omarchy/config/zellij/themes/tokyo-night-storm.kdl` | `shared/zellij/themes/tokyo-night-storm.kdl` | symlink | bit-identical |
-| `omarchy/config/zellij/layouts/autanasoft.kdl` | `shared/zellij/layouts/autanasoft.kdl` | symlink | bit-identical |
-| `omarchy/config/zellij/plugins/{zellij_forgot,zjframes,zjstatus}.wasm` | `shared/zellij/plugins/<name>.wasm` | symlink | md5 parity preserved |
-| `wsl2-fedora/config/zellij/...` | `shared/zellij/...` | symlink | same targets as omarchy |
-| `omarchy/config/starship.toml` | `shared/starship.toml` | symlink | bit-identical |
-| `wsl2-fedora/config/starship.toml` | `shared/starship.toml` | symlink | same target as omarchy |
-| `omarchy/config/nvim/stylua.toml` | `shared/nvim/stylua.toml` | symlink | omarchy canonical |
-| `wsl2-fedora/config/nvim/stylua.toml` | `shared/nvim/stylua.toml` | symlink | same target as omarchy |
-| `omarchy/config/nvim/lua/config/{lazy,autocmds,keymaps,options}.lua` | `shared/nvim/lua/config/<name>.lua` | symlink | omarchy canonical |
-| `wsl2-fedora/config/nvim/lua/config/{lazy,autocmds,keymaps,options}.lua` | `shared/nvim/lua/config/<name>.lua` | symlink | same target as omarchy |
+| Env path                                                                      | Shared path                                  | Mechanism | Notes                                       |
+| ----------------------------------------------------------------------------- | -------------------------------------------- | --------- | ------------------------------------------- |
+| `omarchy/config/zellij/config.kdl`                                            | `shared/zellij/config.kdl`                   | symlink   | canonical (post-`pane_frames` decision)     |
+| `omarchy/config/zellij/themes/tokyo-night.kdl`                                | `shared/zellij/themes/tokyo-night.kdl`       | symlink   | bit-identical                               |
+| `omarchy/config/zellij/themes/tokyo-night-storm.kdl`                          | `shared/zellij/themes/tokyo-night-storm.kdl` | symlink   | bit-identical                               |
+| `omarchy/config/zellij/layouts/autanasoft.kdl`                                | `shared/zellij/layouts/autanasoft.kdl`       | symlink   | bit-identical                               |
+| `omarchy/config/zellij/plugins/{zellij_forgot,zjframes,zjstatus}.wasm`        | `shared/zellij/plugins/<name>.wasm`          | symlink   | md5 parity preserved                        |
+| `wsl2-fedora/config/zellij/...`                                               | `shared/zellij/...`                          | symlink   | same targets as omarchy                     |
+| `omarchy/config/starship.toml`                                                | `shared/starship.toml`                       | symlink   | bit-identical                               |
+| `wsl2-fedora/config/starship.toml`                                            | `shared/starship.toml`                       | symlink   | same target as omarchy                      |
+| `omarchy/config/nvim/stylua.toml`                                             | `shared/nvim/stylua.toml`                    | symlink   | omarchy canonical                           |
+| `wsl2-fedora/config/nvim/stylua.toml`                                         | `shared/nvim/stylua.toml`                    | symlink   | same target as omarchy                      |
+| `omarchy/config/nvim/lua/config/{lazy,autocmds,keymaps,lint,options}.lua`     | `shared/nvim/lua/config/<name>.lua`          | symlink   | omarchy canonical                           |
+| `wsl2-fedora/config/nvim/lua/config/{lazy,autocmds,keymaps,lint,options}.lua` | `shared/nvim/lua/config/<name>.lua`          | symlink   | same target as omarchy                      |
+| `omarchy/config/nvim/markdownlint.json`                                       | `shared/nvim/markdownlint.json`              | symlink   | read by `nvim-lint` via `stdpath('config')` |
+| `wsl2-fedora/config/nvim/markdownlint.json`                                   | `shared/nvim/markdownlint.json`              | symlink   | same target as omarchy                      |
 
 For the zellij-specific mapping (which includes the procedure for adding a new theme or layout), see [`docs/zellij.md`](zellij.md#maintenance).
