@@ -1,2 +1,9 @@
 .atl/
 backup/
+
+# SSH: only `config` is tracked, as a safe template (no secrets, no real
+# hostnames/users/keys). Anything else that lands in shared/home/.ssh/
+# (private keys, known_hosts, real machine-specific configs) is per-host
+# and must never enter the repo.
+shared/home/.ssh/*
+!shared/home/.ssh/config

@@ -27,10 +27,10 @@ From the repo root, run the root entrypoint `./setup`:
 
 `./setup` is a thin orchestrator: it dispatches to `scripts/setup-fonts`
 (Nerd Fonts into `~/.local/share/fonts/autanasoft/`) and then to
-`scripts/setup-omarchy` (env symlinks + theme + Hyprland reload). Order
-is fonts first, env second. Use `./setup --help` for the full flag
-summary. The script does not install Omarchy itself and will not touch
-`omarchy/local/bin/monitor` (a personal/manual script).
+`scripts/setup-omarchy` (env symlinks, theme, Hyprland reload).
+Order is fonts first, env second. Use `./setup --help` for the full
+flag summary. The script does not install Omarchy itself and will not
+touch `omarchy/local/bin/monitor` (a personal/manual script).
 
 #### Fonts
 
@@ -72,9 +72,11 @@ system from this repo.
 The paths under `omarchy/config/...` are the repo-side sources for
 this env. Shared tools such as `nvim/` and `zellij/` are folder
 symlinks into `shared/`; at install time, create only the live
-`~/.config/...` symlink shown below.
+`~/.config/...` symlink shown below. SSH config is **not** symlinked
+— it is copied from the tracked safe template at
+`shared/home/.ssh/config` (see [docs/ssh.md](../docs/ssh.md)).
 
-| Repo path | Symlink on your system | Applied by `./setup --omarchy` |
+| Repo path | Target on your system | Applied by `./setup --omarchy` |
 | --- | --- | --- |
 | `omarchy/config/hypr/hyprland.conf` | `~/.config/hypr/hyprland.conf` | Yes |
 | `omarchy/config/hypr/hypridle.conf` | `~/.config/hypr/hypridle.conf` | Yes |

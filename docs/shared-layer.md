@@ -54,4 +54,8 @@ Adding a new env (e.g. `cachyos/`) only requires:
 No row-per-file updates to this table are needed because the symlink is at the **tool folder**
 level, not at the file level.
 
+## Home directory exception
+
+The mapping table above covers `config/<tool>/` folder symlinks. `shared/home/.ssh/config` is the one exception: a safe tracked SSH template, read directly by env setup and copied to `~/.ssh/config` only when the target is missing. The local file always wins — it is never overwritten and never symlinked. See [docs/ssh.md](ssh.md).
+
 For daily Zellij usage and keybindings, see [`docs/zellij.md`](zellij.md).

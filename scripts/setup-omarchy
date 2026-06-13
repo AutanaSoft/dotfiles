@@ -21,6 +21,12 @@
 #   <repo>/backup/<timestamp>/<home-relative-path>
 # before being replaced by symlinks pointing into the repo.
 #
+# SSH config is NOT symlinked. Setup copies the tracked safe template
+# at `shared/home/.ssh/config` to `~/.ssh/config` (mode 600) only when
+# the source exists and the local target does not. The local file
+# always wins. The repo template must contain no secrets or real
+# production values — see docs/ssh.md.
+#
 # Font installation is NOT handled here. Use the root `./setup --omarchy --fonts`
 # (or run `scripts/setup-fonts` directly) to install the Nerd Fonts used by
 # this repo (Monaspace, FiraCode, FiraMono).
@@ -59,8 +65,8 @@ entrypoint: \`./setup --omarchy [--fonts] [--dry-run]\`.
 
 Options:
   --dry-run    Print actions without modifying the system. Skips
-               'yay', symlink moves, 'omarchy theme', 'hyprctl',
-               and font downloads.
+               'yay', symlink moves, SSH config copy, 'omarchy theme',
+               'hyprctl', and font downloads.
   --help, -h   Show this help and exit.
 
 Pre-requisites (not installed by this script):
@@ -231,6 +237,48 @@ ensure_symlink() {
 }
 
 # ---------------------------------------------------------------------------
+# SSH config seeding
+# ---------------------------------------------------------------------------
+# Copy the tracked safe SSH template from the repo to $HOME/.ssh/config
+# when the source exists. The repo file MUST stay placeholder-only
+# (no real hostnames, users, or identity file paths) — it is a
+# template, not a real config. The local file at $HOME/.ssh/config
+# has priority: if it already exists, the copy is skipped and a
+# message is logged. Directory and file modes are enforced:
+# $HOME/.ssh is 700, $HOME/.ssh/config is 600.
+seed_ssh_config() {
+    local src="$REPO_ROOT/shared/home/.ssh/config"
+    local ssh_dir="$HOME/.ssh"
+    local target="$ssh_dir/config"
+
+    if [[ ! -e "$src" && ! -L "$src" ]]; then
+        log "No shared SSH template at $src; skipping (create it to seed ~/.ssh/config)."
+        return 0
+    fi
+
+    # Local target has priority: never overwrite.
+    if [[ -e "$target" || -L "$target" ]]; then
+        log "Skipping SSH config seed: $target already exists (local file has priority)."
+        return 0
+    fi
+
+    log "Seeding SSH config: $src -> $target (mode 600)"
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        if [[ ! -d "$ssh_dir" ]]; then
+            log "[dry-run] would create directory: $ssh_dir (mode 700)"
+        fi
+        log "[dry-run] would copy: $src -> $target (mode 600)"
+        return 0
+    fi
+
+    if [[ ! -d "$ssh_dir" ]]; then
+        log "Creating SSH directory: $ssh_dir (mode 700)"
+        mkdir -m 700 "$ssh_dir"
+    fi
+    install -m 600 "$src" "$target"
+}
+
+# ---------------------------------------------------------------------------
 # Apply symlink map
 # ---------------------------------------------------------------------------
 apply_symlinks() {
@@ -286,6 +334,11 @@ apply_symlinks() {
         "$REPO_ROOT/omarchy/home/.bashrc" \
         "$HOME/.bashrc" \
         "$stamp"
+
+    # ~/.ssh/config — copy from the tracked safe template. The local
+    # file has priority (skipped if it already exists). See seed_ssh_config
+    # above for the full behavior.
+    seed_ssh_config
 
     # NOTE: omarchy/local/bin/monitor is intentionally NOT symlinked; it is a
     # personal/manual script the user runs ad-hoc.

@@ -52,20 +52,23 @@ ln -sf wsl2-fedora/config/nvim         ~/.config/nvim
 
 ### Create the SSH config
 
-The SSH config must be a real file (not a symlink) because each user customizes it.
+Copy the tracked safe template to `~/.ssh/config` only when the
+target is missing — the local file always has priority:
 
 ```bash
-cp wsl2-fedora/home/.ssh/config.example ~/.ssh/config
-chmod 700 ~/.ssh
-chmod 600 ~/.ssh/config
+mkdir -m 700 -p ~/.ssh
+if [ ! -e ~/.ssh/config ]; then
+    install -m 600 shared/home/.ssh/config ~/.ssh/config
+fi
 ```
+
+See [docs/ssh.md](../docs/ssh.md).
 
 ### Required manual edits
 
 | File | What to change |
 | --- | --- |
 | `~/.gitconfig` | Add your real Git name and email |
-| `~/.ssh/config` | Replace example hosts, users, and identity files |
 | `~/.wezterm.lua` | Remove or adjust `default_domain` if not using WSL |
 
 ### Required tools
@@ -101,7 +104,7 @@ These dotfiles assume the following tools exist:
 | Zsh | `home/.zshrc`, `home/.zshenv` | [zsh](../docs/zsh.md) |
 | Git | `home/.gitconfig` | [git](../docs/git.md) |
 | WezTerm | `home/.wezterm.lua` | [wezterm](../docs/wezterm.md) |
-| SSH | `home/.ssh/config.example` | [ssh](../docs/ssh.md) |
+| SSH | `shared/home/.ssh/config` (tracked safe template) | [ssh](../docs/ssh.md) |
 | Starship | `config/starship.toml` | [starship](../docs/starship.md) |
 | Zellij | `config/zellij/` | [zellij](../docs/zellij.md) |
 | Neovim | `config/nvim/` | [nvim](../docs/nvim.md) |
