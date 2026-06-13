@@ -9,10 +9,11 @@ This repository contains personal configuration files (dotfiles) for two work en
 | **Omarchy** (Arch + Hyprland) | Hyprland, Alacritty/Foot, Zellij, Neovim/LazyVim, Mako, Waybar, Walker |
 | **WSL2-Fedora** | WezTerm, Zellij, Neovim/LazyVim, Zsh, Starship, Git, SSH |
 
-The structure follows a symbolic link hierarchy:
+The structure follows a symbolic link hierarchy. For tools fully shared across envs
+(`zellij/`, `nvim/`, `starship.toml`), the symlink sits at the **tool folder** level:
 
 ```
-~/.config/<x>/<file> --> <env>/config/<x>/<file> --> ../shared/<x>/<file>
+~/.config/<x>/      -->  <env>/config/<x>/      -->  ../../shared/<x>/
 ```
 
 - `shared/` contains the canonical configurations valid for both environments.
@@ -43,19 +44,14 @@ ______________________________________________________________________
 
 **Shared across both environments:**
 
-- **Zellij** — terminal workspace manager, `Alt-first` keybindings, `locked` mode by default
-- **Starship** — cross-shell prompt with modules for AWS, Docker, Git, Go, Node, Python, Rust, etc.
-- **Neovim + LazyVim** — full config canonical in `shared/nvim/`. Plugin specs
-  (`lua/plugins/*.lua`), config overrides (`lua/config/*.lua`), LazyVim extras
-  (`lazyvim.json`), lockfile (`lazy-lock.json`), `init.lua`, `.neoconf.json`,
-  `LICENSE`, and runtime files like `plugin/after/transparency.lua` all live in
-  `shared/nvim/`. Per-env paths at `omarchy/config/nvim/` and `wsl2-fedora/config/nvim/` are
-  relative symlinks into `shared/nvim/`; there are no per-env overrides by default. To diverge
-  on a file, replace the symlink with a real file in that env and document the override. Ignore
-  policy is repository-level only: only the root `.gitignore` is used; per-tool ignore files
-  carried over from upstream starters (e.g. the LazyVim `.gitignore` rules for scratch files)
-  are not part of this repo's policy.
-- **opencode.nvim** — AI integration, unified keymaps via `shared/nvim/lua/plugins/opencode.lua`
+- **Zellij** — terminal workspace manager; edit `shared/zellij/`.
+- **Neovim + LazyVim** — editor config; edit `shared/nvim/`.
+- **Starship** — shell prompt; edit `shared/starship.toml`.
+- **opencode.nvim** — Neovim AI integration; edit `shared/nvim/lua/plugins/opencode.lua`.
+
+For shared tools, `<env>/config/<tool>/` is a folder symlink into `shared/<tool>/`.
+To create an environment-specific override, replace that folder symlink with a real directory
+and document the exception in [`docs/shared-layer.md`](docs/shared-layer.md).
 
 **Omarchy (Arch + Hyprland):**
 

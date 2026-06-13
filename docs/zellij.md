@@ -1,35 +1,22 @@
 # Zellij Keybindings
 
-This repo uses an `Alt-first` Zellij setup. Pane actions use `Alt Shift`, tab actions use
-`Alt Ctrl`, and focus uses `Alt` + arrows. `Ctrl g` opens the normal command menu and actions
-return to `locked` mode so Zellij does not keep intercepting terminal input.
+This repo uses an `Alt-first` Zellij setup: pane actions use `Alt Shift`, tab actions use
+`Alt Ctrl`, focus uses `Alt` + arrows. Default mode is `locked`, so Zellij does not intercept
+terminal input — `Ctrl g` opens the mode menu and most actions return to `locked` after they
+run.
 
-The Zellij config is shared across `omarchy/` and `wsl2-fedora/` via `shared/zellij/`
-(omarchy-canonical). See the [Symlink chain](#symlink-chain) section below and
-[`docs/shared-layer.md`](shared-layer.md) for the full mapping.
+The config is shared across both envs via `shared/zellij/`. The symlink map is in
+[`docs/shared-layer.md`](shared-layer.md).
 
 ## Quick Path
 
-1. Press `Ctrl g` to leave `locked` mode and open `Normal` mode.
-2. From `Normal`, press a single mode key like `p`, `t`, `n`, `h`, `s`, or `o`.
-3. Press `Esc` or `Enter` to return to `locked` mode.
-4. Use `Alt` + arrows for focus, `Alt Shift` for panes, and `Alt Ctrl` for tabs without opening the mode menu.
-5. Press `Alt y` inside Zellij to open the shortcut helper.
-
-## Core Model
-
-| Action                               | Shortcut         |
-| ------------------------------------ | ---------------- |
-| Enter `Normal` from `locked`         | `Ctrl g`         |
-| Return to `locked` from active modes | `Esc` or `Enter` |
-| Show shortcut helper                 | `Alt y`          |
-
-Only the `locked` mode `Ctrl g` binding switches to `Normal`. Other actions return to `locked` after
-they run.
+1. Press `Ctrl g` to enter `Normal` from `locked`.
+1. Press a mode key — `p` (pane), `t` (tab), `n` (resize), `h` (move), `s` (scroll), `o`
+   (session), `Ctrl b` (tmux) — and `Esc` or `Enter` to return to `locked`.
+1. Skip the mode menu with the direct bindings below.
+1. Press `Alt y` for the shortcut helper popup.
 
 ## Normal Mode Menu
-
-After pressing `Ctrl g`, these keys select Zellij modes from `Normal` only:
 
 | Mode    | Shortcut |
 | ------- | -------- |
@@ -42,8 +29,6 @@ After pressing `Ctrl g`, these keys select Zellij modes from `Normal` only:
 | Tmux    | `Ctrl b` |
 
 ## Direct Alt Shortcuts
-
-These shortcuts work in both `locked` and `normal` mode.
 
 | Action                        | Shortcut                        |
 | ----------------------------- | ------------------------------- |
@@ -62,56 +47,6 @@ These shortcuts work in both `locked` and `normal` mode.
 
 ## Helper Popup
 
-`Alt y` launches `zellij_forgot.wasm` and shows the current direct shortcuts.
-
-The helper disables automatic Zellij keybind loading with `LOAD_ZELLIJ_BINDINGS=false`; otherwise
-the plugin includes every default binding and the popup can wrap entries into two lines.
-
-## Symlink chain
-
-The Zellij config and assets are shared via relative symlinks:
-
-- **Canonical source**: `shared/zellij/` (omarchy-wins rule).
-- **Per-env access**: each env exposes the shared files through a relative symlink:
-  - `omarchy/config/zellij/` → `../../shared/zellij/`
-  - `wsl2-fedora/config/zellij/` → `../../shared/zellij/`
-- **Live resolution**: `~/.config/zellij/...` → per-env path → `shared/zellij/...`.
-
-The canonical source rule and the full env-to-shared mapping live in
-[`docs/shared-layer.md`](shared-layer.md).
-
-## Plugins
-
-The Zellij plugin binaries live in `shared/zellij/plugins/` (canonical) and are exposed in
-each env via the per-env symlink:
-
-- `zellij_forgot.wasm`
-- `zjframes.wasm`
-- `zjstatus.wasm`
-
-The symlink chain (`~/.config/zellij/plugins/` → per-env → `shared/zellij/plugins/`) installs
-both the config and the plugin binaries — no copy step needed.
-
-## Maintenance
-
-### Adding a theme or layout
-
-1. Drop the new file in the appropriate subdirectory: `shared/zellij/themes/<name>.kdl` or
-   `shared/zellij/layouts/<name>.kdl`.
-2. Add a relative symlink from each env: `ln -s ../../../../shared/zellij/themes/<name>.kdl
-   <env-repo>/config/zellij/themes/<name>.kdl`.
-3. Update the mapping table in [`docs/shared-layer.md`](shared-layer.md) with the new row.
-4. Commit (one row per work unit is fine; group related additions into the same commit).
-
-### Adding a wasm plugin
-
-Same as the layout/theme procedure, but under `shared/zellij/plugins/<name>.wasm`. Wasm plugins
-are binary; verify md5 after the move to confirm no silent corruption.
-
-## Related Files
-
-- `shared/zellij/config.kdl` (canonical) → `omarchy/config/zellij/config.kdl` and `wsl2-fedora/config/zellij/config.kdl`
-- `shared/zellij/layouts/autanasoft.kdl` → `omarchy/config/zellij/layouts/autanasoft.kdl` and `wsl2-fedora/config/zellij/layouts/autanasoft.kdl`
-- `shared/zellij/themes/tokyo-night.kdl` → `omarchy/config/zellij/themes/tokyo-night.kdl` and `wsl2-fedora/config/zellij/themes/tokyo-night.kdl`
-- `shared/zellij/plugins/{zellij_forgot,zjframes,zjstatus}.wasm` → per-env plugins folders
-- See [`docs/shared-layer.md`](shared-layer.md) for the full env-to-shared mapping.
+`Alt y` launches `zellij_forgot.wasm` (from `shared/zellij/plugins/`) and shows the current direct
+shortcuts. The helper is configured with `LOAD_ZELLIJ_BINDINGS=false` so it does not bundle every
+default binding.

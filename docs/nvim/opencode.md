@@ -14,7 +14,7 @@ This setup uses [`nickjvandyke/opencode.nvim`](https://github.com/nickjvandyke/o
 |------|------|
 | Plugin spec | `shared/nvim/lua/plugins/opencode.lua` (shared, omarchy-canonical) |
 | Nvim base config | `shared/nvim/lua/config/{lazy,autocmds,keymaps,options}.lua` (shared) |
-| Live Neovim config | `~/.config/nvim` → symlink to `<env>/config/nvim` → symlinks into `shared/nvim/` for the shared parts |
+| Live Neovim config | `~/.config/nvim` → `<env>/config/nvim` (folder symlink) → `shared/nvim/` |
 
 ## Why this plugin
 

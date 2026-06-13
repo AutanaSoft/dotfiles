@@ -31,12 +31,10 @@ system from this repo.
 
 ### Symlink table
 
-The paths under `omarchy/config/...` are the canonical sources
-in this repo. For shared configs (`shared/zellij/...`,
-`shared/nvim/...`, `shared/starship.toml`) the per-env path under
-`omarchy/config/...` is itself a symlink into `shared/...`. That
-two-level chain is already versioned in git; only the first hop
-is created at install time.
+The paths under `omarchy/config/...` are the repo-side sources for
+this env. Shared tools such as `nvim/` and `zellij/` are folder
+symlinks into `shared/`; at install time, create only the live
+`~/.config/...` symlink shown below.
 
 | Repo path | Symlink on your system |
 | --- | --- |

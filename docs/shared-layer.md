@@ -1,17 +1,20 @@
 # `shared/` — config layer shared across environments
 
-This directory holds config files that are **identical (or canonical-resolved to omarchy)** across both `omarchy/` and `wsl2-fedora/` environments. Per-env copies at `omarchy/config/...` and `wsl2-fedora/config/...` are **relative symlinks** into this directory.
+This directory holds config files that are **identical (or canonical-resolved to omarchy)** across both `omarchy/` and `wsl2-fedora/` environments. For tools fully shared across envs (`zellij/`, `nvim/`, `starship.toml`), the per-env path at `<env>/config/<tool>/` is a **relative folder symlink** into this directory.
 
 The live `~/.config/...` paths in the omarchy env are also symlinks into the per-env repo path, which in turn symlinks into `shared/`. The repo is the source of truth; the live copy is never edited.
 
 ## Canonical source rule
 
-For any file in `shared/`, the **omarchy content is the source of truth** (refined rev 2, 2026-06-10). If the wsl2 working copy of a shared file ever diverges from omarchy, the shared file is authored from the omarchy version; wsl2-specific content is either folded in (and recorded in the PR description) or kept as a per-env override outside the symlink chain.
+For any file in `shared/`, the **omarchy content is the source of truth** (refined rev 2, 2026-06-10). If the wsl2 working copy of a shared file ever diverges from omarchy, the shared file is authored from the omarchy version; wsl2-specific content is either folded in (and recorded in the PR description) or kept as a documented per-env override.
 
-## Symlink chain
+## Symlink model
+
+For tools fully shared across envs (`zellij/`, `nvim/`, `starship.toml`) the symlink is at the **tool
+folder** level, so one symlink per env exposes the whole tool tree:
 
 ```
-~/.config/<x>/<f>  →  <env-repo>/config/<x>/<f>  →  ../shared/<x>/<f>
+~/.config/<x>/<f>  →  <env-repo>/config/<x>/      →  ../../shared/<x>/
 ```
 
 Symlinks are **relative**, so the repo can be cloned or moved without breaking the chain. Tracked in git, never absolute.
@@ -32,35 +35,23 @@ The following content MUST NOT be placed in `shared/`:
 
 ## Mapping table (overview)
 
-| Env path                                                                      | Shared path                                  | Mechanism | Notes                                       |
-| ----------------------------------------------------------------------------- | -------------------------------------------- | --------- | ------------------------------------------- |
-| `omarchy/config/zellij/config.kdl`                                            | `shared/zellij/config.kdl`                   | symlink   | canonical (post-`pane_frames` decision)     |
-| `omarchy/config/zellij/themes/tokyo-night.kdl`                                | `shared/zellij/themes/tokyo-night.kdl`       | symlink   | bit-identical                               |
-| `omarchy/config/zellij/themes/tokyo-night-storm.kdl`                          | `shared/zellij/themes/tokyo-night-storm.kdl` | symlink   | bit-identical                               |
-| `omarchy/config/zellij/layouts/autanasoft.kdl`                                | `shared/zellij/layouts/autanasoft.kdl`       | symlink   | bit-identical                               |
-| `omarchy/config/zellij/plugins/{zellij_forgot,zjframes,zjstatus}.wasm`        | `shared/zellij/plugins/<name>.wasm`          | symlink   | md5 parity preserved                        |
-| `wsl2-fedora/config/zellij/...`                                               | `shared/zellij/...`                          | symlink   | same targets as omarchy                     |
-| `omarchy/config/starship.toml`                                                | `shared/starship.toml`                       | symlink   | bit-identical                               |
-| `wsl2-fedora/config/starship.toml`                                            | `shared/starship.toml`                       | symlink   | same target as omarchy                      |
-| `omarchy/config/nvim/stylua.toml`                                             | `shared/nvim/stylua.toml`                    | symlink   | omarchy canonical                           |
-| `wsl2-fedora/config/nvim/stylua.toml`                                         | `shared/nvim/stylua.toml`                    | symlink   | same target as omarchy                      |
-| `omarchy/config/nvim/init.lua`                                                | `shared/nvim/init.lua`                       | symlink   | omarchy canonical                           |
-| `wsl2-fedora/config/nvim/init.lua`                                            | `shared/nvim/init.lua`                       | symlink   | same target as omarchy                      |
-| `omarchy/config/nvim/lazyvim.json`                                            | `shared/nvim/lazyvim.json`                   | symlink   | omarchy canonical; extras identical         |
-| `wsl2-fedora/config/nvim/lazyvim.json`                                        | `shared/nvim/lazyvim.json`                   | symlink   | same target as omarchy                      |
-| `omarchy/config/nvim/lazy-lock.json`                                          | `shared/nvim/lazy-lock.json`                 | symlink   | **shared lockfile** — no per-env duplicates |
-| `wsl2-fedora/config/nvim/lazy-lock.json`                                      | `shared/nvim/lazy-lock.json`                 | symlink   | same target as omarchy                      |
-| `omarchy/config/nvim/.neoconf.json`                                           | `shared/nvim/.neoconf.json`                  | symlink   | omarchy canonical                           |
-| `wsl2-fedora/config/nvim/.neoconf.json`                                       | `shared/nvim/.neoconf.json`                  | symlink   | same target as omarchy                      |
-| `omarchy/config/nvim/LICENSE`                                                 | `shared/nvim/LICENSE`                        | symlink   | Apache 2.0 (LazyVim attribution)            |
-| `wsl2-fedora/config/nvim/LICENSE`                                             | `shared/nvim/LICENSE`                        | symlink   | same target as omarchy                      |
-| `omarchy/config/nvim/plugin/after/transparency.lua`                           | `shared/nvim/plugin/after/transparency.lua`  | symlink   | makes highlight groups transparent          |
-| `wsl2-fedora/config/nvim/plugin/after/transparency.lua`                       | `shared/nvim/plugin/after/transparency.lua`  | symlink   | same target as omarchy                      |
-| `omarchy/config/nvim/lua/config/{lazy,autocmds,keymaps,lint,options}.lua`     | `shared/nvim/lua/config/<name>.lua`          | symlink   | omarchy canonical                           |
-| `wsl2-fedora/config/nvim/lua/config/{lazy,autocmds,keymaps,lint,options}.lua` | `shared/nvim/lua/config/<name>.lua`          | symlink   | same target as omarchy                      |
-| `omarchy/config/nvim/lua/plugins/*.lua`                                       | `shared/nvim/lua/plugins/<name>.lua`         | symlink   | omarchy canonical                           |
-| `wsl2-fedora/config/nvim/lua/plugins/*.lua`                                   | `shared/nvim/lua/plugins/<name>.lua`         | symlink   | same target as omarchy                      |
-| `omarchy/config/nvim/markdownlint.json`                                       | `shared/nvim/markdownlint.json`              | symlink   | read by `nvim-lint` via `stdpath('config')` |
-| `wsl2-fedora/config/nvim/markdownlint.json`                                   | `shared/nvim/markdownlint.json`              | symlink   | same target as omarchy                      |
+`<env>` is one of `omarchy`, `wsl2-fedora` (or any future env added at repo root). `nvim/` and `zellij/` are
+**folder symlinks** so the mapping collapses to one row per tool:
 
-For the zellij-specific mapping (which includes the procedure for adding a new theme or layout), see [`docs/zellij.md`](zellij.md#maintenance).
+| Env path                       | Shared path          | Mechanism | Notes                                                  |
+| ------------------------------ | -------------------- | --------- | ------------------------------------------------------ |
+| `<env>/config/zellij/`         | `shared/zellij/`     | symlink   | canonical config, themes, layouts, and `.wasm` plugins |
+| `<env>/config/nvim/`           | `shared/nvim/`       | symlink   | LazyVim config, lockfile, LICENSE, and runtime files   |
+| `<env>/config/starship.toml`   | `shared/starship.toml` | symlink | bit-identical                                          |
+
+Adding a new env (e.g. `cachyos/`) only requires:
+
+1. Creating `cachyos/config/`.
+1. Symlinking the shared tools: `ln -s ../../shared/nvim cachyos/config/nvim` (same for `zellij`,
+   `starship.toml`).
+1. Adding any env-specific tools to `cachyos/config/` directly.
+
+No row-per-file updates to this table are needed because the symlink is at the **tool folder**
+level, not at the file level.
+
+For daily Zellij usage and keybindings, see [`docs/zellij.md`](zellij.md).

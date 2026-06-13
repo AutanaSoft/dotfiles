@@ -39,7 +39,7 @@ Each environment is a top-level folder with the same shape:
 | Path in repo | Maps to |
 | --- | --- |
 | `home/.<dotfile>` | `~/.<dotfile>` |
-| `config/<app>/<file>` | `~/.config/<app>/<file>` (see [shared layer](#shared-layer) for shared configs) |
+| `config/<app>/` | `~/.config/<app>` (see [shared layer](#shared-layer) for shared configs) |
 | `bin/<name>` | User `PATH` (e.g. `~/.local/bin/<name>`) |
 | `docs/` | Per-tool reference docs (organized by tool, not by env) |
 | `shared/<area>/<files>` | Shared configs used by both environments (see [`docs/shared-layer.md`](docs/shared-layer.md)) |
@@ -47,13 +47,10 @@ Each environment is a top-level folder with the same shape:
 ### Shared layer
 
 A `shared/` directory at the repo root holds configs that are
-identical (or omarchy-canonical) across both environments. For
-shared files the live `~/.config/<app>/<file>` resolves through a
-two-level symlink chain: it points into
-`<env>/config/<app>/<file>`, which itself points into
-`shared/<app>/<file>`. The canonical-source rule (omarchy wins when
-configs diverge), the env-to-shared mapping, and the list of files
-forbidden in `shared/` all live in
+identical across environments. Shared tools such as `nvim/` and
+`zellij/` use a folder symlink from `<env>/config/<tool>/` into
+`shared/<tool>/`. The canonical-source rule, the env-to-shared mapping,
+and the list of files forbidden in `shared/` live in
 [`docs/shared-layer.md`](docs/shared-layer.md).
 
 The repository is the **source of truth**: the live files at

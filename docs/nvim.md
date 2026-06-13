@@ -1,8 +1,8 @@
 # Neovim Quick Reference
 
 This setup uses `LazyVim` with a mostly stock configuration. The canonical config lives in
-`shared/nvim/`; Omarchy and WSL2 point to it through symlinks. Each page below covers a
-specific mode or tool.
+`shared/nvim/`; each env exposes it as a **single folder symlink** at `<env>/config/nvim/`
+(see [`docs/shared-layer.md`](shared-layer.md)).
 
 ## Quick Path
 
@@ -111,6 +111,7 @@ npm i -g prettier markdownlint-cli2 markdown-toc
 ## Related Files
 
 - `shared/nvim/` — canonical Neovim config for all environments.
+- `<env>/config/nvim/` — folder symlink to `shared/nvim/` (one per env).
 - `shared/nvim/lazyvim.json` — enabled LazyVim extras.
 - `shared/nvim/lazy-lock.json` — shared plugin lockfile.
 - `shared/nvim/lua/plugins/` — plugin specs, one file per plugin or concern.

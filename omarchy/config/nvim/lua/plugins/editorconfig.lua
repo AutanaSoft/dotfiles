@@ -1,1 +1,0 @@
-../../../../../shared/nvim/lua/plugins/editorconfig.lua

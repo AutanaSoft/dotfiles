@@ -1,1 +1,0 @@
-../../../../../shared/nvim/lua/plugins/nvim-lint-config.lua

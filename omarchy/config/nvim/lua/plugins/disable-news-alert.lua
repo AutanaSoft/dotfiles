@@ -1,1 +1,0 @@
-../../../../../shared/nvim/lua/plugins/disable-news-alert.lua
