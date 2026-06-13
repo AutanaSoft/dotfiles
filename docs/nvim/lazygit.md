@@ -1,6 +1,6 @@
 # Lazygit
 
-Press `Space g g` to open Lazygit in a floating terminal. Use `q` to close it.
+`Space g g` opens Lazygit in a floating terminal. `q` or `Esc` closes it.
 
 ## Common Actions
 

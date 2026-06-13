@@ -1,6 +1,6 @@
 # Insert Mode
 
-Insert mode is where you type text. You enter it from Normal mode with `i`, `a`, `o`, `O`, `I`, or `A`.
+Type-to-edit mode. Enter from Normal with `i`, `a`, `o`, `O`, `I`, or `A`.
 
 ## Quick Edits While Typing
 
@@ -15,9 +15,8 @@ Insert mode is where you type text. You enter it from Normal mode with `i`, `a`,
 
 ## Run a Normal-Mode Command Without Leaving Insert
 
-`Ctrl+o` runs a single Normal-mode command and then returns to Insert mode. Useful for quick selections or deletes without fully leaving insert mode.
+`Ctrl+o` runs a single Normal-mode command and then returns to Insert mode. Examples:
 
-Examples:
 - `Ctrl+o v i w` — select the current word
 - `Ctrl+o d d` — delete the current line
 - `Ctrl+o y y p` — copy the current line and paste it
@@ -32,5 +31,5 @@ Examples:
 | Trigger filename completion | `Ctrl+x Ctrl+f` |
 | Trigger line completion | `Ctrl+x Ctrl+l` |
 
-LazyVim's `blink.cmp` is the default completion engine; the popup appears as you type
-and is unrelated to the `Ctrl+x` sub-mode (but both work).
+LazyVim's `blink.cmp` is the default completion engine; it pops up as you type and is
+unrelated to the `Ctrl+x` sub-mode.

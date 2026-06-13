@@ -58,6 +58,7 @@ mkdir -m 700 -p ~/.ssh
 ## Related docs
 
 - [hypr](../docs/hypr.md)
+- [setup](../docs/setup.md)
 - [ssh](../docs/ssh.md)
 - [shared layer](../docs/shared-layer.md)
 - [bin](../docs/bin.md)

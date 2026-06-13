@@ -1,131 +1,73 @@
 # AGENTS.md — Dotfiles Autanasoft
 
+Repo rules for AI agents and contributors. Keep this file focused on
+execution rules; full repo docs live in [`README.md`](README.md) and
+[`docs/conventions.md`](docs/conventions.md).
+
 ## Repository Purpose
 
-This repository contains personal configuration files (dotfiles) for two work environments:
+Personal dotfiles for two work environments:
 
-| Environment | Main Stack |
-|-------------|------------|
-| **Omarchy** (Arch + Hyprland) | Hyprland, Alacritty/Foot, Zellij, Neovim/LazyVim, Mako, Waybar, Walker |
-| **Fedora** | WezTerm, Zellij, Neovim/LazyVim, Zsh, Starship, Git, SSH |
+| Environment | Main stack |
+| --- | --- |
+| **Omarchy** (Arch + Hyprland) | Hyprland, Alacritty, Zellij, nvim, Mako, Waybar |
+| **Fedora** | WezTerm, Zellij, nvim, Zsh, Starship, Git, SSH |
 
-The structure follows a symbolic link hierarchy. For tools fully shared across envs
-(`zellij/`, `nvim/`, `starship.toml`), the symlink sits at the **tool folder** level:
-
-```
-~/.config/<x>/      -->  <env>/config/<x>/      -->  ../../shared/<x>/
-```
-
-- `shared/` contains the canonical configurations valid for both environments.
-- Each environment may have specific configurations that diverge from shared.
-- Only files diverging from upstream defaults are versioned.
-
-______________________________________________________________________
+The repo is the source of truth. Live files are symlinks; edit the repo
+and reload the affected service. Layout, setup, and policy:
+[`README.md`](README.md).
 
 ## Applied Conventions
 
-### Organization Conventions
+### Organization
 
-| Convention | Details |
-|------------|---------|
-| **`p-` prefix** | In Hyprland, files with `p-` prefix are personal and survive `omarchy update` |
-| **Canonical source** | `shared/` content is signed from omarchy; fedora follows omarchy |
-| **Removal policy** | Comment lines with `# Reason:` instead of deleting |
+| Rule | Details |
+| --- | --- |
+| `p-` prefix (Hyprland) | Personal files that survive `omarchy update` |
+| Canonical source | `shared/` content is signed from omarchy; fedora follows |
+| Removal policy | Comment out with `# Reason:` instead of deleting |
+| Setup entrypoint | Root: `./setup`. Env executors: `scripts/setup-<env>` |
+| Sensitive SSH | `shared/home/.ssh/*` is gitignored except for the safe `config` template |
 
-### Formatting Conventions
+### Formatting
 
-| File Type | Indentation |
-|-----------|-------------|
+| File type | Indentation |
+| --- | --- |
 | Default | 2 spaces |
 | KDL, Shell, Hyprland `.conf` | 4 spaces |
 | Markdown | Exempt from trailing whitespace trimming |
 
-### Main Tools
+Source of truth: [`docs/conventions.md`](docs/conventions.md#formatting).
 
-**Shared across both environments:**
+### Main tools
 
-- **Zellij** — terminal workspace manager; edit `shared/zellij/`.
-- **Neovim + LazyVim** — editor config; edit `shared/nvim/`.
-- **Starship** — shell prompt; edit `shared/starship.toml`.
-- **opencode.nvim** — Neovim AI integration; edit `shared/nvim/lua/plugins/opencode.lua`.
-
-For shared tools, `<env>/config/<tool>/` is a folder symlink into `shared/<tool>/`.
-To create an environment-specific override, replace that folder symlink with a real directory
-and document the exception in [`docs/shared-layer.md`](docs/shared-layer.md).
-
-**Omarchy (Arch + Hyprland):**
-
-- Hyprland (Wayland compositor), Alacritty/Foot (terminals), Mako (notifications)
-- Waybar, Walker (app launcher), custom Omarchy theme
-- `hyprctl` for reload and monitor control
-
-**Fedora:**
-
-- WezTerm, Zsh (with autosuggestions and syntax highlighting)
-- Homebrew Linuxbrew at `/home/linuxbrew/.linuxbrew`
-- `mise` for runtime activation, `direnv`, `fzf`
-
-______________________________________________________________________
-
-## Conventions to Follow
-
-### Before Making Changes
-
-1. **Verify the canonical source** — if the file exists in `shared/`, that is the canonical source. Specific environments only diverge when necessary.
-1. **Understand the symlink flow** — any change in `shared/` affects both environments.
-1. **Comment instead of delete** — use `# Reason:` to document why something is disabled.
-
-### After Making Changes
-
-1. **Reload the affected service:**
-   - Hyprland: `hyprctl reload` followed by `hyprctl configerrors`
-   - Zellij: close and reopen the session or `zellij -l <layout>`
-   - Neovim: restart or `:Lazy reload` if it's a plugin
-1. **Validate** — confirm there are no configuration errors.
-
-### Change Workflow
-
-1. Edit the file in the repository
-1. The symlink makes the change immediately visible to the live system
-1. Reload the affected service and validate
-
-______________________________________________________________________
+Shared across both envs (canonical source in `shared/`): Zellij, Neovim +
+LazyVim, Starship, opencode.nvim.
 
 ## Forbidden Paths
 
-These paths are managed by the system and overwritten on updates:
+System-managed or per-host — never edit, never commit:
 
-- `~/.local/share/omarchy/` — managed by omarchy, do not touch
+- `~/.local/share/omarchy/` — managed by omarchy
 - SSH private keys, `known_hosts`, machine-specific tokens
-- Hyprland/Mako/Waybar/Walker configs specific to omarchy (not shared)
+- Hyprland / Mako / Waybar / Walker configs (omarchy-only, not shared)
 
-______________________________________________________________________
+Full list: [`docs/shared-layer.md`](docs/shared-layer.md#forbidden-content).
 
 ## Communication Rules
 
 ### Language
 
-- **Communication with the developer:** neutral Latin American Spanish
-- No regionalisms like Argentine/Uruguayan voseo or Mexican slang
-- Soft, professional tuteo
-- Technical text in English: variable names, functions, code comments
+- Reply to the developer in neutral Latin American Spanish (no voseo, no regional slang).
+- Technical artifacts (code, identifiers, comments, docs) in English unless the user requests otherwise.
 
-### Execution Rules
+### Execution
 
-1. **Do not commit, push, or PR** without explicit request from the developer
-1. **If there are doubts about the requirement,** clarify with the developer before executing
-1. **Verify before affirming** — if the developer makes an incorrect technical claim, explain why with evidence
+1. Do not commit, push, or PR without explicit request.
+1. Clarify requirements before executing when in doubt.
+1. Verify technical claims before stating them. If the developer is wrong, explain why with evidence.
 
-### Response Format
+### Response format
 
-- Short answers by default
-- Expand only when the developer asks or the task genuinely requires it
-- One question at a time; wait for answer before continuing
-
-______________________________________________________________________
-
-## Artifacts and Documentation
-
-- Markdown files use 2-space indentation
-- Configuration files (`.conf`, shell scripts) use 4-space indentation
-- System documentation is in `/docs` within each environment
+- Short by default. Expand only when the task requires it.
+- One question at a time. Wait for the answer before continuing.

@@ -1,61 +1,68 @@
-# `shared/` — config layer shared across environments
+# `shared/` layer
 
-This directory holds config files that are **identical (or canonical-resolved to omarchy)** across both `omarchy/` and `fedora/` environments. For tools fully shared across envs (`zellij/`, `nvim/`, `starship.toml`), the per-env path at `<env>/config/<tool>/` is a **relative folder symlink** into this directory.
-
-The live `~/.config/...` paths in the omarchy env are also symlinks into the per-env repo path, which in turn symlinks into `shared/`. The repo is the source of truth; the live copy is never edited.
-
-## Canonical source rule
-
-For any file in `shared/`, the **omarchy content is the source of truth** (refined rev 2, 2026-06-10). If the fedora working copy of a shared file ever diverges from omarchy, the shared file is authored from the omarchy version; fedora-specific content is either folded in (and recorded in the PR description) or kept as a documented per-env override.
+Canonical config shared across environments. `shared/` content is
+authored from Omarchy and re-used by `fedora/` (or any future env
+added at repo root). Per-env paths under `<env>/config/<tool>/` are
+**relative folder symlinks** into `shared/`, so the whole tool tree
+is exposed with one symlink per env.
 
 ## Symlink model
 
-For tools fully shared across envs (`zellij/`, `nvim/`, `starship.toml`) the symlink is at the **tool
-folder** level, so one symlink per env exposes the whole tool tree:
-
 ```
-~/.config/<x>/<f>  →  <env-repo>/config/<x>/      →  ../../shared/<x>/
+~/.config/<x>/<f>  →  <env>/config/<x>/  →  ../../shared/<x>/
 ```
 
-Symlinks are **relative**, so the repo can be cloned or moved without breaking the chain. Tracked in git, never absolute.
+Symlinks are relative, tracked in git, and never absolute. The repo
+is the source of truth; live files are never edited.
 
 ## Tracking policy
 
-The repo's standing tracking policy applies inside `shared/`: **only files that diverge from environment defaults are tracked**. A file in `shared/` MUST diverge from the upstream default of its tool; default-identical files are not added.
+Only files that diverge from upstream defaults are tracked. A file in
+`shared/` MUST differ from its tool's default; default-identical
+files are not added.
+
+## Mapping
+
+| Env path                     | Shared path            | Notes                                   |
+| ---------------------------- | ---------------------- | --------------------------------------- |
+| `<env>/config/zellij/`       | `shared/zellij/`       | config, themes, layouts, `.wasm` plugins |
+| `<env>/config/nvim/`         | `shared/nvim/`         | LazyVim config, lockfile, runtime files |
+| `<env>/config/starship.toml` | `shared/starship.toml` | bit-identical                            |
+
+The symlink is at the **tool folder** level, not file level, so
+adding a new tool to `shared/` does not require per-env changes.
+
+## Adding a new environment
+
+1. Create `<new-env>/config/`.
+2. Symlink shared tools:
+   `ln -s ../../shared/<tool> <new-env>/config/<tool>` (e.g. `nvim`,
+   `zellij`, `starship.toml`).
+3. Add env-specific tools under `<new-env>/config/` directly.
+
+## SSH template exception
+
+`shared/home/.ssh/config` is the one tracked file under `shared/home/`.
+It is a **safe placeholder template** (no secrets, no real hostnames)
+that setup copies to `~/.ssh/config` only when the target is missing.
+The local file always wins — it is never overwritten and never
+symlinked. See [`docs/ssh.md`](ssh.md).
 
 ## Forbidden content
 
-The following content MUST NOT be placed in `shared/`:
+Do not place any of the following in `shared/`:
 
-- **Omarchy source** — any file under `~/.local/share/omarchy/` is system-managed and overwritten by `omarchy update`.
-- **Per-host secrets** — SSH private keys, `~/.ssh/known_hosts`, machine-specific tokens, per-host `~/.gitconfig` with a hardcoded user email.
-- **Per-terminal / per-shell configs that legitimately differ** — `.zshrc` vs `.bashrc`, Alacritty vs WezTerm configs, shell completion scripts, env-specific keybindings.
-- **Hyprland, Mako, Waybar, Walker** — these are omarchy-only and never shared.
-- **Custom Omarchy theme assets** — `config/omarchy/themes/tokyo-night-autana/*` is omarchy-specific.
+- Omarchy source — `~/.local/share/omarchy/` is overwritten by
+  `omarchy update`.
+- Per-host secrets — SSH private keys, `known_hosts`, machine tokens,
+  per-host git user/email.
+- Per-shell or per-terminal config that legitimately differs
+  (`.zshrc` vs `.bashrc`, Alacritty vs WezTerm, shell completion).
+- Omarchy-only tools — Hyprland, Mako, Waybar, Walker, custom
+  Omarchy theme assets.
 
-## Mapping table (overview)
+## See also
 
-`<env>` is one of `omarchy`, `fedora` (or any future env added at repo root). `nvim/` and `zellij/` are
-**folder symlinks** so the mapping collapses to one row per tool:
-
-| Env path                       | Shared path          | Mechanism | Notes                                                  |
-| ------------------------------ | -------------------- | --------- | ------------------------------------------------------ |
-| `<env>/config/zellij/`         | `shared/zellij/`     | symlink   | canonical config, themes, layouts, and `.wasm` plugins |
-| `<env>/config/nvim/`           | `shared/nvim/`       | symlink   | LazyVim config, lockfile, LICENSE, and runtime files   |
-| `<env>/config/starship.toml`   | `shared/starship.toml` | symlink | bit-identical                                          |
-
-Adding a new env (e.g. `cachyos/`) only requires:
-
-1. Creating `cachyos/config/`.
-1. Symlinking the shared tools: `ln -s ../../shared/nvim cachyos/config/nvim` (same for `zellij`,
-   `starship.toml`).
-1. Adding any env-specific tools to `cachyos/config/` directly.
-
-No row-per-file updates to this table are needed because the symlink is at the **tool folder**
-level, not at the file level.
-
-## Home directory exception
-
-The mapping table above covers `config/<tool>/` folder symlinks. `shared/home/.ssh/config` is the one exception: a safe tracked SSH template, read directly by env setup and copied to `~/.ssh/config` only when the target is missing. The local file always wins — it is never overwritten and never symlinked. See [docs/ssh.md](ssh.md).
-
-For daily Zellij usage and keybindings, see [`docs/zellij.md`](zellij.md).
+- [`docs/ssh.md`](ssh.md) — SSH template and per-host rules.
+- [`docs/zellij.md`](zellij.md) — daily Zellij usage and keybindings.
+- [`AGENTS.md`](../AGENTS.md) — repo conventions.

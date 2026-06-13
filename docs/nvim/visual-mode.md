@@ -1,6 +1,6 @@
 # Visual Mode
 
-Visual mode lets you select text first, then apply an operation to the selection.
+Select-then-act mode.
 
 ## Selection Types
 
@@ -62,5 +62,4 @@ Prefix any of these with `v` to enter visual mode with the selection active.
 ## Multi-Cursor from Visual
 
 From any visual selection, `Ctrl+n` adds a cursor on the next match. See
-[normal-mode.md#multi-cursor-vim-visual-multi](normal-mode.md#multi-cursor-vim-visual-multi)
-for the full keymap.
+[Normal Mode → Multi-Cursor](normal-mode.md#multi-cursor-vim-visual-multi) for the full keymap.

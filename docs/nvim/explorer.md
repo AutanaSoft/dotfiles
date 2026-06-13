@@ -1,6 +1,6 @@
 # Explorer
 
-Press `Space e` to open the file explorer (provided by `snacks.nvim`). Press it again or `q` to close.
+`snacks.nvim` file tree. Press `Space e` to open, again or `q` to close.
 
 ## Navigation
 

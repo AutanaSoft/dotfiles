@@ -1,10 +1,9 @@
 # Neovim Keybindings
 
-The keybindings you actually use day-to-day. Dense, opinionated shortcut to LazyVim
-defaults. For the complete per-mode reference, see the subdocs in
-[`docs/nvim/`](nvim/).
+Most-used keys for daily editing. Compact, opinionated shortcut to LazyVim defaults. For the
+full per-mode reference, see the subdocs in [`docs/nvim/`](nvim/).
 
-## Quick Path
+## Quick path
 
 1. Press `Esc` to return to normal mode.
 1. Move with `h j k l`, `w` `b`, `0` `$`; operators (`d` / `c` / `y`) compose with motions.
@@ -106,16 +105,14 @@ Operators (`d` / `c` / `y`) and visual (`v` + object) use the same objects. `i` 
 - `Alt+j` / `Alt+k` requires the terminal to send `Alt` to Neovim. Alacritty, Foot, and
   WezTerm do this by default. If it doesn't work, remap to `<C-A-j>` / `<C-A-k>` in
   `shared/nvim/lua/config/keymaps.lua`.
-- Operators compose: `d2w` deletes two words, `c3j` changes three lines down, `yap`
-  yanks a paragraph.
+- Operators compose: `d2w` deletes two words, `c3j` changes three lines down, `yap` yanks a
+  paragraph.
 - `vip` selects a paragraph; `dap` deletes it. Fastest way to refactor blocks.
-- Treesitter text objects (`if` / `ic` / `it`) require a language parser installed for
-  the buffer filetype. LazyVim installs them by default for common languages.
+- Treesitter text objects (`if` / `ic` / `it`) require a language parser installed for the
+  buffer filetype. LazyVim installs them by default for common languages.
 
-## Related Files
+## Per-mode reference
 
-- [docs/nvim.md](nvim.md) — entry point and minimal quick-reference
-- [docs/nvim/normal-mode.md](nvim/normal-mode.md) — full normal-mode reference
-- [docs/nvim/insert-mode.md](nvim/insert-mode.md) — full insert-mode reference
-- [docs/nvim/visual-mode.md](nvim/visual-mode.md) — full visual-mode reference
-- [shared/nvim/lua/config/keymaps.lua](../shared/nvim/lua/config/keymaps.lua) — custom keymap overrides
+- [Normal Mode](nvim/normal-mode.md)
+- [Insert Mode](nvim/insert-mode.md)
+- [Visual Mode](nvim/visual-mode.md)

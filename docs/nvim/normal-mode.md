@@ -1,6 +1,6 @@
 # Normal Mode
 
-Normal mode is where you spend most of your time. Use `Esc` from any other mode to return here.
+Default mode. Press `Esc` from any other mode to return here.
 
 ## Movement
 
@@ -120,9 +120,6 @@ Normal mode is where you spend most of your time. Use `Esc` from any other mode 
 | Next / previous warning | `]w` / `[w` |
 
 ## Multi-Cursor (vim-visual-multi)
-
-Add cursors on matching words to edit them at once. This is the closest thing to
-`Ctrl+Shift+L` in VSCode.
 
 | Action | Shortcut |
 | --- | --- |
