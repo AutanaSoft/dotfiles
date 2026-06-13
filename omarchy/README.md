@@ -14,6 +14,24 @@ The target machine must have Omarchy installed and running
 on `PATH`). The steps below create the env-side symlinks that
 connect the live `~/.config/...` tree to this repo.
 
+### Automated setup
+
+From the repo root:
+
+```bash
+./setup-omarchy
+```
+
+The script verifies that `omarchy`, `yay`, and `hyprctl` are on
+`PATH`; installs `zellij` via `yay -S --needed` if missing; creates
+the symlinks listed in the [table below](#symlink-table); moves any
+existing file at a target to `backup/<timestamp>/<home-relative-path>`
+before replacing it; then applies the `tokyo-night-autana` theme and
+reloads Hyprland. Use `./setup-omarchy --dry-run` to preview the
+actions without modifying the system, and `./setup-omarchy --help`
+for a flag summary. The script does not install Omarchy itself and
+will not touch `omarchy/local/bin/monitor` (a personal/manual script).
+
 ### Quick Path
 
 1. (Recommended) Snapshot the current `~/.config/` before touching
@@ -36,23 +54,23 @@ this env. Shared tools such as `nvim/` and `zellij/` are folder
 symlinks into `shared/`; at install time, create only the live
 `~/.config/...` symlink shown below.
 
-| Repo path | Symlink on your system |
-| --- | --- |
-| `omarchy/config/hypr/hyprland.conf` | `~/.config/hypr/hyprland.conf` |
-| `omarchy/config/hypr/hypridle.conf` | `~/.config/hypr/hypridle.conf` |
-| `omarchy/config/hypr/p-bindings.conf` | `~/.config/hypr/p-bindings.conf` |
-| `omarchy/config/hypr/p-index.conf` | `~/.config/hypr/p-index.conf` |
-| `omarchy/config/hypr/p-looknfeel.conf` | `~/.config/hypr/p-looknfeel.conf` |
-| `omarchy/config/hypr/p-monitors.conf` | `~/.config/hypr/p-monitors.conf` |
-| `omarchy/config/hypr/p-rules.conf` | `~/.config/hypr/p-rules.conf` |
-| `omarchy/config/waybar/config.jsonc` | `~/.config/waybar/config.jsonc` |
-| `omarchy/config/alacritty/alacritty.toml` | `~/.config/alacritty/alacritty.toml` |
-| `omarchy/config/nvim/` | `~/.config/nvim` |
-| `omarchy/config/zellij/` | `~/.config/zellij` |
-| `omarchy/config/omarchy/themes/tokyo-night-autana/` | `~/.config/omarchy/themes/tokyo-night-autana` |
-| `omarchy/config/starship.toml` | `~/.config/starship.toml` |
-| `omarchy/home/.bashrc` | `~/.bashrc` |
-| `omarchy/local/bin/monitor` | `~/.local/bin/monitor` |
+| Repo path | Symlink on your system | Applied by `setup-omarchy` |
+| --- | --- | --- |
+| `omarchy/config/hypr/hyprland.conf` | `~/.config/hypr/hyprland.conf` | Yes |
+| `omarchy/config/hypr/hypridle.conf` | `~/.config/hypr/hypridle.conf` | Yes |
+| `omarchy/config/hypr/p-bindings.conf` | `~/.config/hypr/p-bindings.conf` | Yes |
+| `omarchy/config/hypr/p-index.conf` | `~/.config/hypr/p-index.conf` | Yes |
+| `omarchy/config/hypr/p-looknfeel.conf` | `~/.config/hypr/p-looknfeel.conf` | Yes |
+| `omarchy/config/hypr/p-monitors.conf` | `~/.config/hypr/p-monitors.conf` | Yes |
+| `omarchy/config/hypr/p-rules.conf` | `~/.config/hypr/p-rules.conf` | Yes |
+| `omarchy/config/waybar/config.jsonc` | `~/.config/waybar/config.jsonc` | Yes |
+| `omarchy/config/alacritty/alacritty.toml` | `~/.config/alacritty/alacritty.toml` | Yes |
+| `omarchy/config/nvim/` | `~/.config/nvim` | Yes |
+| `omarchy/config/zellij/` | `~/.config/zellij` | Yes |
+| `omarchy/config/omarchy/themes/tokyo-night-autana/` | `~/.config/omarchy/themes/tokyo-night-autana` | Yes |
+| `omarchy/config/starship.toml` | `~/.config/starship.toml` | Yes |
+| `omarchy/home/.bashrc` | `~/.bashrc` | Yes |
+| `omarchy/local/bin/monitor` | `~/.local/bin/monitor` | No — manual only |
 
 `~/.config/mako/` is intentionally left at the Omarchy default
 (Omarchy ships mako config in `~/.local/share/omarchy/default/mako/`)
