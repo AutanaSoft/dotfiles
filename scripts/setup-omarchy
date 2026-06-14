@@ -232,7 +232,11 @@ ensure_symlink() {
     log "Creating symlink: $target -> $source"
     if [[ "$DRY_RUN" -eq 0 ]]; then
         mkdir -p "$(dirname -- "$target")"
-        ln -s "$source" "$target"
+        # -f forces overwrite (handles external watchers like
+        # omarchy-hyprland-monitor-watch recreating the file as a stub
+        # between backup and symlink). -n prevents following a symlink
+        # to a directory target.
+        ln -sfn "$source" "$target"
     fi
 }
 
