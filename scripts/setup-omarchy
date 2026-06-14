@@ -12,10 +12,12 @@
 #
 # Pre-requisites (not installed by this script):
 #   - `omarchy` command on PATH
-#   - `yay` AUR helper
 #   - `hyprctl` available (a running Hyprland session)
-#
-# Initial AUR dependency installed on first run: `zellij`.
+#   - System packages this config relies on (zellij, hunspell, lsof,
+#     language data, ...). These are installed by `scripts/setup-deps`,
+#     which the root `./setup --omarchy` orchestrator runs automatically
+#     before invoking this script. When this script is run directly,
+#     install the packages yourself first (or run `scripts/setup-deps`).
 #
 # Existing files at symlink targets are moved to
 #   <repo>/backup/<timestamp>/<home-relative-path>
@@ -65,16 +67,16 @@ entrypoint: \`./setup --omarchy [--fonts] [--dry-run]\`.
 
 Options:
   --dry-run    Print actions without modifying the system. Skips
-               'yay', symlink moves, SSH config copy, 'omarchy theme',
+               symlink moves, SSH config copy, 'omarchy theme',
                'hyprctl', and font downloads.
   --help, -h   Show this help and exit.
 
 Pre-requisites (not installed by this script):
   - 'omarchy' command on PATH
-  - 'yay' AUR helper
   - 'hyprctl' available (a running Hyprland session)
-
-Initial dependency installed on first run: zellij.
+  - System packages (zellij, hunspell, lsof, language data, ...). Run
+    'scripts/setup-deps --omarchy' before this script, or just use
+    the root './setup --omarchy' which handles deps automatically.
 
 Existing targets are moved to:
   $REPO_ROOT/backup/<timestamp>/<home-relative-path>
@@ -126,24 +128,6 @@ require_command() {
     local cmd="$1"
     if ! command -v "$cmd" >/dev/null 2>&1; then
         fail "Required command '$cmd' is not on PATH. Install it before running this script."
-    fi
-}
-
-# ---------------------------------------------------------------------------
-# Dependency installation
-# ---------------------------------------------------------------------------
-install_dependency() {
-    local pkg="$1"
-    require_command yay
-    if command -v "$pkg" >/dev/null 2>&1; then
-        log "Dependency '$pkg' is already available."
-        return 0
-    fi
-    log "Installing missing dependency '$pkg' via 'yay -S --needed'..."
-    if [[ "$DRY_RUN" -eq 1 ]]; then
-        log "[dry-run] would run: yay -S --needed $pkg"
-    else
-        yay -S --needed "$pkg"
     fi
 }
 
@@ -358,7 +342,7 @@ validate_system() {
         log "[dry-run] would run: omarchy theme set tokyo-night-autana"
         log "[dry-run] would run: hyprctl reload"
         log "[dry-run] would run: hyprctl configerrors"
-        log "[dry-run] would run: zellij --version"
+        log "[dry-run] would check: zellij --version (skipped if zellij is not on PATH)"
         return 0
     fi
 
@@ -371,8 +355,15 @@ validate_system() {
     log "Validating Hyprland config (any errors below are fatal)"
     hyprctl configerrors
 
-    log "Verifying zellij install"
-    zellij --version
+    # zellij is installed by `scripts/setup-deps`. When this script is
+    # run directly (without the orchestrator), zellij might be missing;
+    # degrade to a soft warning instead of failing the whole run.
+    if command -v zellij >/dev/null 2>&1; then
+        log "Verifying zellij install"
+        zellij --version
+    else
+        warn "zellij not on PATH; skipping version check. Run 'scripts/setup-deps --omarchy' to install it."
+    fi
 }
 
 # ---------------------------------------------------------------------------
@@ -390,10 +381,7 @@ main() {
     fi
 
     require_command omarchy
-    require_command yay
     require_command hyprctl
-
-    install_dependency zellij
 
     apply_symlinks "$stamp"
 

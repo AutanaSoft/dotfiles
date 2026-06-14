@@ -4,19 +4,28 @@
 # This is the single entrypoint for new-machine setup. It dispatches to
 # the executor scripts in `scripts/` in the correct order:
 #
-#   1. (optional) scripts/setup-fonts   — Nerd Fonts
-#   2. (optional) scripts/setup-<env>   — environment-specific symlinks
+#   1. scripts/setup-deps               — install OS packages (auto, when an env is set)
+#   2. (optional) scripts/setup-fonts   — Nerd Fonts
+#   3. scripts/setup-<env>              — environment-specific symlinks
+#
+# The dependency step runs automatically whenever an environment is
+# selected (no separate --deps flag). When `--fonts` is used alone
+# without an env, the dependency step is skipped — only fonts are
+# installed.
 #
 # The Omarchy executor exists today; the Fedora executor is not implemented
-# yet. Use `--fedora --fonts` to install fonts on the Fedora host (the env
-# configuration step is skipped with a clear message).
+# yet. `./setup --fedora` (with or without --fonts) installs Fedora
+# packages via `scripts/setup-deps` and then warns + skips the env step
+# (exit 0). This avoids a "mutate then fail" pattern. Manual Fedora setup
+# is documented in fedora/README.md.
 #
 # Examples:
-#   ./setup --fonts                    # install fonts only
-#   ./setup --omarchy                  # apply Omarchy env only
-#   ./setup --omarchy --fonts          # install fonts, then apply env
-#   ./setup --fedora --fonts           # install fonts on Fedora (env not yet wired)
-#   ./setup --dry-run --omarchy --fonts  # preview every action
+#   ./setup --fonts                       # install fonts only (no deps)
+#   ./setup --omarchy                     # install deps, then apply Omarchy env
+#   ./setup --omarchy --fonts             # deps, fonts, then Omarchy env
+#   ./setup --fedora                      # install Fedora deps, then warn + skip env
+#   ./setup --fedora --fonts              # deps, fonts, then warn + skip env
+#   ./setup --dry-run --omarchy --fonts   # preview every action
 
 set -euo pipefail
 
@@ -45,20 +54,30 @@ Usage: $0 [--omarchy|--fedora] [--fonts] [--dry-run] [--help]
 
 Apply this dotfiles repo to a target environment.
 
+When an environment flag is given, the dependency step runs
+automatically and installs the required OS packages via the env's
+native package manager.
+There is no separate --deps flag.
+
 Environment (optional when only installing fonts):
-  --omarchy       Apply the Omarchy env configuration.
-  --fedora        Apply the Fedora env configuration. Note: the
-                  Fedora executor is not implemented yet. Use
-                  --fedora --fonts to install fonts on the Fedora
-                  host while it is a no-op for the env step.
+  --omarchy       Apply the Omarchy env configuration. System
+                  packages are installed via 'yay -S --needed'.
+  --fedora        Apply the Fedora env configuration. System
+                  packages are installed via 'sudo dnf install -y'.
+                  Note: the Fedora env executor is not implemented
+                  yet; the env step is skipped with a clear message.
 
 Options:
   --fonts, --font Install Nerd Fonts (Monaspace, FiraCode, FiraMono) into
-                  \$HOME/.local/share/fonts/autanasoft/. Runs BEFORE the
-                  env configuration step.
+                  \$HOME/.local/share/fonts/autanasoft/. Runs AFTER the
+                  dependency step and BEFORE the env configuration step.
   --dry-run       Print the actions that would run; do not modify the
-                  system, download files, or run yay / omarchy / hyprctl.
+                  system, download files, or run yay / dnf / omarchy /
+                  hyprctl.
   --help, -h      Show this help and exit.
+
+Execution order: deps -> fonts -> env (when an env is selected).
+With only --fonts, the order is just fonts (deps is skipped).
 
 Environment variables exported to executor scripts:
   DOTFILES_ROOT       Absolute path to the repo root.
@@ -70,8 +89,9 @@ Examples:
   $0 --fonts
   $0 --omarchy
   $0 --omarchy --fonts
-  $0 --dry-run --omarchy --fonts
+  $0 --fedora
   $0 --fedora --fonts
+  $0 --dry-run --omarchy --fonts
 EOF
 }
 
@@ -182,7 +202,28 @@ export DOTFILES_BACKUP_DIR
 # ---------------------------------------------------------------------------
 # Dispatch helpers
 # ---------------------------------------------------------------------------
+run_deps() {
+    local env="$1"
+    local step="$2"
+    local script="$SCRIPTS_DIR/setup-deps"
+    if [[ ! -e "$script" ]]; then
+        fail "Deps script not found: $script"
+    fi
+    if [[ ! -x "$script" ]]; then
+        fail "Deps script is not executable: $script (run: chmod +x $script)"
+    fi
+
+    if [[ "$PARSED_DRY_RUN" -eq 1 ]]; then
+        log "Step $step/$TOTAL_STEPS: install dependencies for $env (dry-run)"
+        "$script" --dry-run
+    else
+        log "Step $step/$TOTAL_STEPS: install dependencies for $env"
+        "$script"
+    fi
+}
+
 run_fonts() {
+    local step="$1"
     local script="$SCRIPTS_DIR/setup-fonts"
     if [[ ! -e "$script" ]]; then
         fail "Fonts script not found: $script"
@@ -192,16 +233,17 @@ run_fonts() {
     fi
 
     if [[ "$PARSED_DRY_RUN" -eq 1 ]]; then
-        log "Step 1/2: install fonts (dry-run)"
+        log "Step $step/$TOTAL_STEPS: install fonts (dry-run)"
         "$script" --dry-run
     else
-        log "Step 1/2: install fonts"
+        log "Step $step/$TOTAL_STEPS: install fonts"
         "$script"
     fi
 }
 
 run_env() {
     local env="$1"
+    local step="$2"
     case "$env" in
         omarchy)
             local script="$SCRIPTS_DIR/setup-omarchy"
@@ -212,35 +254,41 @@ run_env() {
                 fail "Omarchy script is not executable: $script (run: chmod +x $script)"
             fi
             if [[ "$PARSED_DRY_RUN" -eq 1 ]]; then
-                log "Step 2/2: apply Omarchy env (dry-run)"
+                log "Step $step/$TOTAL_STEPS: apply Omarchy env (dry-run)"
                 "$script" --dry-run
             else
-                log "Step 2/2: apply Omarchy env"
+                log "Step $step/$TOTAL_STEPS: apply Omarchy env"
                 "$script"
             fi
             ;;
         fedora)
             local script="$SCRIPTS_DIR/setup-fedora"
             if [[ ! -e "$script" ]]; then
-                if [[ "$REQUEST_FONTS" -eq 1 ]]; then
-                    if [[ "$PARSED_DRY_RUN" -eq 1 ]]; then
-                        warn "Fedora setup is not implemented yet. Fonts were previewed; skipping env configuration."
-                    else
-                        warn "Fedora setup is not implemented yet. Fonts were installed; skipping env configuration."
-                    fi
-                    return 0
+                # Fedora env executor is not implemented yet. The deps
+                # step (and fonts, when --fonts was passed) already ran
+                # before we got here, so skip the env step with a clear
+                # warning and exit 0 instead of failing after mutating
+                # the system. Manual setup is documented in
+                # fedora/README.md.
+                local what_done
+                if [[ "$PARSED_DRY_RUN" -eq 1 ]]; then
+                    what_done="previewed"
+                else
+                    what_done="installed"
                 fi
-                fail "Fedora setup is not implemented yet. (No scripts/setup-fedora present.)"
+                warn "Fedora env executor is not implemented yet (no scripts/setup-fedora present). Dnf packages were $what_done; skipping env configuration. See fedora/README.md for manual setup."
+                log "Step $step/$TOTAL_STEPS: skip Fedora env (not implemented)"
+                return 0
             fi
             # If the script exists in the future, this branch runs it.
             if [[ ! -x "$script" ]]; then
                 fail "Fedora script is not executable: $script (run: chmod +x $script)"
             fi
             if [[ "$PARSED_DRY_RUN" -eq 1 ]]; then
-                log "Step 2/2: apply Fedora env (dry-run)"
+                log "Step $step/$TOTAL_STEPS: apply Fedora env (dry-run)"
                 "$script" --dry-run
             else
-                log "Step 2/2: apply Fedora env"
+                log "Step $step/$TOTAL_STEPS: apply Fedora env"
                 "$script"
             fi
             ;;
@@ -253,6 +301,22 @@ run_env() {
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+# Compute the total step count up front so the "Step X/Y" labels stay
+# accurate regardless of which combination of flags was passed:
+#   - env only      -> 2 steps (deps, env)
+#   - fonts only    -> 1 step  (fonts)
+#   - env + fonts   -> 3 steps (deps, fonts, env)
+TOTAL_STEPS=0
+if [[ -n "$DOTFILES_ENV" ]]; then
+    TOTAL_STEPS=$((TOTAL_STEPS + 1))   # deps
+fi
+if [[ "$REQUEST_FONTS" -eq 1 ]]; then
+    TOTAL_STEPS=$((TOTAL_STEPS + 1))   # fonts
+fi
+if [[ -n "$DOTFILES_ENV" ]]; then
+    TOTAL_STEPS=$((TOTAL_STEPS + 1))   # env
+fi
+
 log "Repo root:  $DOTFILES_ROOT"
 if [[ -n "$DOTFILES_ENV" ]]; then
     log "Env:        $DOTFILES_ENV"
@@ -263,18 +327,33 @@ if [[ "$PARSED_DRY_RUN" -eq 1 ]]; then
     log "Mode:       DRY-RUN (no system changes)"
 fi
 if [[ "$REQUEST_FONTS" -eq 1 ]]; then
-    log "Fonts:      yes (before env)"
+    log "Fonts:      yes (after deps, before env)"
 else
     log "Fonts:      no"
 fi
+log "Steps:      $TOTAL_STEPS (deps -> fonts -> env)"
 log "Backup dir: $DOTFILES_BACKUP_DIR"
 
-if [[ "$REQUEST_FONTS" -eq 1 ]]; then
-    run_fonts
+current_step=0
+
+# 1) Deps (only when an env is selected). Runs first so fonts and the
+# env executor can rely on every required package being present.
+if [[ -n "$DOTFILES_ENV" ]]; then
+    current_step=$((current_step + 1))
+    run_deps "$DOTFILES_ENV" "$current_step"
 fi
 
+# 2) Fonts (only when --fonts was passed). Skipped entirely when no env
+# is selected, so `./setup --fonts` stays a fonts-only command.
+if [[ "$REQUEST_FONTS" -eq 1 ]]; then
+    current_step=$((current_step + 1))
+    run_fonts "$current_step"
+fi
+
+# 3) Env executor (only when an env is selected).
 if [[ -n "$DOTFILES_ENV" ]]; then
-    run_env "$DOTFILES_ENV"
+    current_step=$((current_step + 1))
+    run_env "$DOTFILES_ENV" "$current_step"
 fi
 
 log "Setup complete."
