@@ -88,11 +88,18 @@ When the root \`./setup\` orchestrator calls this script, it passes the
 selected environment through \`DOTFILES_ENV\` and the dry-run mode
 through \`DOTFILES_DRY_RUN=1\`. Either works as input.
 
-Environments:
-  --omarchy       Install packages for the Omarchy (Arch + Hyprland) env
-                  via 'yay -S --needed'.
-  --fedora        Install packages for the Fedora env via
-                  'sudo dnf install -y'.
+Environment selection (in order of precedence):
+  1. Explicit flag: --omarchy or --fedora on the command line
+     (overrides auto-detection; useful for chroots, toolboxes, and
+     deterministic test fixtures).
+  2. DOTFILES_ENV: 'omarchy' or 'fedora' (set by the root orchestrator).
+  3. Auto-detection: probe the host PATH in this fixed order:
+       yay    → omarchy   (AUR helper is the documented Omarchy entry)
+       pacman → omarchy   (with WARN: install yay for AUR access)
+       dnf    → fedora    (canonical Fedora package manager)
+       rpm    → fedora    (with WARN: install dnf)
+     If none of these is on PATH, this script exits non-zero with
+     "Could not detect a supported package manager".
 
 Options:
   --dry-run    Print what would be installed without running the
@@ -149,15 +156,6 @@ if [[ -n "${DOTFILES_DRY_RUN:-}" && "$DOTFILES_DRY_RUN" == "1" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Validation
-# ---------------------------------------------------------------------------
-if [[ -z "$DOTFILES_ENV_LOCAL" ]]; then
-    echo "ERROR: choose an environment: --omarchy or --fedora (or set DOTFILES_ENV)." >&2
-    usage >&2
-    exit 2
-fi
-
-# ---------------------------------------------------------------------------
 # Logging helpers
 # ---------------------------------------------------------------------------
 log() {
@@ -172,6 +170,54 @@ fail() {
     echo "[setup-deps] ERROR: $*" >&2
     exit 1
 }
+
+# ---------------------------------------------------------------------------
+# Environment detection
+# ---------------------------------------------------------------------------
+# Probe package managers in the documented order. Echoes the detected
+# env ("omarchy" or "fedora") on stdout. Returns 0 on success, 1 when
+# no supported package manager is on PATH. Detection is purely a probe:
+# the script never calls `command -v` on a tool it then needs to install.
+detect_env() {
+    if command -v yay >/dev/null 2>&1; then
+        printf 'omarchy\n'
+        return 0
+    fi
+    if command -v pacman >/dev/null 2>&1; then
+        warn "yay is not on PATH; install it for AUR access. Detecting as omarchy via pacman."
+        printf 'omarchy\n'
+        return 0
+    fi
+    if command -v dnf >/dev/null 2>&1; then
+        printf 'fedora\n'
+        return 0
+    fi
+    if command -v rpm >/dev/null 2>&1; then
+        warn "dnf is not on PATH; install it. Detecting as fedora via rpm."
+        printf 'fedora\n'
+        return 0
+    fi
+    return 1
+}
+
+# ---------------------------------------------------------------------------
+# Validation
+# ---------------------------------------------------------------------------
+# When neither an explicit flag nor DOTFILES_ENV is set, auto-detect
+# the host by probing package managers. When detection fails, exit
+# with a clear, actionable message.
+if [[ -z "$DOTFILES_ENV_LOCAL" ]]; then
+    if detected_env="$(detect_env)"; then
+        DOTFILES_ENV_LOCAL="$detected_env"
+        log "Detected env: $DOTFILES_ENV_LOCAL (no --omarchy/--fedora passed)"
+    else
+        cat >&2 <<EOF
+ERROR: Could not detect a supported package manager (yay, pacman, dnf, rpm). Install one and re-run.
+EOF
+        usage >&2
+        exit 2
+    fi
+fi
 
 # ---------------------------------------------------------------------------
 # Package manager helpers

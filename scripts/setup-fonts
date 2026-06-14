@@ -37,7 +37,16 @@ fi
 # Defaults
 # ---------------------------------------------------------------------------
 DRY_RUN=0
-FONT_BASE="${HOME}/.local/share/fonts/autanasoft"
+# FONT_BASE is centralized in the root ./setup dispatcher: it exports
+# DOTFILES_FONTS_DIR="$HOME/.local/share/fonts/autanasoft" so the
+# literal appears once. When the env var is set (root-driven or
+# override), honor it. When unset (direct invocation without root),
+# fall back to the same default so this script is self-sufficient.
+if [[ -n "${DOTFILES_FONTS_DIR:-}" ]]; then
+    FONT_BASE="$DOTFILES_FONTS_DIR"
+else
+    FONT_BASE="${HOME}/.local/share/fonts/autanasoft"
+fi
 
 # Monaspace: pinned to the exact URL requested.
 MONASPACE_URL="https://github.com/githubnext/monaspace/releases/download/v1.400/monaspace-nerdfonts-v1.400.zip"
