@@ -10,12 +10,16 @@
 # CachyOS minimal + Omarchy layer. This script does NOT install Omarchy; it
 # only connects an existing install to the dotfiles in this repository.
 #
+# Env-script ownership (the new contract):
+#   This script owns the full Omarchy env flow: install OS dependencies
+#   (via scripts/setup-deps), install Nerd Fonts (via scripts/setup-fonts),
+#   pre-flight the fonts directory, apply the symlink map, and validate
+#   the system. The root `./setup` is a thin dispatcher; it does not
+#   coordinate this flow.
+#
 # Pre-requisites (not installed by this script):
 #   - `omarchy` command on PATH
-#   - `yay` AUR helper
 #   - `hyprctl` available (a running Hyprland session)
-#
-# Initial AUR dependency installed on first run: `zellij`.
 #
 # Existing files at symlink targets are moved to
 #   <repo>/backup/<timestamp>/<home-relative-path>
@@ -27,9 +31,11 @@
 # always wins. The repo template must contain no secrets or real
 # production values — see docs/ssh.md.
 #
-# Font installation is NOT handled here. Use the root `./setup --omarchy --fonts`
-# (or run `scripts/setup-fonts` directly) to install the Nerd Fonts used by
-# this repo (Monaspace, FiraCode, FiraMono).
+# Fonts are installed by the env flow itself (Step 2/4). When this
+# script is run directly without going through root, the fonts dir
+# location is read from $DOTFILES_FONTS_DIR (set by root to
+# $HOME/.local/share/fonts/autanasoft) or, when unset, defaults to
+# the same path.
 
 set -euo pipefail
 
@@ -65,23 +71,23 @@ entrypoint: \`./setup --omarchy [--fonts] [--dry-run]\`.
 
 Options:
   --dry-run    Print actions without modifying the system. Skips
-               'yay', symlink moves, SSH config copy, 'omarchy theme',
+               symlink moves, SSH config copy, 'omarchy theme',
                'hyprctl', and font downloads.
   --help, -h   Show this help and exit.
 
-Pre-requisites (not installed by this script):
+Pre-requisites:
   - 'omarchy' command on PATH
-  - 'yay' AUR helper
   - 'hyprctl' available (a running Hyprland session)
-
-Initial dependency installed on first run: zellij.
+  - System packages and Nerd Fonts are handled by this script through
+    scripts/setup-deps and scripts/setup-fonts.
 
 Existing targets are moved to:
   $REPO_ROOT/backup/<timestamp>/<home-relative-path>
 
-Fonts are NOT installed by this script. Use:
-  ./setup --omarchy --fonts          # install fonts, then apply env
-  scripts/setup-fonts --help         # for font install details
+Fonts are installed by this script as part of the Omarchy setup flow.
+For fonts-only setup, use:
+  ./setup --fonts
+  scripts/setup-fonts --help
 EOF
 }
 
@@ -130,21 +136,46 @@ require_command() {
 }
 
 # ---------------------------------------------------------------------------
-# Dependency installation
+# Subprocess invocation helpers (env-script owns the full flow)
 # ---------------------------------------------------------------------------
-install_dependency() {
-    local pkg="$1"
-    require_command yay
-    if command -v "$pkg" >/dev/null 2>&1; then
-        log "Dependency '$pkg' is already available."
-        return 0
+# Invoke scripts/setup-deps as a subprocess, passing the dry-run flag
+# through. In PR-2 setup-deps still requires an explicit env flag, so
+# we pass --omarchy (this script is the omarchy executor). In PR-3
+# setup-deps will gain auto-detection; the explicit flag will remain
+# valid as an override. Errors propagate (the env script's `set -e`
+# trips on a non-zero child exit).
+invoke_setup_deps() {
+    local script_dir
+    script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+    local deps_script="$script_dir/setup-deps"
+    if [[ ! -x "$deps_script" ]]; then
+        fail "Required helper script missing or not executable: $deps_script"
     fi
-    log "Installing missing dependency '$pkg' via 'yay -S --needed'..."
+    local -a args=(--omarchy)
     if [[ "$DRY_RUN" -eq 1 ]]; then
-        log "[dry-run] would run: yay -S --needed $pkg"
-    else
-        yay -S --needed "$pkg"
+        args+=(--dry-run)
     fi
+    log "Invoking $deps_script ${args[*]}"
+    "$deps_script" "${args[@]}"
+}
+
+# Invoke scripts/setup-fonts as a subprocess, passing the dry-run flag
+# through. The fonts script reads $DOTFILES_FONTS_DIR (set by root or
+# by direct callers) so the override path crosses the process boundary
+# automatically.
+invoke_setup_fonts() {
+    local script_dir
+    script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+    local fonts_script="$script_dir/setup-fonts"
+    if [[ ! -x "$fonts_script" ]]; then
+        fail "Required helper script missing or not executable: $fonts_script"
+    fi
+    local -a args=()
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        args+=(--dry-run)
+    fi
+    log "Invoking $fonts_script ${args[*]}"
+    "$fonts_script" "${args[@]}"
 }
 
 # ---------------------------------------------------------------------------
@@ -358,7 +389,7 @@ validate_system() {
         log "[dry-run] would run: omarchy theme set tokyo-night-autana"
         log "[dry-run] would run: hyprctl reload"
         log "[dry-run] would run: hyprctl configerrors"
-        log "[dry-run] would run: zellij --version"
+        log "[dry-run] would check: zellij --version (skipped if zellij is not on PATH)"
         return 0
     fi
 
@@ -371,8 +402,33 @@ validate_system() {
     log "Validating Hyprland config (any errors below are fatal)"
     hyprctl configerrors
 
-    log "Verifying zellij install"
-    zellij --version
+    # zellij is installed by `scripts/setup-deps`. When this script is
+    # run directly (without the orchestrator), zellij might be missing;
+    # degrade to a soft warning instead of failing the whole run.
+    if command -v zellij >/dev/null 2>&1; then
+        log "Verifying zellij install"
+        zellij --version
+    else
+        warn "zellij not on PATH; skipping version check. Run 'scripts/setup-deps --omarchy' to install it."
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# Step counter
+# ---------------------------------------------------------------------------
+# The env script owns its own step counter. The 4 main steps are:
+#   1. Install OS dependencies
+#   2. Install Nerd Fonts
+#   3. Apply symlinks
+#   4. Validate system
+# The pre-flight between steps 2 and 3 is non-mutating and is not
+# counted as a step on its own.
+TOTAL_STEPS=4
+current_step=0
+
+step() {
+    current_step=$((current_step + 1))
+    log "Step $current_step/$TOTAL_STEPS: $*"
 }
 
 # ---------------------------------------------------------------------------
@@ -390,13 +446,41 @@ main() {
     fi
 
     require_command omarchy
-    require_command yay
     require_command hyprctl
 
-    install_dependency zellij
+    # Step 1/4: install OS dependencies via the deps helper. In dry-run
+    # the helper previews every missing package's install command.
+    step "Install OS dependencies (via scripts/setup-deps)"
+    invoke_setup_deps
 
+    # Step 2/4: install Nerd Fonts via the fonts helper. Idempotent;
+    # safe to re-run. In dry-run the helper previews the downloads.
+    step "Install Nerd Fonts (via scripts/setup-fonts)"
+    invoke_setup_fonts
+
+    # Pre-flight: defense-in-depth for direct invocation without
+    # going through root. The font install is idempotent but a missing
+    # fonts dir at this point means Step 2/4 was bypassed (e.g. someone
+    # ran this script directly without setup-fonts). Non-mutating:
+    # we only check the directory, we never install fonts. In dry-run,
+    # warn and keep previewing so a clean machine can inspect the full
+    # setup flow before any downloads or symlinks happen.
+    local font_dir="${DOTFILES_FONTS_DIR:-$HOME/.local/share/fonts/autanasoft}"
+    log "Pre-flight fonts dir: $font_dir"
+    if [[ ! -d "$font_dir" ]] || [[ -z "$(ls -A -- "$font_dir" 2>/dev/null)" ]]; then
+        if [[ "$DRY_RUN" -eq 1 ]]; then
+            warn "Nerd Fonts not installed under $font_dir. Continuing because this is dry-run."
+        else
+        fail "Nerd Fonts not installed under $font_dir. Run './setup --omarchy --fonts' first."
+        fi
+    fi
+
+    # Step 3/4: apply the symlink map.
+    step "Apply symlinks"
     apply_symlinks "$stamp"
 
+    # Step 4/4: validate the system (theme, hyprctl reload, etc.).
+    step "Validate system"
     validate_system
 
     log "Setup complete."

@@ -1,37 +1,65 @@
 # Setup
 
-`./setup` is the root entrypoint for this repo. It runs safe, repeatable setup
-steps from the repo root.
+`./setup` prepares this dotfiles repo for a target environment. It is the
+recommended entrypoint for new-machine setup because it chooses the right helper
+script, passes the expected paths, and cleans up its temporary environment
+variables when it exits.
 
-## Commands
+## Quick Path
 
-| Command | Purpose |
-| --- | --- |
-| `./setup --fonts` | Install fonts only. |
-| `./setup --omarchy --fonts` | Apply Omarchy config and install fonts. |
-| `./setup --omarchy` | Apply Omarchy config only. |
-| `./setup --fedora --fonts` | Install fonts only; Fedora env setup is manual. |
-| `./setup --dry-run ...` | Preview actions without mutating the system. |
-| `./setup --help` | Show all options. |
+```bash
+./setup --omarchy  # configure Omarchy / CachyOS + Omarchy
+```
 
-## Scripts
+## Accepted Flags
 
-| Script | Role |
-| --- | --- |
-| `setup` | Root entrypoint and dispatcher. |
-| `scripts/setup-omarchy` | Applies Omarchy symlinks, SSH seed, theme, and reload. |
-| `scripts/setup-fonts` | Installs local Nerd Fonts. |
+| Flag        | Result                                                                     |
+| ----------- | -------------------------------------------------------------------------- |
+| `--omarchy` | Runs the Omarchy setup flow: dependencies, fonts, then environment config. |
+| `--fedora`  | Prints a not-implemented message and exits successfully.                   |
+| `--fonts`   | Installs Nerd Fonts only. Does not configure an environment.               |
+| `--deps`    | Installs OS dependencies only. The dependency script detects the system.   |
+| `--dry-run` | Shows the distro setup actions without mutating the system.                |
+| `--help`    | Prints usage help.                                                         |
 
-## Notes
+## Valid Combinations
 
-- Fedora setup has no env executor yet; use `fedora/README.md` for manual setup.
-- `--dry-run` must not download files, move backups, or modify live configs.
-- New env executors belong in `scripts/setup-<env>`.
+- Use one environment flag at a time: `--omarchy` or `--fedora`, not both.
+- `--fonts` and `--deps` can run alone.
+
+## Dependency Detection
+
+`./setup --deps` delegates to `scripts/setup-deps`, which detects the local
+system by checking package managers on `PATH`:
+
+| Found             | Environment        |
+| ----------------- | ------------------ |
+| `yay` or `pacman` | Arch-like system   |
+| `dnf` or `rpm`    | Fedora-like system |
+
+If detection is wrong for an unusual host, run the helper directly with an
+explicit override:
+
+```bash
+scripts/setup-deps --omarchy
+scripts/setup-deps --fedora
+```
+
+## Verification
+
+Run the repo-native setup tests:
+
+```bash
+bash tests/setup-deps.bash
+```
+
+The tests use temporary directories and command stubs, so they do not install
+packages or modify your real home configuration.
 
 ## Related Files
 
-- `setup`
-- `scripts/setup-omarchy`
-- `scripts/setup-fonts`
-- `omarchy/README.md`
-- `fedora/README.md`
+- `setup` — root entrypoint.
+- `scripts/setup-omarchy` — Omarchy setup flow.
+- `scripts/setup-deps` — OS package dependency installer.
+- `scripts/setup-fonts` — Nerd Fonts installer.
+- `tests/setup-deps.bash` — behavior tests.

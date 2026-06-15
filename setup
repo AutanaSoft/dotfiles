@@ -1,22 +1,53 @@
 #!/usr/bin/env bash
-# setup — root orchestrator for applying this repo to a target environment.
+# setup — root thin dispatcher for this dotfiles repo.
 #
-# This is the single entrypoint for new-machine setup. It dispatches to
-# the executor scripts in `scripts/` in the correct order:
+# This is the single entrypoint for new-machine setup. It is intentionally
+# minimal: parse flags, validate them, define and export the DOTFILES_*
+# path variables that child scripts need, register a trap to clean those
+# variables on every exit path, and dispatch to exactly ONE env or helper
+# script.
 #
-#   1. (optional) scripts/setup-fonts   — Nerd Fonts
-#   2. (optional) scripts/setup-<env>   — environment-specific symlinks
+# Boundary:
+#   - Env scripts (scripts/setup-omarchy, future scripts/setup-fedora) own
+#     their own full env flow. They call setup-deps and setup-fonts from
+#     inside their own main() and pre-flight their own pre-requisites.
+#   - scripts/setup-deps auto-detects the host environment by probing the
+#     available package managers (yay/pacman → omarchy, dnf/rpm → fedora).
+#     --omarchy and --fedora remain valid as explicit overrides.
+#   - Root MUST NOT run a multi-step deps → fonts → env pipeline. It MUST
+#     NOT define run_deps / run_fonts / run_env helpers. It MUST NOT
+#     maintain a TOTAL_STEPS counter.
 #
-# The Omarchy executor exists today; the Fedora executor is not implemented
-# yet. Use `--fedora --fonts` to install fonts on the Fedora host (the env
-# configuration step is skipped with a clear message).
+# Flags:
+#   --omarchy    — dispatch to scripts/setup-omarchy
+#   --fedora     — print "not implemented" and exit 0 (no sub-scripts)
+#   --fonts      — dispatch to scripts/setup-fonts (or absorbed by --omarchy)
+#   --deps       — dispatch to scripts/setup-deps   (or absorbed by --omarchy)
+#   --dry-run    — set DOTFILES_DRY_RUN=1; env scripts honor it
+#   --help / -h  — show usage and exit 0
+#
+# Precedence:
+#   - --fedora (any combination with --fonts / --deps / --dry-run) wins
+#     over every other flag except --omarchy, which is mutually exclusive
+#     and causes a non-zero exit.
+#   - --omarchy absorbs --fonts and --deps. The env script handles them.
+#   - With no env flag, --fonts and --deps are direct dispatches.
+#
+# On any exit path (success, child-script failure, parse error, --help,
+# interrupt) the EXIT trap unsets the five DOTFILES_* variables so they
+# never leak into the calling shell.
 #
 # Examples:
-#   ./setup --fonts                    # install fonts only
-#   ./setup --omarchy                  # apply Omarchy env only
-#   ./setup --omarchy --fonts          # install fonts, then apply env
-#   ./setup --fedora --fonts           # install fonts on Fedora (env not yet wired)
-#   ./setup --dry-run --omarchy --fonts  # preview every action
+#   ./setup --omarchy                     # dispatch to setup-omarchy
+#   ./setup --omarchy --fonts             # absorbed; env script handles fonts
+#   ./setup --omarchy --deps              # absorbed; env script handles deps
+#   ./setup --fedora                      # not implemented, exit 0
+#   ./setup --fedora --fonts              # skip wins; no sub-scripts invoked
+#   ./setup --fonts                       # dispatch to setup-fonts
+#   ./setup --deps                        # dispatch to setup-deps (auto-detect)
+#   ./setup --dry-run --omarchy           # dry-run the env flow
+#   ./setup --omarchy --fedora            # mutually exclusive, non-zero exit
+#   ./setup --unknown                     # unknown flag, non-zero exit
 
 set -euo pipefail
 
@@ -28,12 +59,23 @@ DOTFILES_ROOT="$SCRIPT_PATH"
 SCRIPTS_DIR="$DOTFILES_ROOT/scripts"
 
 # ---------------------------------------------------------------------------
-# Defaults
+# Per-run paths (computed once, exported, cleaned by trap).
+#   DOTFILES_BACKUP_DIR  : $DOTFILES_ROOT/backup/<utc-ts>/ (per-run)
+#   DOTFILES_FONTS_DIR   : centralized so the literal appears once.
+#                          Child scripts (setup-fonts and setup-omarchy)
+#                          read it; do not re-derive in those scripts.
+# ---------------------------------------------------------------------------
+DOTFILES_BACKUP_DIR="$DOTFILES_ROOT/backup/$(date -u +%Y%m%dT%H%M%SZ)"
+DOTFILES_FONTS_DIR="$HOME/.local/share/fonts/autanasoft"
+
+# ---------------------------------------------------------------------------
+# Parse state
 # ---------------------------------------------------------------------------
 DOTFILES_ENV=""
 PARSED_DRY_RUN=0
-REQUEST_FONTS=0
 REQUEST_HELP=0
+REQUEST_FONTS=0
+REQUEST_DEPS=0
 ENV_FLAG_COUNT=0
 
 # ---------------------------------------------------------------------------
@@ -41,37 +83,45 @@ ENV_FLAG_COUNT=0
 # ---------------------------------------------------------------------------
 usage() {
     cat <<EOF
-Usage: $0 [--omarchy|--fedora] [--fonts] [--dry-run] [--help]
+Usage: $0 [--omarchy|--fedora] [--fonts] [--deps] [--dry-run] [--help]
 
-Apply this dotfiles repo to a target environment.
+Thin dispatcher: parse flags, export the DOTFILES_* path variables,
+register a cleanup trap, and invoke exactly one env or helper script.
+Env scripts own their own full flow; scripts/setup-deps auto-detects
+the host by probing package managers.
 
-Environment (optional when only installing fonts):
-  --omarchy       Apply the Omarchy env configuration.
-  --fedora        Apply the Fedora env configuration. Note: the
-                  Fedora executor is not implemented yet. Use
-                  --fedora --fonts to install fonts on the Fedora
-                  host while it is a no-op for the env step.
+Precedence:
+  --fedora (any combination with --fonts / --deps / --dry-run) short-
+  circuits to a "not implemented" message and exits 0. --omarchy and
+  --fedora are mutually exclusive. With --omarchy, --fonts and --deps
+  are absorbed (the env script handles them). Without an env flag,
+  --fonts and --deps are direct dispatches.
 
-Options:
-  --fonts, --font Install Nerd Fonts (Monaspace, FiraCode, FiraMono) into
-                  \$HOME/.local/share/fonts/autanasoft/. Runs BEFORE the
-                  env configuration step.
-  --dry-run       Print the actions that would run; do not modify the
-                  system, download files, or run yay / omarchy / hyprctl.
-  --help, -h      Show this help and exit.
+Environment (one of, or none):
+  --omarchy       Dispatch to scripts/setup-omarchy
+  --fedora        Print "Fedora env executor is not implemented" and exit 0
 
-Environment variables exported to executor scripts:
-  DOTFILES_ROOT       Absolute path to the repo root.
-  DOTFILES_ENV        Selected environment (omarchy | fedora).
-  DOTFILES_DRY_RUN    "1" when --dry-run was passed, otherwise unset.
-  DOTFILES_BACKUP_DIR Per-run backup directory under \$DOTFILES_ROOT/backup.
+Options (optional):
+  --fonts         Dispatch to scripts/setup-fonts (absorbed by --omarchy)
+  --deps          Dispatch to scripts/setup-deps   (absorbed by --omarchy)
+  --dry-run       Set DOTFILES_DRY_RUN=1; env scripts honor it
+  --help, -h      Show this help and exit
+
+Exported variables (unset on every exit path via EXIT trap):
+  DOTFILES_ROOT        Absolute path to the repo root
+  DOTFILES_ENV         "omarchy" when --omarchy is set; unset otherwise
+  DOTFILES_DRY_RUN     "1" when --dry-run is set; unset otherwise
+  DOTFILES_BACKUP_DIR  Per-run backup dir under \$DOTFILES_ROOT/backup
+  DOTFILES_FONTS_DIR   \$HOME/.local/share/fonts/autanasoft (centralized)
 
 Examples:
-  $0 --fonts
   $0 --omarchy
-  $0 --omarchy --fonts
-  $0 --dry-run --omarchy --fonts
-  $0 --fedora --fonts
+  $0 --omarchy --fonts         # absorbed; env script handles fonts
+  $0 --omarchy --deps          # absorbed; env script handles deps
+  $0 --fedora                  # not implemented, exit 0
+  $0 --fonts
+  $0 --deps                    # setup-deps auto-detects the host
+  $0 --dry-run --omarchy
 EOF
 }
 
@@ -92,6 +142,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --fonts | --font)
             REQUEST_FONTS=1
+            shift
+            ;;
+        --deps)
+            REQUEST_DEPS=1
             shift
             ;;
         --dry-run)
@@ -118,163 +172,109 @@ fi
 # ---------------------------------------------------------------------------
 # Validation
 # ---------------------------------------------------------------------------
-if [[ "$ENV_FLAG_COUNT" -eq 0 && "$REQUEST_FONTS" -eq 0 ]]; then
-    echo "ERROR: choose an environment (--omarchy or --fedora), --fonts, or both." >&2
-    usage >&2
-    exit 2
-fi
-
 if [[ "$ENV_FLAG_COUNT" -gt 1 ]]; then
     echo "ERROR: --omarchy and --fedora are mutually exclusive." >&2
     usage >&2
     exit 2
 fi
 
-# ---------------------------------------------------------------------------
-# Logging helpers
-# ---------------------------------------------------------------------------
-log() {
-    echo "[setup] $*"
-}
+if [[ -z "$DOTFILES_ENV" \
+    && "$REQUEST_FONTS" -eq 0 \
+    && "$REQUEST_DEPS" -eq 0 ]]; then
+    echo "ERROR: choose --omarchy, --fedora, --fonts, --deps, or any combination." >&2
+    usage >&2
+    exit 2
+fi
 
-warn() {
-    echo "[setup] WARN: $*" >&2
-}
-
-fail() {
-    echo "[setup] ERROR: $*" >&2
-    exit 1
-}
-
-# ---------------------------------------------------------------------------
-# Sanity checks
-# ---------------------------------------------------------------------------
-if [[ ! -d "$SCRIPTS_DIR" ]]; then
-    fail "Scripts directory not found: $SCRIPTS_DIR"
+if [[ -z "$DOTFILES_ENV" \
+    && "$REQUEST_FONTS" -eq 1 \
+    && "$REQUEST_DEPS" -eq 1 ]]; then
+    echo "ERROR: choose only one standalone helper: --fonts or --deps." >&2
+    usage >&2
+    exit 2
 fi
 
 # ---------------------------------------------------------------------------
-# Export context for executor scripts.
-#   - DOTFILES_ROOT     : repo root (executor scripts use it instead of
-#                         resolving their own location when set).
-#   - DOTFILES_ENV      : omarchy | fedora
-#   - DOTFILES_DRY_RUN  : "1" only when --dry-run was passed.
-#   - DOTFILES_BACKUP_DIR : per-run backup directory; executors that back
-#                         up before replacing symlinks can place files
-#                         here. The directory itself is not created unless
-#                         a real (non-dry-run) backup happens.
+# Export the variable contract. Child scripts read these and MUST NOT
+# re-derive the repo root or the fonts directory when the env vars are
+# set.
 # ---------------------------------------------------------------------------
 export DOTFILES_ROOT
 export DOTFILES_ENV
+export DOTFILES_FONTS_DIR
+export DOTFILES_BACKUP_DIR
 
-# Export DOTFILES_DRY_RUN only when --dry-run was passed, so executors
-# (which check the env var) see a clean state. Use the separate parse-time
-# flag (PARSED_DRY_RUN) for all internal logic so `set -u` never trips on
-# an unset name.
+# DOTFILES_DRY_RUN is exported only when --dry-run was passed, so
+# sub-scripts (which check the env var) see a clean state. Use the
+# separate parse-time flag (PARSED_DRY_RUN) for all internal logic so
+# `set -u` never trips on an unset name.
 unset DOTFILES_DRY_RUN
 if [[ "$PARSED_DRY_RUN" -eq 1 ]]; then
     export DOTFILES_DRY_RUN=1
 fi
 
-DOTFILES_BACKUP_DIR="$DOTFILES_ROOT/backup/$(date -u +%Y%m%dT%H%M%SZ)"
-export DOTFILES_BACKUP_DIR
+# ---------------------------------------------------------------------------
+# Cleanup trap
+# ---------------------------------------------------------------------------
+# Fires on every exit path: success, fail, parse error, child-script
+# non-zero, interrupt. The dispatcher unsets exactly the five variables
+# it exported, so they never leak into the calling shell.
+trap 'unset DOTFILES_ROOT DOTFILES_ENV DOTFILES_DRY_RUN DOTFILES_BACKUP_DIR DOTFILES_FONTS_DIR' EXIT
 
 # ---------------------------------------------------------------------------
-# Dispatch helpers
+# Dispatch
 # ---------------------------------------------------------------------------
-run_fonts() {
-    local script="$SCRIPTS_DIR/setup-fonts"
-    if [[ ! -e "$script" ]]; then
-        fail "Fonts script not found: $script"
-    fi
-    if [[ ! -x "$script" ]]; then
-        fail "Fonts script is not executable: $script (run: chmod +x $script)"
-    fi
-
-    if [[ "$PARSED_DRY_RUN" -eq 1 ]]; then
-        log "Step 1/2: install fonts (dry-run)"
-        "$script" --dry-run
-    else
-        log "Step 1/2: install fonts"
-        "$script"
-    fi
-}
-
-run_env() {
-    local env="$1"
-    case "$env" in
-        omarchy)
-            local script="$SCRIPTS_DIR/setup-omarchy"
-            if [[ ! -e "$script" ]]; then
-                fail "Omarchy script not found: $script"
-            fi
-            if [[ ! -x "$script" ]]; then
-                fail "Omarchy script is not executable: $script (run: chmod +x $script)"
-            fi
-            if [[ "$PARSED_DRY_RUN" -eq 1 ]]; then
-                log "Step 2/2: apply Omarchy env (dry-run)"
-                "$script" --dry-run
-            else
-                log "Step 2/2: apply Omarchy env"
-                "$script"
-            fi
-            ;;
-        fedora)
-            local script="$SCRIPTS_DIR/setup-fedora"
-            if [[ ! -e "$script" ]]; then
-                if [[ "$REQUEST_FONTS" -eq 1 ]]; then
-                    if [[ "$PARSED_DRY_RUN" -eq 1 ]]; then
-                        warn "Fedora setup is not implemented yet. Fonts were previewed; skipping env configuration."
-                    else
-                        warn "Fedora setup is not implemented yet. Fonts were installed; skipping env configuration."
-                    fi
-                    return 0
-                fi
-                fail "Fedora setup is not implemented yet. (No scripts/setup-fedora present.)"
-            fi
-            # If the script exists in the future, this branch runs it.
-            if [[ ! -x "$script" ]]; then
-                fail "Fedora script is not executable: $script (run: chmod +x $script)"
-            fi
-            if [[ "$PARSED_DRY_RUN" -eq 1 ]]; then
-                log "Step 2/2: apply Fedora env (dry-run)"
-                "$script" --dry-run
-            else
-                log "Step 2/2: apply Fedora env"
-                "$script"
-            fi
-            ;;
-        *)
-            fail "Unknown environment: $env"
-            ;;
-    esac
-}
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
-log "Repo root:  $DOTFILES_ROOT"
-if [[ -n "$DOTFILES_ENV" ]]; then
-    log "Env:        $DOTFILES_ENV"
-else
-    log "Env:        none"
+# Exactly one target script. Order:
+#   1. --fedora wins. It is a complete short-circuit: print the
+#      "not implemented" line, exit 0, never invoke a sub-script.
+#   2. --omarchy dispatches to scripts/setup-omarchy. --fonts and
+#      --deps are absorbed — the env script owns the full flow.
+#   3. --fonts only dispatches to scripts/setup-fonts.
+#   4. --deps  only dispatches to scripts/setup-deps   (auto-detects).
+if [[ "$DOTFILES_ENV" == "fedora" ]]; then
+    echo "[setup] WARN: Fedora env executor is not implemented yet. See fedora/README.md for manual setup." >&2
+    echo "[setup] Setup complete (no changes)."
+    exit 0
 fi
+
+target_script=""
+case "$DOTFILES_ENV:$REQUEST_FONTS:$REQUEST_DEPS" in
+    omarchy:*:*)
+        target_script="$SCRIPTS_DIR/setup-omarchy"
+        ;;
+    :1:0)
+        target_script="$SCRIPTS_DIR/setup-fonts"
+        ;;
+    :0:1)
+        target_script="$SCRIPTS_DIR/setup-deps"
+        ;;
+    *)
+        # Should be unreachable: validation above already rejected every
+        # other combination. Fail loud if a future flag change breaks
+        # the table.
+        echo "ERROR: internal dispatch table has no entry for '$DOTFILES_ENV:$REQUEST_FONTS:$REQUEST_DEPS'." >&2
+        exit 2
+        ;;
+esac
+
+if [[ ! -e "$target_script" ]]; then
+    echo "ERROR: target script not found: $target_script" >&2
+    exit 1
+fi
+if [[ ! -x "$target_script" ]]; then
+    echo "ERROR: target script is not executable: $target_script (run: chmod +x $target_script)" >&2
+    exit 1
+fi
+
+# Subprocess args: forward --dry-run. Child scripts (setup-deps,
+# setup-fonts, setup-omarchy) all accept it.
+declare -a child_args=()
 if [[ "$PARSED_DRY_RUN" -eq 1 ]]; then
-    log "Mode:       DRY-RUN (no system changes)"
-fi
-if [[ "$REQUEST_FONTS" -eq 1 ]]; then
-    log "Fonts:      yes (before env)"
-else
-    log "Fonts:      no"
-fi
-log "Backup dir: $DOTFILES_BACKUP_DIR"
-
-if [[ "$REQUEST_FONTS" -eq 1 ]]; then
-    run_fonts
+    child_args=(--dry-run)
 fi
 
-if [[ -n "$DOTFILES_ENV" ]]; then
-    run_env "$DOTFILES_ENV"
-fi
+echo "[setup] Dispatching to: $(basename -- "$target_script")"
 
-log "Setup complete."
+# Invoke; let the child's exit propagate. The EXIT trap fires on the
+# way out and cleans the five DOTFILES_* vars.
+"$target_script" "${child_args[@]}"
