@@ -63,6 +63,7 @@ OMARCHY_PACKAGES=(
     hunspell-en_us      # command: hunspell
     hunspell-es_any     # command: hunspell
     zellij              # command: zellij
+    trash-cli           # command: trash (snacks.nvim explorer delete)
 )
 
 FEDORA_PACKAGES=(
@@ -70,6 +71,7 @@ FEDORA_PACKAGES=(
     hunspell
     hunspell-en-US      # command: hunspell
     hunspell-es         # command: hunspell
+    trash-cli           # command: trash (snacks.nvim explorer delete)
 )
 
 # ---------------------------------------------------------------------------
