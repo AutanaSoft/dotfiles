@@ -1,6 +1,4 @@
 .atl/
-docs/ideas
-openspec
 backup/
 
 # SSH: only `config` is tracked, as a safe template (no secrets, no real
