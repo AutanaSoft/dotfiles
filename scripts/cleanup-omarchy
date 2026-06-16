@@ -1,0 +1,490 @@
+#!/usr/bin/env bash
+# scripts/cleanup-omarchy — selectively remove the 29 Omarchy preinstalls
+# marked [R] in docs/ideas/scripts/cleanup.md.
+#
+# Drift: this script operates on a hardcoded list. New preinstalls added by
+# `omarchy update` are left intact; re-run the script if intent changes.
+#
+# Forbidden paths: this script never touches anything under
+# ~/.local/share/omarchy/. All removals go through Omarchy's public
+# package/webapp/TUI removal APIs and direct `rm` on the npx stubs.
+# Enforcement is by code review (REQ-CLEANUP-011).
+#
+# Audit log: each non-list run creates a single TSV file at
+# backup/cleanup-omarchy.<utc-ts>.log. Path is printed to stdout on success
+# and to stderr on partial failure.
+
+set -euo pipefail
+IFS=$'\n\t'
+
+# Resolve repo root (informational). When DOTFILES_ROOT is exported, prefer
+# it; otherwise derive from this file's location.
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -n "${DOTFILES_ROOT:-}" ]]; then
+    REPO_ROOT="$DOTFILES_ROOT"
+else
+    REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+fi
+
+# Defaults
+DRY_RUN=0
+REQUEST_LIST=0
+REQUEST_INTERACTIVE=0
+REQUEST_YES=0
+REQUEST_HELP=0
+
+# Constants
+BACKUP_DIR="$REPO_ROOT/backup"
+LOG_TEMPLATE="$BACKUP_DIR/cleanup-omarchy.<ts>.log"
+STUB_BIN_DIR="$HOME/.local/bin"
+DESKTOP_DIR="$HOME/.local/share/applications"
+
+# Inline arrays (29 [R] items; 0 in TUIs). Source: docs/ideas/scripts/cleanup.md.
+# The doc is rationale only; these arrays are the contract (decision 1).
+STUBS=(
+    codex
+    copilot
+    gemini
+    opencode
+    playwright-cli
+    pi
+)                                                       # 6 items
+
+PKGS=(
+    1password-beta
+    1password-cli
+    claude-code
+    kdenlive
+    obs-studio
+    pinta
+    signal-desktop
+    typora
+)                                                       # 9 items
+
+WEBAPPS=(
+    Basecamp
+    ChatGPT
+    Discord
+    Figma
+    Fizzy
+    GitHub
+    "Google Contacts"
+    "Google Maps"
+    "Google Messages"
+    HEY
+    Tailscale
+    X
+    "Xbox Cloud Gaming"
+    Zoom
+)                                                       # 14 items
+
+TUIS=(
+)                                                       # 0 items (Docker, Disk Usage are kept)
+
+# Usage
+usage() {
+    cat <<EOF
+Usage: $0 [options]
+
+Selectively remove the 29 Omarchy preinstalls marked [R] in
+docs/ideas/scripts/cleanup.md. Operates on a hardcoded list of 29 items
+across 4 categories (stubs, packages, web apps, TUIs; TUIs is empty in v1).
+Idempotent: re-runnable, items already gone are logged as "skipped". A
+single audit log is written to backup/cleanup-omarchy.<utc-ts>.log.
+
+This script is standalone: it is NOT wired to root ./setup and is NOT
+entered in omarchy/README.md. Discoverable via --help.
+
+Options:
+  --interactive     Open a gum choose picker to deselect items before the
+                    safety confirm. Requires a TTY.
+  --dry-run         Simulate every removal: print the command and write a
+                    "dry-run" result line to the audit log. Skips the
+                    safety confirm. Does not mutate the system.
+  --list            Print the categorized plan (stubs:, packages:,
+                    webapps: — TUIs omitted because the array is empty)
+                    and exit 0. Pure discovery: no audit log is written,
+                    no TTY required. Mutually exclusive with
+                    --yes / --dry-run / --interactive.
+  --yes             Skip the safety confirm and run the full plan. Off
+                    by default; the confirm is the user-visible gate
+                    before any removal.
+  --help, -h        Show this help and exit.
+
+Categories and removal commands (in execution order):
+
+  stubs (6)       rm -f \$HOME/.local/bin/<name>
+  packages (9)    omarchy-pkg-drop <name>         (sudo for pacman -Rns)
+  web apps (14)   omarchy-webapp-remove "<name>"  (names may contain spaces)
+  TUIs (0)        omarchy-tui-remove "<name>"     (empty in v1)
+
+Drift: this script operates on a hardcoded list. New preinstalls added
+by 'omarchy update' are left intact. Re-run if intent changes.
+
+Audit log (one file per run):
+  $LOG_TEMPLATE
+
+Forbidden paths: this script never touches anything under
+~/.local/share/omarchy/. All removals use Omarchy's public APIs.
+EOF
+}
+
+# Argument parsing
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --interactive)
+            REQUEST_INTERACTIVE=1
+            shift
+            ;;
+        --dry-run)
+            DRY_RUN=1
+            shift
+            ;;
+        --list)
+            REQUEST_LIST=1
+            shift
+            ;;
+        --yes)
+            REQUEST_YES=1
+            shift
+            ;;
+        --help | -h)
+            REQUEST_HELP=1
+            shift
+            ;;
+        *)
+            echo "Unknown argument: $1" >&2
+            usage >&2
+            exit 2
+            ;;
+    esac
+done
+
+if [[ "$REQUEST_HELP" -eq 1 ]]; then
+    usage
+    exit 0
+fi
+
+# Logging helpers
+log() {
+    echo "[cleanup-omarchy] $*"
+}
+
+warn() {
+    echo "[cleanup-omarchy] WARN: $*" >&2
+}
+
+fail() {
+    echo "[cleanup-omarchy] ERROR: $*" >&2
+    exit 1
+}
+
+require_command() {
+    local cmd="$1"
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+        fail "Required command '$cmd' is not on PATH. Install it before running this script."
+    fi
+}
+
+# ISO-8601 UTC timestamp for audit log rows.
+now_utc() {
+    date -u +%FT%TZ
+}
+
+# is_installed: per-category idempotency probe (read-only). Returns 0 if
+# installed, 1 if not. Caller decides what to do with the verdict.
+is_installed() {
+    local category="${1:-}"
+    local name="${2:-}"
+    case "$category" in
+        stubs|stub)
+            [[ -e "$STUB_BIN_DIR/$name" ]]
+            ;;
+        packages|pkg)
+            # pacman missing: treat as not installed so --list and
+            # --dry-run do not fail. Real-run callers require pacman
+            # explicitly in execute_plan.
+            command -v pacman >/dev/null 2>&1 || return 1
+            pacman -Qq "$name" >/dev/null 2>&1
+            ;;
+        webapps|webapp)
+            [[ -e "$DESKTOP_DIR/$name.desktop" ]]
+            ;;
+        tuis|tui)
+            [[ -e "$DESKTOP_DIR/$name.desktop" ]]
+            ;;
+        *)
+            warn "is_installed: unknown category '$category'"
+            return 1
+            ;;
+    esac
+}
+
+# build_plan: emit TSV rows <category-singular>\t<name>\t<command>. Empty
+# categories are skipped. Category-singular in the log is stub/pkg/webapp/tui
+# (REQ-CLEANUP-005). <command> is the literal shell line with $HOME expanded.
+build_plan() {
+    local cat_singular name cmd
+    if [[ ${#STUBS[@]} -gt 0 ]]; then
+        for name in "${STUBS[@]}"; do
+            cat_singular="stub"
+            cmd="rm -f $STUB_BIN_DIR/$name"
+            printf '%s\t%s\t%s\n' "$cat_singular" "$name" "$cmd"
+        done
+    fi
+    if [[ ${#PKGS[@]} -gt 0 ]]; then
+        for name in "${PKGS[@]}"; do
+            cat_singular="pkg"
+            cmd="omarchy-pkg-drop $name"
+            printf '%s\t%s\t%s\n' "$cat_singular" "$name" "$cmd"
+        done
+    fi
+    if [[ ${#WEBAPPS[@]} -gt 0 ]]; then
+        for name in "${WEBAPPS[@]}"; do
+            cat_singular="webapp"
+            cmd="omarchy-webapp-remove \"$name\""
+            printf '%s\t%s\t%s\n' "$cat_singular" "$name" "$cmd"
+        done
+    fi
+    if [[ ${#TUIS[@]} -gt 0 ]]; then
+        for name in "${TUIS[@]}"; do
+            cat_singular="tui"
+            cmd="omarchy-tui-remove \"$name\""
+            printf '%s\t%s\t%s\n' "$cat_singular" "$name" "$cmd"
+        done
+    fi
+}
+
+# print_plan: render the plan for --list. Categories with zero [R] items are
+# absent (D5).
+print_plan() {
+    local plan_text="$1"
+    local row cat name cmd rest current_cat=""
+    while IFS= read -r row; do
+        [[ -z "$row" ]] && continue
+        cat="${row%%$'\t'*}"
+        rest="${row#*$'\t'}"
+        name="${rest%%$'\t'*}"
+        cmd="${rest#*$'\t'*}"
+        if [[ "$cat" != "$current_cat" ]]; then
+            case "$cat" in
+                stub) echo "stubs:" ;;
+                pkg) echo "packages:" ;;
+                webapp) echo "webapps:" ;;
+                tui) echo "tuis:" ;;
+            esac
+            current_cat="$cat"
+        fi
+        echo "  $cmd"
+    done <<< "$plan_text"
+}
+
+# interactive_pick: feed the plan to gum choose with all items pre-selected;
+# the user can deselect any. Empty categories never reach this function.
+# TTY guard is the dispatcher's responsibility, not this function's.
+interactive_pick() {
+    local plan_in="$1"
+    local -a rows=()
+    local row
+
+    while IFS= read -r row; do
+        [[ -n "$row" ]] && rows+=("$row")
+    done <<< "$plan_in"
+
+    if [[ ${#rows[@]} -eq 0 ]]; then
+        return 0
+    fi
+
+    require_command gum
+
+    # --selected pre-selects every row (comma-separated literal strings).
+    local selected_csv
+    selected_csv=$(IFS=,; echo "${rows[*]}")
+
+    # gum choose returns the still-selected rows, newline-separated.
+    # Suppress pipefail-induced aborts: Ctrl-C yields empty $kept which
+    # the dispatcher treats as "abort cleanly".
+    local kept=""
+    if ! kept=$(printf '%s\n' "${rows[@]}" | gum choose --no-limit \
+        --header="Select preinstalls to REMOVE (deselect to keep)" \
+        --selected="$selected_csv"); then
+        kept=""
+    fi
+
+    if [[ -n "$kept" ]]; then
+        printf '%s\n' "$kept"
+    fi
+}
+
+# confirm_safety: show a single gum confirm with a category-grouped summary
+# of the full command for every plan item. Returns 0 on accept, 1 on decline.
+confirm_safety() {
+    local plan_text="$1"
+    local -a body_lines=()
+    local row cat name cmd rest current_cat=""
+
+    body_lines+=("Will run the following on your system:")
+    body_lines+=("")
+
+    while IFS= read -r row; do
+        [[ -z "$row" ]] && continue
+        cat="${row%%$'\t'*}"
+        rest="${row#*$'\t'}"
+        name="${rest%%$'\t'*}"
+        cmd="${rest#*$'\t'*}"
+        if [[ "$cat" != "$current_cat" ]]; then
+            case "$cat" in
+                stub) body_lines+=("Stubs:") ;;
+                pkg) body_lines+=("Packages:") ;;
+                webapp) body_lines+=("Web apps:") ;;
+                tui) body_lines+=("TUIs:") ;;
+            esac
+            current_cat="$cat"
+        fi
+        body_lines+=("  $cmd")
+    done <<< "$plan_text"
+
+    local body
+    body=$(IFS=$'\n'; echo "${body_lines[*]}")
+
+    if gum confirm --affirmative="Proceed" --negative="Abort" "$body" >/dev/null; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# execute_plan: probe via is_installed; on miss log "skipped: not present";
+# in dry-run mode log "dry-run" without invoking; otherwise invoke, capture
+# the exit code, and log "ok" or "fail: exit N". First non-zero exit → log
+# partial path to stderr and exit 1 (REQ-CLEANUP-006).
+#
+# Args: plan_text, log_path, mode ("run" | "dry-run")
+execute_plan() {
+    local plan_text="$1"
+    local log_path="$2"
+    local mode="$3"
+
+    # Lazy pre-flight for real-run mode: binaries are only required when
+    # the plan actually exercises them.
+    if [[ "$mode" == "run" ]]; then
+        require_command rm
+        if [[ ${#PKGS[@]} -gt 0 ]]; then
+            require_command pacman
+            require_command omarchy-pkg-drop
+        fi
+        if [[ ${#WEBAPPS[@]} -gt 0 ]]; then
+            require_command omarchy-webapp-remove
+        fi
+        if [[ ${#TUIS[@]} -gt 0 ]]; then
+            require_command omarchy-tui-remove
+        fi
+    fi
+
+    mkdir -p "$(dirname -- "$log_path")"
+    : > "$log_path"
+
+    local row cat name cmd rest ts result rc
+    while IFS= read -r row; do
+        [[ -z "$row" ]] && continue
+        cat="${row%%$'\t'*}"
+        rest="${row#*$'\t'}"
+        name="${rest%%$'\t'*}"
+        cmd="${rest#*$'\t'*}"
+
+        if is_installed "$cat" "$name"; then
+            if [[ "$mode" == "dry-run" ]]; then
+                result="dry-run"
+                log "DRY-RUN: would run: $cmd"
+            else
+                # Capture the command's exit code without `set -e` aborting.
+                set +e
+                bash -c "$cmd"
+                rc=$?
+                set -e
+                if [[ $rc -eq 0 ]]; then
+                    result="ok"
+                else
+                    result="fail: exit $rc"
+                    ts="$(now_utc)"
+                    printf '%s\t%s\t%s\t%s\t%s\n' "$ts" "$cat" "$name" "$cmd" "$result" >> "$log_path"
+                    echo "$log_path" >&2
+                    exit 1
+                fi
+            fi
+        else
+            result="skipped: not present"
+        fi
+
+        ts="$(now_utc)"
+        printf '%s\t%s\t%s\t%s\t%s\n' "$ts" "$cat" "$name" "$cmd" "$result" >> "$log_path"
+    done <<< "$plan_text"
+}
+
+# Main dispatcher
+main() {
+    # --list: print plan and exit 0. Validate mutual exclusion first so a
+    # misuse like `--list --dry-run` errors out before we try to print.
+    if [[ "$REQUEST_LIST" -eq 1 ]]; then
+        if [[ "$REQUEST_YES" -eq 1 || "$DRY_RUN" -eq 1 || "$REQUEST_INTERACTIVE" -eq 1 ]]; then
+            echo "ERROR: --list is mutually exclusive with --yes / --dry-run / --interactive" >&2
+            exit 2
+        fi
+        local list_plan
+        list_plan="$(build_plan)"
+        print_plan "$list_plan"
+        exit 0
+    fi
+
+    # Non-list modes: require the user-facing commands.
+    require_command gum
+    require_command date
+    require_command mkdir
+    require_command tee
+
+    # Non-TTY guard for --interactive (REQ-CLEANUP-010).
+    if [[ "$REQUEST_INTERACTIVE" -eq 1 && ! -t 0 ]]; then
+        echo "ERROR: --interactive requires a TTY (stdin is not a terminal)" >&2
+        exit 1
+    fi
+
+    # Build the plan.
+    local plan_text
+    plan_text="$(build_plan)"
+
+    # --interactive refines the plan via gum choose.
+    if [[ "$REQUEST_INTERACTIVE" -eq 1 ]]; then
+        plan_text="$(interactive_pick "$plan_text")"
+    fi
+
+    # Empty plan (everything deselected) → abort cleanly.
+    if [[ -z "$plan_text" ]]; then
+        echo "aborted by user"
+        exit 0
+    fi
+
+    # --yes skips the safety confirm; otherwise show it.
+    if [[ "$REQUEST_YES" -eq 0 ]]; then
+        if ! confirm_safety "$plan_text"; then
+            echo "aborted by user"
+            exit 0
+        fi
+    fi
+
+    # Build the audit log path (one log per run).
+    local stamp
+    stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+    local log_path="$BACKUP_DIR/cleanup-omarchy.$stamp.log"
+
+    # Execute (or simulate in dry-run mode).
+    local mode="run"
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        mode="dry-run"
+    fi
+
+    execute_plan "$plan_text" "$log_path" "$mode"
+
+    log "Audit log: $log_path"
+}
+
+main "$@"
