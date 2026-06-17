@@ -45,6 +45,10 @@ scripts/setup-deps --omarchy
 scripts/setup-deps --fedora
 ```
 
+Dependencies are installed in a single batch per environment. On Fedora this
+coalesces to a single sudo password prompt; on Omarchy a single `yay`
+invocation produces one install confirmation for the whole batch.
+
 ## Verification
 
 Run the repo-native setup tests:

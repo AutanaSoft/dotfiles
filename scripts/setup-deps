@@ -12,17 +12,18 @@
 # variable works.
 #
 # For each env, the script verifies whether each package is already
-# installed (via the package manager) and installs only the missing ones.
-# Re-running is a no-op.
+# installed (via the package manager) and installs the missing ones
+# in a single batch per env. Re-running is a no-op when every
+# package is already present.
 #
 # Omarchy / Arch:
 #   - Package manager: yay (AUR helper, wraps pacman)
-#   - Install command: yay -S --needed <pkg>
+#   - Install command: yay -S --needed <pkgs...>   (single batch)
 #   - Verify installed: pacman -Q <pkg>
 #
 # Fedora:
 #   - Package manager: dnf (system)
-#   - Install command: sudo dnf install -y <pkg>
+#   - Install command: sudo dnf install -y <pkgs...>   (single batch)
 #   - Verify installed: rpm -q <pkg> (fallback: dnf list installed <pkg>)
 #
 # Notes:
@@ -224,19 +225,18 @@ fi
 # ---------------------------------------------------------------------------
 # Package manager helpers
 # ---------------------------------------------------------------------------
-# Echo the install command for a single package. Printf is safe here:
-# packages are hard-coded (no untrusted input).
-pm_install_cmd() {
-    local pkg="$1"
-    case "$DOTFILES_ENV_LOCAL" in
-        omarchy)
-            printf 'yay -S --needed %s\n' "$pkg"
-            ;;
-        fedora)
-            printf 'sudo dnf install -y %s\n' "$pkg"
-            ;;
-    esac
-}
+# Reason: replaced by install_batch in change setup-deps-batch-install
+# pm_install_cmd() {
+#     local pkg="$1"
+#     case "$DOTFILES_ENV_LOCAL" in
+#         omarchy)
+#             printf 'yay -S --needed %s\n' "$pkg"
+#             ;;
+#         fedora)
+#             printf 'sudo dnf install -y %s\n' "$pkg"
+#             ;;
+#     esac
+# }
 
 # Verify a package is installed using the native package manager.
 # Returns 0 if installed, non-zero otherwise. In dry-run mode, missing
@@ -272,19 +272,86 @@ pkg_installed() {
     esac
 }
 
-# Install a single package. In dry-run, log the action and return.
-# In real mode, require the package manager up front and run it.
-install_package() {
-    local pkg="$1"
+# Reason: replaced by install_batch in change setup-deps-batch-install
+# install_package() {
+#     local pkg="$1"
+#     local cmd
+#     cmd="$(pm_install_cmd "$pkg")"
+#
+#     if [[ "$DRY_RUN" -eq 1 ]]; then
+#         log "[dry-run] would run: $cmd"
+#         return 0
+#     fi
+#
+#     # Real install path: require the package manager.
+#     case "$DOTFILES_ENV_LOCAL" in
+#         omarchy)
+#             if ! command -v yay >/dev/null 2>&1; then
+#                 fail "yay is not on PATH; install it before running setup-deps for Omarchy."
+#             fi
+#             ;;
+#         fedora)
+#             if ! command -v dnf >/dev/null 2>&1; then
+#                 fail "dnf is not on PATH; install it before running setup-deps for Fedora."
+#             fi
+#             ;;
+#     esac
+#
+#     log "Installing missing package '$pkg'..."
+#     case "$DOTFILES_ENV_LOCAL" in
+#         omarchy)
+#             yay -S --needed "$pkg"
+#             ;;
+#         fedora)
+#             sudo dnf install -y "$pkg"
+#             ;;
+#     esac
+# }
+
+# ---------------------------------------------------------------------------
+# Batch install (single-pass per env)
+# ---------------------------------------------------------------------------
+# Iterate the env package list, log a per-pkg [ok]/[miss] line, and
+# append every missing package to the MISSING=() array. Bumps the
+# present / missing counters. Does NOT invoke the package manager.
+collect_missing() {
+    local pkg
+    for pkg in "$@"; do
+        if pkg_installed "$pkg"; then
+            log "  [ok]   $pkg"
+            present=$((present + 1))
+        else
+            log "  [miss] $pkg"
+            MISSING+=("$pkg")
+            missing=$((missing + 1))
+        fi
+    done
+}
+
+# Invoke the env's package manager exactly once with every package in
+# MISSING=() as a positional argument. In dry-run mode, log the would-be
+# command and return 0. In real mode, require the PM on PATH up front
+# and exec the command. set -e propagates a non-zero exit; a single
+# failure aborts the run.
+#
+# Fedora contract: the only sudo touchpoint in the script is this one
+# dnf invocation. There is no upfront `sudo -v` validation.
+install_batch() {
     local cmd
-    cmd="$(pm_install_cmd "$pkg")"
+    case "$DOTFILES_ENV_LOCAL" in
+        omarchy)
+            cmd=(yay -S --needed "${MISSING[@]}")
+            ;;
+        fedora)
+            cmd=(sudo dnf install -y "${MISSING[@]}")
+            ;;
+    esac
 
     if [[ "$DRY_RUN" -eq 1 ]]; then
-        log "[dry-run] would run: $cmd"
+        log "[dry-run] would run: ${cmd[*]}"
         return 0
     fi
 
-    # Real install path: require the package manager.
     case "$DOTFILES_ENV_LOCAL" in
         omarchy)
             if ! command -v yay >/dev/null 2>&1; then
@@ -298,15 +365,8 @@ install_package() {
             ;;
     esac
 
-    log "Installing missing package '$pkg'..."
-    case "$DOTFILES_ENV_LOCAL" in
-        omarchy)
-            yay -S --needed "$pkg"
-            ;;
-        fedora)
-            sudo dnf install -y "$pkg"
-            ;;
-    esac
+    log "Running: ${cmd[*]}"
+    "${cmd[@]}"
 }
 
 # ---------------------------------------------------------------------------
@@ -331,25 +391,33 @@ main() {
 
     log "Checking ${#packages[@]} package(s)..."
 
-    local installed=0
-    local missing=0
-    local pkg
-    for pkg in "${packages[@]}"; do
-        if pkg_installed "$pkg"; then
-            log "  [ok]   $pkg"
-            installed=$((installed + 1))
-        else
-            log "  [miss] $pkg"
-            missing=$((missing + 1))
-            install_package "$pkg"
-        fi
-    done
+    # Batch install state. Counters are script-scoped (not local) so
+    # collect_missing can mutate them.
+    MISSING=()
+    installed=0
+    present=0
+    missing=0
 
-    if [[ "$DRY_RUN" -eq 1 ]]; then
-        log "DRY-RUN summary: $installed present, $missing would-be-installed."
-    else
-        log "Summary: $installed already present, $missing newly installed."
+    collect_missing "${packages[@]}"
+
+    # All-present early-exit: log and exit BEFORE the install call.
+    # The final Summary: line is intentionally NOT emitted in this
+    # path (nothing was installed; reporting counts is noise).
+    if [[ "${#MISSING[@]}" -eq 0 ]]; then
+        log "All ${#packages[@]} packages present; nothing to install."
+        exit 0
     fi
+
+    log "Installing ${#MISSING[@]} missing: ${MISSING[*]}"
+    install_batch
+
+    # Reaching here means install_batch exited 0: every package in
+    # MISSING=() was installed successfully. Roll the missing count
+    # into installed and clear missing.
+    installed=${#MISSING[@]}
+    missing=0
+
+    log "Summary: $installed installed, $present present, $missing missing."
 
     log "Setup complete."
 }

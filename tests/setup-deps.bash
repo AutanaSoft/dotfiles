@@ -67,7 +67,12 @@ TESTS_RUN=0
 TESTS_FAILED=0
 # PR-3 covers T1..T7 — full contract. T7 lands with WU-4 (setup-deps
 # auto-detect). Prior PRs (PR-1, PR-2) covered T1..T6.
-TEST_PLAN=7
+# T8 lands with WU-6 (setup-deps single-pass batch install). The
+# existing T7 sub-cases A and B still pass because the new code
+# emits the same yay -S --needed / sudo dnf install -y substrings
+# (one line, full command); T8 isolates the new "exactly one
+# install call per env" contract with a clean name.
+TEST_PLAN=8
 
 # Single workspace for the whole run; each test creates its own
 # subdir. The EXIT trap removes the whole tree, so tests do not have
@@ -994,6 +999,323 @@ test_setup_deps_auto_detects_env() {
 }
 
 # ---------------------------------------------------------------------------
+# Test 8
+# ---------------------------------------------------------------------------
+# scripts/setup-deps performs a single-pass batch install per env:
+# it collects every missing package, then invokes the env's package
+# manager exactly once with all missing packages as positional args.
+# Per-pkg [ok]/[miss] lines are preserved, a consolidated install
+# log line is emitted before the call, and the all-present path
+# skips the install command entirely.
+#
+# Five sub-cases triangulate the contract (no E; AUR flag set was
+# removed in rev 2):
+#   A) All packages present (Omarchy): one "all present" log line;
+#      no install command appears in the stub log.
+#   B) Single missing (Omarchy): pacman exits 1, yay exits 0.
+#      Exactly ONE yay -S --needed line is emitted, per-pkg [miss]
+#      lines are present, no sudo invocation.
+#   C) >= 2 missing (Omarchy): same stub shape as B; the single yay
+#      line's args contain every missing package as a positional
+#      argument (substring set; no strict order).
+#   D) >= 2 missing (Fedora): rpm exits 1, dnf exits 0. Exactly ONE
+#      sudo dnf install -y line with all missing pkgs; no sudo -v
+#      appears in the stub log (Fedora contract: one sudo per run).
+#   F) Install failure (Omarchy): pacman exits 1, yay exits 7 in
+#      real mode. The script aborts with exit 7, exactly ONE yay
+#      invocation in the stub log, and neither "Summary:" nor
+#      "Setup complete." appears in the captured output.
+test_setup_deps_single_pass_batch_install() {
+    local setup_deps
+    setup_deps="$REPO_ROOT/scripts/setup-deps"
+    if [[ ! -x "$setup_deps" ]]; then
+        printf 'FATAL: %s not found or not executable\n' "$setup_deps" >&2
+        return 1
+    fi
+
+    # Build a minimal utils dir for T8. The host (Omarchy) has yay
+    # and pacman on /usr/bin; to keep the probe deterministic, PATH
+    # must NOT include /usr/bin. The script needs only `dirname` and
+    # `cat` as external commands in dry-run mode.
+    local utils_dir
+    utils_dir="$(make_minimal_utils_dir "$TEST_WORKSPACE")"
+
+    local sandbox stub_log output rc
+
+    # --- Sub-case A: all present (Omarchy).
+    # pacman and rpm stubbed as exit 0. Auto-detect falls through
+    # yay (not on PATH) to pacman, picks omarchy. Every pacman -Q
+    # returns 0 -> all packages present -> no install command
+    # invoked.
+    sandbox="$(mktemp -d "$TEST_WORKSPACE/sandbox.XXXXXX")"
+    mkdir -p "$sandbox/home/.config" "$sandbox/stubs"
+    : >"$sandbox/stub.log"
+    make_pm_stubs "$sandbox/stubs" pacman rpm
+    # make_pm_stubs hardcodes pacman/rpm to exit 1 (package missing);
+    # override them to exit 0 for the all-present scenario.
+    for cmd in pacman rpm; do
+        cat >"$sandbox/stubs/$cmd" <<'EOF'
+#!/usr/bin/env bash
+printf '%s %s\n' "$(basename -- "$0")" "$*" >> "${STUB_LOG:-/dev/null}"
+exit 0
+EOF
+        chmod +x "$sandbox/stubs/$cmd"
+    done
+    stub_log="$sandbox/stub.log"
+
+    set +e
+    output="$(env -i \
+        HOME="$sandbox/home" \
+        PATH="$sandbox/stubs:$utils_dir" \
+        STUB_LOG="$stub_log" \
+        LANG="${LANG:-C.UTF-8}" \
+        LC_ALL="${LC_ALL:-C.UTF-8}" \
+        "$setup_deps" --dry-run 2>&1)"
+    rc=$?
+    set -e
+
+    if [[ $rc -ne 0 ]]; then
+        printf 'sub-case A: expected exit 0, got %d\noutput:\n%s\n' \
+            "$rc" "$output" >&2
+        return 1
+    fi
+    # The "all present" early-exit message must be present.
+    if ! grep -qE '[Aa]ll [0-9]+ packages present' <<<"$output"; then
+        printf 'sub-case A: expected "all present" log line, got:\n%s\n' \
+            "$output" >&2
+        return 1
+    fi
+    # No install command should have run; the stub log must not
+    # contain yay or dnf (we did not even put them on PATH).
+    if grep -qE '^(yay|dnf|sudo dnf|sudo -v) ' "$stub_log"; then
+        printf 'sub-case A: stub log contains a PM install call; should not\nlog:\n%s\n' \
+            "$(cat -- "$stub_log")" >&2
+        return 1
+    fi
+    # No "Summary:" in this path (final summary is skipped on the
+    # all-present early-exit).
+    if grep -qE 'Summary:' <<<"$output"; then
+        printf 'sub-case A: all-present path must not emit Summary; got:\n%s\n' \
+            "$output" >&2
+        return 1
+    fi
+
+    # --- Sub-case B: single missing (Omarchy).
+    # pacman exits 1 (all packages look missing); yay exits 0 so
+    # the install_batch real path is not exercised in dry-run. We
+    # assert exactly one yay -S --needed line in the stub log.
+    sandbox="$(mktemp -d "$TEST_WORKSPACE/sandbox.XXXXXX")"
+    mkdir -p "$sandbox/home/.config" "$sandbox/stubs"
+    : >"$sandbox/stub.log"
+    make_pm_stubs "$sandbox/stubs" pacman yay
+    stub_log="$sandbox/stub.log"
+
+    set +e
+    output="$(env -i \
+        HOME="$sandbox/home" \
+        PATH="$sandbox/stubs:$utils_dir" \
+        STUB_LOG="$stub_log" \
+        LANG="${LANG:-C.UTF-8}" \
+        LC_ALL="${LC_ALL:-C.UTF-8}" \
+        "$setup_deps" --dry-run 2>&1)"
+    rc=$?
+    set -e
+
+    if [[ $rc -ne 0 ]]; then
+        printf 'sub-case B: expected exit 0, got %d\noutput:\n%s\n' \
+            "$rc" "$output" >&2
+        return 1
+    fi
+    # Per-pkg [miss] line(s) must be emitted.
+    if ! grep -qE '\[miss\]' <<<"$output"; then
+        printf 'sub-case B: expected at least one per-pkg [miss] line, got:\n%s\n' \
+            "$output" >&2
+        return 1
+    fi
+    # In dry-run, the script logs the would-be command once and does
+    # NOT actually invoke the PM. So the assertion looks at the script
+    # output, not the stub log: exactly ONE "yay -S --needed" line
+    # (the dry-run preview).
+    local yay_count
+    yay_count="$(grep -cE 'yay -S --needed ' <<<"$output" || true)"
+    if [[ "$yay_count" -ne 1 ]]; then
+        printf 'sub-case B: expected exactly 1 "yay -S --needed" line in output, got %d\noutput:\n%s\n' \
+            "$yay_count" "$output" >&2
+        return 1
+    fi
+    # In dry-run the PM is never invoked, so the stub log has no yay
+    # or sudo calls. This is the dry-run safety contract.
+    if grep -qE '^(yay|sudo|sudo dnf|sudo -v) ' "$stub_log"; then
+        printf 'sub-case B: stub log contains a PM call; dry-run must not invoke the PM\nlog:\n%s\n' \
+            "$(cat -- "$stub_log")" >&2
+        return 1
+    fi
+
+    # --- Sub-case C: >= 2 missing (Omarchy).
+    # Same stub shape as B. We additionally assert that the single
+    # yay line's args contain every missing package as a positional
+    # argument (substring set, no strict order).
+    sandbox="$(mktemp -d "$TEST_WORKSPACE/sandbox.XXXXXX")"
+    mkdir -p "$sandbox/home/.config" "$sandbox/stubs"
+    : >"$sandbox/stub.log"
+    make_pm_stubs "$sandbox/stubs" pacman yay
+    stub_log="$sandbox/stub.log"
+
+    set +e
+    output="$(env -i \
+        HOME="$sandbox/home" \
+        PATH="$sandbox/stubs:$utils_dir" \
+        STUB_LOG="$stub_log" \
+        LANG="${LANG:-C.UTF-8}" \
+        LC_ALL="${LC_ALL:-C.UTF-8}" \
+        "$setup_deps" --dry-run 2>&1)"
+    rc=$?
+    set -e
+
+    if [[ $rc -ne 0 ]]; then
+        printf 'sub-case C: expected exit 0, got %d\noutput:\n%s\n' \
+            "$rc" "$output" >&2
+        return 1
+    fi
+    yay_count="$(grep -cE 'yay -S --needed ' <<<"$output" || true)"
+    if [[ "$yay_count" -ne 1 ]]; then
+        printf 'sub-case C: expected exactly 1 "yay -S --needed" line, got %d\noutput:\n%s\n' \
+            "$yay_count" "$output" >&2
+        return 1
+    fi
+    # Extract the single yay line and assert every Omarchy package
+    # is a substring of its args (substring set, not strict order).
+    # The Omarchy package list is hard-coded in scripts/setup-deps;
+    # we assert each name appears as a substring of the yay line's
+    # args. Substring match is order-agnostic and robust to quoting
+    # differences in the dry-run preview line.
+    local yay_line pkg
+    yay_line="$(grep -E 'yay -S --needed ' <<<"$output" | head -1)"
+    local omarchy_pkgs=(
+        lsof hunspell hunspell-en_us hunspell-es_any zellij trash-cli
+    )
+    for pkg in "${omarchy_pkgs[@]}"; do
+        if ! grep -qF -- "$pkg" <<<"$yay_line"; then
+            printf 'sub-case C: yay line missing package %s\nline: %s\n' \
+                "$pkg" "$yay_line" >&2
+            return 1
+        fi
+    done
+
+    # --- Sub-case D: >= 2 missing (Fedora).
+    # rpm exits 1; dnf exits 0. The single sudo dnf install -y
+    # line must list every Fedora package, and no sudo -v may
+    # appear (the single dnf invocation is the only sudo touchpoint).
+    sandbox="$(mktemp -d "$TEST_WORKSPACE/sandbox.XXXXXX")"
+    mkdir -p "$sandbox/home/.config" "$sandbox/stubs"
+    : >"$sandbox/stub.log"
+    make_pm_stubs "$sandbox/stubs" rpm dnf
+    stub_log="$sandbox/stub.log"
+
+    set +e
+    output="$(env -i \
+        HOME="$sandbox/home" \
+        PATH="$sandbox/stubs:$utils_dir" \
+        STUB_LOG="$stub_log" \
+        LANG="${LANG:-C.UTF-8}" \
+        LC_ALL="${LC_ALL:-C.UTF-8}" \
+        "$setup_deps" --fedora --dry-run 2>&1)"
+    rc=$?
+    set -e
+
+    if [[ $rc -ne 0 ]]; then
+        printf 'sub-case D: expected exit 0, got %d\noutput:\n%s\n' \
+            "$rc" "$output" >&2
+        return 1
+    fi
+    local dnf_count
+    dnf_count="$(grep -cE 'sudo dnf install -y ' <<<"$output" || true)"
+    if [[ "$dnf_count" -ne 1 ]]; then
+        printf 'sub-case D: expected exactly 1 "sudo dnf install -y" line, got %d\noutput:\n%s\n' \
+            "$dnf_count" "$output" >&2
+        return 1
+    fi
+    # Fedora contract: no upfront sudo -v. The only sudo touchpoint
+    # is the dnf invocation. In dry-run, the PM is never invoked,
+    # so the stub log must have no sudo calls.
+    if grep -qE '^(sudo|sudo -v) ' "$stub_log"; then
+        printf 'sub-case D: stub log contains a sudo call; dry-run must not invoke the PM\nlog:\n%s\n' \
+            "$(cat -- "$stub_log")" >&2
+        return 1
+    fi
+    # Every Fedora package is in the single dnf line's args.
+    local dnf_line pkg
+    dnf_line="$(grep -E 'sudo dnf install -y ' <<<"$output" | head -1)"
+    local fedora_pkgs=(
+        lsof hunspell hunspell-en-US hunspell-es trash-cli
+    )
+    for pkg in "${fedora_pkgs[@]}"; do
+        if ! grep -qF -- "$pkg" <<<"$dnf_line"; then
+            printf 'sub-case D: dnf line missing package %s\nline: %s\n' \
+                "$pkg" "$dnf_line" >&2
+            return 1
+        fi
+    done
+
+    # --- Sub-case F: install failure (Omarchy).
+    # pacman exits 1 (all packages missing); yay exits 7 in REAL
+    # mode (no --dry-run). set -e propagates the failure; the
+    # script must exit 7, emit exactly ONE yay invocation, and
+    # not emit the final Summary: line nor "Setup complete.".
+    sandbox="$(mktemp -d "$TEST_WORKSPACE/sandbox.XXXXXX")"
+    mkdir -p "$sandbox/home/.config" "$sandbox/stubs"
+    : >"$sandbox/stub.log"
+    make_pm_stubs "$sandbox/stubs" pacman yay
+    stub_log="$sandbox/stub.log"
+
+    # Override the yay stub to exit 7 (install failure). The
+    # default make_pm_stubs makes it exit 0.
+    cat >"$sandbox/stubs/yay" <<'EOF'
+#!/usr/bin/env bash
+printf '%s %s\n' "$(basename -- "$0")" "$*" >> "${STUB_LOG:-/dev/null}"
+exit 7
+EOF
+    chmod +x "$sandbox/stubs/yay"
+
+    set +e
+    output="$(env -i \
+        HOME="$sandbox/home" \
+        PATH="$sandbox/stubs:$utils_dir" \
+        STUB_LOG="$stub_log" \
+        LANG="${LANG:-C.UTF-8}" \
+        LC_ALL="${LC_ALL:-C.UTF-8}" \
+        "$setup_deps" 2>&1)"
+    rc=$?
+    set -e
+
+    if [[ $rc -ne 7 ]]; then
+        printf 'sub-case F: expected exit 7, got %d\noutput:\n%s\n' \
+            "$rc" "$output" >&2
+        return 1
+    fi
+    yay_count="$(grep -cE '^yay ' "$stub_log" || true)"
+    if [[ "$yay_count" -ne 1 ]]; then
+        printf 'sub-case F: expected exactly 1 yay invocation, got %d\nlog:\n%s\n' \
+            "$yay_count" "$(cat -- "$stub_log")" >&2
+        return 1
+    fi
+    # No Summary: line and no "Setup complete." (failure path skips
+    # both).
+    if grep -qE 'Summary:' <<<"$output"; then
+        printf 'sub-case F: failure path must not emit Summary; got:\n%s\n' \
+            "$output" >&2
+        return 1
+    fi
+    if grep -qE 'Setup complete\.' <<<"$output"; then
+        printf 'sub-case F: failure path must not emit "Setup complete."; got:\n%s\n' \
+            "$output" >&2
+        return 1
+    fi
+
+    return 0
+}
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 echo "1..$TEST_PLAN"
@@ -1034,6 +1356,8 @@ run_test "DOTFILES_* (5 vars) cleanup under env -i + trap source grep" \
     test_dotfiles_vars_unset_after_run
 run_test "scripts/setup-deps auto-detects env (yay/dnf/none) and respects override" \
     test_setup_deps_auto_detects_env
+run_test "scripts/setup-deps single-pass batch install per env (T8 A/B/C/D/F)" \
+    test_setup_deps_single_pass_batch_install
 
 echo "# $((TESTS_RUN - TESTS_FAILED))/$TESTS_RUN passed"
 if (( TESTS_FAILED == 0 )); then

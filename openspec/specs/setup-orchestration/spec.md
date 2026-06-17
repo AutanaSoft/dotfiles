@@ -304,6 +304,59 @@ and deterministic test fixtures.
 - WHEN the script processes flags
 - THEN it skips detection, uses the Fedora package list, and does not consult `pacman`
 
+### Requirement: setup-deps single-pass batch install
+
+`scripts/setup-deps` MUST collect every missing package, then
+invoke the env's package manager exactly once with all missing
+packages as positional arguments. Per-package `[ok]` / `[miss]`
+lines MUST be preserved, a consolidated batch log line
+(e.g. `Installing N missing: ...`) emitted before the call, and
+a final `installed` / `present` / `missing` summary line.
+
+#### Scenario: all packages present logs "all present" and skips the install command
+
+- GIVEN every declared package is already installed
+- WHEN `scripts/setup-deps` runs (real or dry-run mode)
+- THEN it logs one line containing the words "all present" and exits 0
+- AND the env's install command is NOT invoked
+
+#### Scenario: missing packages trigger exactly one install call
+
+- GIVEN one or more declared packages are not installed
+- WHEN `scripts/setup-deps` runs
+- THEN the env's package manager is invoked exactly once with every missing package as a positional argument
+- AND per-package `[ok]` and `[miss]` lines are still emitted
+
+#### Scenario: install failure aborts with non-zero exit
+
+- GIVEN the single install call exits non-zero
+- WHEN `scripts/setup-deps` runs
+- THEN the script exits non-zero on that first failure
+- AND no further install attempts are made
+- AND the final summary line is not emitted
+
+#### Scenario: final summary reports installed/present/missing
+
+- GIVEN the install phase completed successfully
+- WHEN `scripts/setup-deps` reaches the end of its main flow
+- THEN it emits a summary line with `installed`, `present`, and `missing` counts
+- AND the `missing` count is 0
+
+### Requirement: Fedora single-pass install coalesces sudo
+
+When the resolved env is `fedora`, `scripts/setup-deps` MUST
+invoke `sudo dnf install -y <pkgs...>` once with all missing
+packages as positional args. The script MUST NOT perform any
+upfront `sudo -v` validation; the single `dnf` invocation MUST
+be the only point at which a sudo password prompt can appear.
+
+#### Scenario: fedora invokes sudo dnf once with all missing packages
+
+- GIVEN the env resolves to fedora and N >= 2 packages are missing
+- WHEN `scripts/setup-deps` runs (real or dry-run mode)
+- THEN the install log shows exactly one `sudo dnf install -y` line listing every missing package as a positional argument
+- AND no `sudo` invocation appears before that line
+
 ### Requirement: setup-fonts honors DOTFILES_FONTS_DIR
 
 `scripts/setup-fonts` MUST read `$DOTFILES_FONTS_DIR` when set by
@@ -326,22 +379,11 @@ directory already has the expected files.
 
 ### Requirement: Documentation and test coverage
 
-`docs/setup.md` MUST be functional user documentation for the
-`./setup` entrypoint. It MUST summarize, at minimum: what the script
-does, how to invoke it, the accepted flags, what the script does NOT
-do (e.g. `--fedora` is not implemented), and how to verify behavior
-(including the test command). The detailed implementation contract —
-the exact set of exported variables, the dispatcher-vs-env-script
-boundary, the flag precedence table, the auto-detection behavior in
-`setup-deps`, and the `setup-deps` override flag — lives in OpenSpec
-and the scripts themselves; user-facing documentation MUST NOT
-contradict the code or omit documented flags. `tests/setup-deps.bash`
-MUST cover: root invokes
-`setup-omarchy` once; root absorbs `--omarchy --fonts` / `--omarchy
---deps`; `--fedora` (any combo) exits 0 and skips work; `--fonts`
-runs only `setup-fonts`; `--deps` runs only `setup-deps`; env
-pre-flight blocks on missing fonts; `DOTFILES_*` cleanup fires on
-success and on child failure; `setup-deps` auto-detects
-`yay`/`pacman` → omarchy, `dnf`/`rpm` → fedora, fails clearly with
-no managers; `setup-deps` override flags skip detection. Minimum
-`TEST_PLAN=7`.
+`docs/setup.md` MUST document the `./setup` entrypoint,
+accepted flags, and the not-implemented `--fedora` case; the
+implementation contract lives in OpenSpec. `docs/setup.md` MUST
+also describe `setup-deps` as a single-pass batch installer per env.
+`tests/setup-deps.bash` MUST additionally cover the new
+single-pass install flow: one `yay` line and one `sudo dnf` line
+per batch, all-present skips the PM, failure aborts. Minimum
+`TEST_PLAN=8`.
