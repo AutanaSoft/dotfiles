@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# scripts/setup-deps — install OS packages required by the selected env.
+# src/utils/bash/setup-deps — install OS packages required by the selected env.
 #
-# This script is the dependencies executor. It is normally invoked by the
-# root `./setup --omarchy` orchestrator, but it can also be run directly:
+# root `./setup --dots` orchestrator, but it can also be run directly:
 #
-#     scripts/setup-deps [--omarchy] [--dry-run] [--help]
+#     src/utils/bash/setup-deps [--omarchy] [--dry-run] [--help]
 #
 # When the root `./setup` orchestrator invokes it, the selected environment
 # is passed through the `DOTFILES_ENV` environment variable and the dry-run
@@ -74,7 +73,7 @@ Usage: $0 [--omarchy] [--dry-run] [--help]
 Installs the OS packages required by the selected environment.
 
 This script is the dependencies executor. Prefer invoking it via the root
-entrypoint: \`./setup --omarchy [--fonts] [--dry-run]\`.
+entrypoint: \`./setup --dots [--fonts] [--dry-run]\`.
 
 When the root \`./setup\` orchestrator calls this script, it passes the
 selected environment through \`DOTFILES_ENV\` and the dry-run mode

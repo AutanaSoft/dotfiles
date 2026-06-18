@@ -43,7 +43,7 @@ set -euo pipefail
 # Resolve repo root from this script's path (CWD-independent).
 # When invoked by the root `./setup` orchestrator, DOTFILES_ROOT is exported
 # and used as the source of truth; otherwise we derive it from this file's
-# location (scripts/..).
+# location (src/utils/bash/../../..).
 # ---------------------------------------------------------------------------
 if [[ -n "${DOTFILES_ROOT:-}" ]]; then
     REPO_ROOT="$DOTFILES_ROOT"
@@ -139,11 +139,10 @@ require_command() {
 # Subprocess invocation helpers (env-script owns the full flow)
 # ---------------------------------------------------------------------------
 # Invoke src/utils/bash/setup-deps as a subprocess, passing the dry-run flag
-# through. In PR-2 setup-deps still requires an explicit env flag, so
-# we pass --omarchy (this script is the omarchy executor). In PR-3
-# setup-deps will gain auto-detection; the explicit flag will remain
-# valid as an override. Errors propagate (the env script's `set -e`
-# trips on a non-zero child exit).
+# through. setup-deps accepts an explicit --omarchy override for the rare
+# case where auto-detection is wrong; this script is always the omarchy
+# executor, so we pass the flag. Errors propagate (the env script's
+# `set -e` trips on a non-zero child exit).
 invoke_setup_deps() {
     local script_dir
     script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
