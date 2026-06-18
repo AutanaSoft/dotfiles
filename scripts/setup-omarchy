@@ -26,7 +26,8 @@
 # before being replaced by symlinks pointing into the repo.
 #
 # SSH config is NOT symlinked. Setup copies the tracked safe template
-# at `shared/home/.ssh/config` to `~/.ssh/config` (mode 600) only when
+# at `src/home/.ssh-shadow/config` (will live at `src/home/.ssh/config`
+# after WU-4) to `~/.ssh/config` (mode 600) only when
 # the source exists and the local target does not. The local file
 # always wins. The repo template must contain no secrets or real
 # production values — see docs/ssh.md.
@@ -282,7 +283,7 @@ ensure_symlink() {
 # message is logged. Directory and file modes are enforced:
 # $HOME/.ssh is 700, $HOME/.ssh/config is 600.
 seed_ssh_config() {
-    local src="$REPO_ROOT/shared/home/.ssh/config"
+    local src="$REPO_ROOT/src/home/.ssh-shadow/config"
     local ssh_dir="$HOME/.ssh"
     local target="$ssh_dir/config"
 
@@ -319,20 +320,20 @@ seed_ssh_config() {
 apply_symlinks() {
     local stamp="$1"
 
-    # nvim and zellij: folder symlinks (in the repo, these folders are
-    # themselves symlinks into shared/).
+    # nvim and zellij: folder symlinks (tracked source under the shadow
+    # layer until WU-4 promotes shadow → final paths).
     ensure_symlink \
-        "$REPO_ROOT/omarchy/config/nvim" \
+        "$REPO_ROOT/src/home/config-shadow/nvim" \
         "$HOME/.config/nvim" \
         "$stamp"
     ensure_symlink \
-        "$REPO_ROOT/omarchy/config/zellij" \
+        "$REPO_ROOT/src/home/config-shadow/zellij" \
         "$HOME/.config/zellij" \
         "$stamp"
 
     # hypr: per-file symlinks so defaults from omarchy stay intact.
     local hypr_src
-    for hypr_src in "$REPO_ROOT"/omarchy/config/hypr/*.conf; do
+    for hypr_src in "$REPO_ROOT"/src/home/config-shadow/hypr/*.conf; do
         [[ -e "$hypr_src" ]] || continue
         ensure_symlink \
             "$hypr_src" \
@@ -342,31 +343,31 @@ apply_symlinks() {
 
     # waybar: tracked config file.
     ensure_symlink \
-        "$REPO_ROOT/omarchy/config/waybar/config.jsonc" \
+        "$REPO_ROOT/src/home/config-shadow/waybar/config.jsonc" \
         "$HOME/.config/waybar/config.jsonc" \
         "$stamp"
 
     # alacritty: tracked config file.
     ensure_symlink \
-        "$REPO_ROOT/omarchy/config/alacritty/alacritty.toml" \
+        "$REPO_ROOT/src/home/config-shadow/alacritty/alacritty.toml" \
         "$HOME/.config/alacritty/alacritty.toml" \
         "$stamp"
 
     # Theme directory: full tracked subtree.
     ensure_symlink \
-        "$REPO_ROOT/omarchy/config/omarchy/themes/tokyo-night-autana" \
+        "$REPO_ROOT/src/home/config-shadow/omarchy/themes/tokyo-night-autana" \
         "$HOME/.config/omarchy/themes/tokyo-night-autana" \
         "$stamp"
 
-    # starship.toml (in repo, this is a symlink into shared/).
+    # starship.toml (tracked source under the shadow layer until WU-4).
     ensure_symlink \
-        "$REPO_ROOT/omarchy/config/starship.toml" \
+        "$REPO_ROOT/src/home/config-shadow/starship.toml" \
         "$HOME/.config/starship.toml" \
         "$stamp"
 
     # ~/.bashrc
     ensure_symlink \
-        "$REPO_ROOT/omarchy/home/.bashrc" \
+        "$REPO_ROOT/src/home/.bashrc-shadow" \
         "$HOME/.bashrc" \
         "$stamp"
 
@@ -375,10 +376,11 @@ apply_symlinks() {
     # above for the full behavior.
     seed_ssh_config
 
-    # NOTE: omarchy/local/bin/monitor is intentionally NOT symlinked; it is a
-    # personal/manual script the user runs ad-hoc.
-    # NOTE: omarchy/config/mako/ and omarchy/config/omarchy/hooks/ hold only
-    # .gitkeep placeholders and are left at the Omarchy default.
+    # NOTE: src/home/local-shadow/bin/monitor is intentionally NOT
+    # symlinked; it is a personal/manual script the user runs ad-hoc.
+    # NOTE: src/home/config-shadow/mako/ and
+    # src/home/config-shadow/omarchy/hooks/ hold no .gitkeep placeholders
+    # and stay at the Omarchy default.
 }
 
 # ---------------------------------------------------------------------------
@@ -402,7 +404,7 @@ apply_symlinks() {
 # unused; see docs/shared-layer.md and docs/inputs/keyboard-remap.md
 # for the full reasoning.
 install_input_devices() {
-    local src="$REPO_ROOT/omarchy/home/.config/keyd/default.conf"
+    local src="$REPO_ROOT/src/etc-shadow/keyd/default.conf"
     local target="/etc/keyd/default.conf"
 
     if [[ "$DRY_RUN" -eq 1 ]]; then
