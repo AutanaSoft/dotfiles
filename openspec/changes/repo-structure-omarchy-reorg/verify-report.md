@@ -1,33 +1,57 @@
 # Verify Report: `repo-structure-omarchy-reorg`
 
 > **Outcome**: Implementation matches the design's shadow-copy intent and the
-> 5 work units landed as planned. One user-facing bug and one spec delta
-> mismatch block archive. All other findings are documented for follow-up.
+> 5 work units landed as planned. The C1 CRITICAL and W1 WARNING from the
+> previous verify pass are resolved by follow-up commit `156355c`. Remaining
+> findings are housekeeping WARNINGs and informational SUGGESTIONs; archive
+> can proceed.
 
 | Status | Critical | Warning | Suggestion |
 | --- | --- | --- | --- |
-| **FAIL** (archive blocked) | 1 | 4 | 3 |
+| **PASS WITH WARNINGS** (archive ready) | 0 | 4 | 3 |
 
-Verify pass: 2026-06-18 against `pr/03-docs` @ `8ca614b` (HEAD of the
-feature-branch-chain tracker).
+Verify pass: 2026-06-18 against `pr/03-docs` @ `cdacc22` (HEAD of the
+feature-branch-chain tracker; includes follow-up fix commit `156355c`).
+
+## Re-verify scope
+
+The previous verify pass (2026-06-18, against `pr/03-docs` @ `8ca614b`) reported
+1 CRITICAL and 4 WARNINGs. The C1 and W1 were addressed by follow-up commit
+`156355c`:
+
+- **C1 fixed**: `src/utils/bash/setup-dots:511` pre-flight `fail` message
+  now says `./setup --dots --fonts first.` (was `./setup --omarchy --fonts`).
+  The `--omarchy` flag no longer exists on the root dispatcher after the WU-4
+  rename, so the old message would have directed users to a flag that exits
+  non-zero with "Unknown argument".
+- **W1 fixed**: 4 references in the spec delta's `setup-deps explicit override`
+  requirement now say `--omarchy` (the package-manager override):
+  - Line 255: `` `--omarchy` MUST remain a valid argument to ``
+  - Line 265: `` #### Scenario: --omarchy overrides detection ``
+  - Line 267: `` `src/utils/bash/setup-deps --omarchy` runs ``
+  - Line 351: `` `src/utils/bash/setup-deps --omarchy --dry-run` is invoked ``
+  The dispatcher references (lines 65-67, 96, 108, 115, 142, 144, 169, 171,
+  175, 177) intentionally remain `--dots` because they refer to the root
+  dispatch flag, not the package-manager override.
+
+The remaining WARNINGs (W2/W3/W4) and SUGGESTIONs (S1/S2/S3) are carryovers
+from the previous pass; details and resolution paths below.
 
 ## Quick path
 
 - [x] All 14 live `~/.config/...` and `~/.bashrc` symlinks resolve into
-  `src/home/config/...` and `src/home/.bashrc`.
+      `src/home/config/...` and `src/home/.bashrc`.
 - [x] `hyprctl configerrors` returns no errors.
 - [x] TAP harness `bash tests/setup-deps.bash` → **5/5 passed**.
 - [x] All five scripts pass `bash -n` syntax check.
 - [x] `git ls-files | grep -E '^(omarchy|shared|scripts)/'` is empty.
-- [x] `find src/home/config -name .gitkeep` is empty (all four redundant
-  `.gitkeep` files removed, including the 4th at `omarchy/config/hypr/.gitkeep`
-  that the apply note flagged — see S2 below).
+- [x] `find src/home/config -name .gitkeep` is empty.
 - [x] `openspec/changes/archive/` and `openspec/changes/cleanup-omarchy/`
-  are byte-identical to `main` (untouched per SDD archive policy).
+      are byte-identical to `main` (untouched per SDD archive policy).
 - [x] `openspec/specs/setup-orchestration/spec.md` `DOTFILES_ENV` row
-  untouched (byte-identical — merge happens at archive, not apply).
-- [ ] **One CRITICAL bug + one spec delta text mismatch block archive** —
-  see Findings below.
+      untouched (byte-identical — merge happens at archive, not apply).
+- [x] C1 fixed in `src/utils/bash/setup-dots:511`.
+- [x] W1 fixed in spec delta (4 references now say `--omarchy`).
 
 ## Live-system evidence
 
@@ -48,10 +72,45 @@ feature-branch-chain tracker).
 
 The 14 live symlinks survive the WU-3 → WU-4 transition because the shadow
 paths become final paths via `git mv` (atomic in git; the resolved inodes
-are unchanged). The post-WU-4 commit `26f6631` (`fix(setup-dots): correct
-REPO_ROOT resolution for src/utils/bash/`) repaired a path-resolution
-regression that the WU-4 atomic commit introduced; the fix is committed
-in PR #2 and is included in the final tree.
+are unchanged). The post-WU-4 fix commits (`26f6631` REPO_ROOT resolution,
+`156355c` pre-flight error message) are part of the final tree.
+
+## C1 fix verification (post-156355c)
+
+`src/utils/bash/setup-dots:511` reads:
+```
+fail "Nerd Fonts not installed under $font_dir. Run './setup --dots --fonts' first."
+```
+
+The remaining `--omarchy` references in `src/utils/bash/setup-dots` are
+intentional and scoped to the package-manager override contract:
+
+| Line | Reference | Why `--omarchy` is correct |
+| --- | --- | --- |
+| 142 | comment: "setup-deps accepts an explicit --omarchy override" | docstring of `invoke_setup_deps()`; explains the override flag |
+| 153 | `local -a args=(--omarchy)` | internal call to `setup-deps`; this script is always the Omarchy executor, so it passes the override explicitly |
+| 448 | `warn "...Run 'src/utils/bash/setup-deps --omarchy' to install it."` | user-facing hint about the package-manager override flag |
+
+Root dispatcher references in `setup` and the `setup-dots` docstring
+(lines 5, 70, etc.) correctly say `--dots`.
+
+## W1 fix verification (post-156355c)
+
+`openspec/changes/repo-structure-omarchy-reorg/specs/setup-orchestration/spec.md`:
+
+| Line | Reference | Correct flag |
+| --- | --- | --- |
+| 255 | "`--omarchy` MUST remain a valid argument to..." | `--omarchy` ✓ |
+| 265 | "Scenario: --omarchy overrides detection" | `--omarchy` ✓ |
+| 267 | "GIVEN ... `src/utils/bash/setup-deps --omarchy` runs" | `--omarchy` ✓ |
+| 351 | "GIVEN `src/utils/bash/setup-deps --omarchy --dry-run` is invoked" | `--omarchy` ✓ |
+
+The spec delta's dispatcher references (lines 65-67, 96, 108, 115, 142,
+144, 169, 171, 175, 177) correctly retain `--dots` — they describe the
+root dispatch flag, not the package-manager override. The implementation
+matches: `setup-deps:110` parser arm is `--omarchy)`, invoked explicitly
+by `setup-dots:153`. Pre-archive spec merge will land the corrected text
+into the main spec.
 
 ## PR-branch verification (chained feature-branch-chain)
 
@@ -61,6 +120,7 @@ in PR #2 and is included in the final tree.
 | `pr/01-prep-and-scripts` | tracker | WU-1 (shadow copy) + WU-2 (script edits) + `docs/cleanup.md` move | 2 (planning + WU-1+WU-2 combined as `c26374b`) |
 | `pr/02-reorg-and-commit` | `pr/01` | WU-3 (live re-point, no commit) + WU-4 (atomic rename + script finalize + `setup` flag rewrite) | 5 (see S1 below for why this is 5 not 1) |
 | `pr/03-docs` | `pr/02` | WU-5 (doc + config edits + code-comment sweep) | 7 (README, AGENTS, shared-layer, setup+tool docs, src/README, openspec config, code-comment sweep) |
+| `pr/03-docs` (fixup) | `pr/03-docs` | C1 + W1 fixes (post-verify) | 1 (`156355c`) + 1 (`cdacc22` verify-report rewrite) |
 
 Diff stats (relative to base of each branch):
 
@@ -70,7 +130,8 @@ Diff stats (relative to base of each branch):
 | `pr/02` | 77 | 124 | 227 (most are renames; net body edits small) |
 | `pr/03` | 23 | 198 | 184 (doc updates) |
 
-Total: 19 commits on the feature-branch-chain; nothing pushed to remote.
+Total: 19 commits on the feature-branch-chain + 2 fixup commits on `pr/03-docs`;
+nothing pushed to remote.
 
 ## Spec compliance
 
@@ -96,7 +157,8 @@ Total: 19 commits on the feature-branch-chain; nothing pushed to remote.
 | `src/etc/keyd/default.conf` uses `noop` to silence volumeup/volumedown | `src/etc/keyd/default.conf:39-40` (`volumeup = noop; volumedown = noop`) | PASS |
 | `src/etc/keyd/default.conf` remaps broken `up` to `pagedown` | verified in the same file | PASS |
 | `src/etc/keyd/default.conf` scope `[ids] *` (universal) | line `[ids] *` in the file | PASS |
-| **Spec delta `setup-deps explicit override` says `--dots`** | `setup-deps:110` parser arm is `--omarchy)`, not `--dots)` | **FAIL — see W1** |
+| Spec delta `setup-deps explicit override` says `--omarchy` (post-W1 fix) | Lines 255/265/267/351 all reference `--omarchy`; matches implementation | PASS |
+| Pre-flight error message references valid dispatcher flag (post-C1 fix) | `setup-dots:511` says `./setup --dots --fonts` | PASS |
 | `DOTFILES_ENV` row byte-identical to pre-change | main spec untouched (last touched by `omarchy-only-scope` merge) | PASS (merge happens at archive) |
 
 ## Design compliance
@@ -106,7 +168,7 @@ Total: 19 commits on the feature-branch-chain; nothing pushed to remote.
 | Decision 1 — Shadow copy (not direct `git mv`) | WU-1 created `src/*-shadow` trees; WU-4 atomic `git mv shadow → final` | PASS |
 | Decision 2 — `cp -a` semantics, 3 relative symlinks handled | `cp -a` copied targets directly; `rm` of symlinks in WU-1; `git rm` in WU-4 | PASS |
 | Decision 3 — `apply_symlinks` idempotency is the safety net | `ensure_symlink` lines 231–271 resolve both source and target via `readlink -f`; verified by live symlinks still resolving after `git mv` | PASS |
-| Decision 4 — `--dots` flag rename timing | Renamed in WU-2 (script) + WU-4 (dispatcher + setup-deps docs); see W1 for the residual spec delta text | PARTIAL — see W1 |
+| Decision 4 — `--dots` flag rename timing | Renamed in WU-2 (script) + WU-4 (dispatcher + setup-deps docs); fix commit `156355c` corrected the residual spec delta text and the pre-flight fail message | PASS |
 | Decision 5 — `tmux.conf` `# Reason:` wording | `src/home/config/tmux/tmux.conf:1` matches design Decision 5 verbatim: `# Reason: personal tmux config (97 lines); kept tracked to preserve the live symlink. No env-script changes.` | PASS |
 | Decision 6 — Spec↔apply bridge | All 6 design table rows match implementation | PASS |
 
@@ -114,56 +176,16 @@ Total: 19 commits on the feature-branch-chain; nothing pushed to remote.
 
 ### CRITICAL
 
-#### C1 — User-facing fail message in `setup-dots` references the old root flag
-
-- **File**: `src/utils/bash/setup-dots:511`
-- **Current text**:
-  `fail "Nerd Fonts not installed under $font_dir. Run './setup --omarchy --fonts' first."`
-- **Expected text**:
-  `fail "Nerd Fonts not installed under $font_dir. Run './setup --dots --fonts' first."`
-- **Why critical**: the root `./setup` dispatcher no longer accepts
-  `--omarchy`; the WU-4 flag rewrite removed it. If a user triggers the
-  pre-flight fail (no fonts dir), the error message tells them to use a
-  flag that exits non-zero with "Unknown argument". This is a real
-  user-facing bug.
-- **Trigger path**: the pre-flight check at `setup-dots:507-513` runs
-  when the env script is invoked directly (bypassing root, e.g.
-  `src/utils/bash/setup-dots` with no fonts installed). It does NOT
-  fire on the normal `./setup --dots` path because root sets
-  `DOTFILES_FONTS_DIR` to a populated path before dispatching.
-- **Fix scope**: 1-line change in `src/utils/bash/setup-dots:511`.
-  Belongs in the WU-5 sweep retroactively (the sweep commit
-  `8ca614b` missed this line).
-- **Resolution**: edit `setup-dots:511` to use `--dots`. Add to WU-5
-  follow-up or fix in a small follow-up commit on `pr/03-docs`.
+None. The C1 user-facing bug from the previous pass is resolved.
 
 ### WARNING
 
-#### W1 — Spec delta `setup-deps explicit override` says `--dots`; implementation uses `--omarchy`
+#### W1 — Resolved (no longer an issue)
 
-- **Spec delta location**: `openspec/changes/repo-structure-omarchy-reorg/specs/setup-orchestration/spec.md`
-  - Line 255-256: "`--dots` MUST remain a valid argument to `src/utils/bash/setup-deps`"
-  - Line 269: "GIVEN ... `src/utils/bash/setup-deps --dots` runs"
-  - Line 351: "GIVEN `src/utils/bash/setup-deps --dots --dry-run` is invoked"
-- **Implementation**: `src/utils/bash/setup-deps:110` parser arm is
-  `--omarchy)`, not `--dots)`. The internal call from `setup-dots:153` is
-  `args=(--omarchy)`. The doc and comment in `setup-deps:6,71,83,187`
-  all reference `--omarchy`.
-- **Why warning (not critical)**: per the user's explicit intent (and
-  the apply phase's documented engram note), the `--omarchy` override
-  in `setup-deps` is a **package-manager override** (forces the Omarchy
-  env), conceptually separate from the root `--dots` flag (which
-  selects the env script). The implementation is correct; the spec
-  delta has a textual mismatch that needs a small fix at archive time.
-- **Why not a SUGGESTION**: the spec delta is currently inconsistent
-  with the implementation, and the archive phase is the merge point
-  where this must be reconciled. Archive should rewrite the three
-  `--dots` → `--omarchy` references in the spec delta. Without that
-  rewrite, the post-merge main spec will claim `--dots` is the override
-  when the implementation rejects it.
-- **Resolution path**: archive phase rewrites the three `--dots` →
-  `--omarchy` references in the spec delta; the merge then lands the
-  correct contract in the main spec.
+The spec delta's `setup-deps explicit override` requirement now correctly
+references `--omarchy` (4 lines: 255, 265, 267, 351). The implementation
+matches. This WARNING is closed; included here for traceability against
+the previous verify pass.
 
 #### W2 — `src/utils/bash/cleanup` script still references the old docs path
 
@@ -183,8 +205,8 @@ Total: 19 commits on the feature-branch-chain; nothing pushed to remote.
   but missed these three. This is a missed sweep item, not a casual
   improvement.
 - **Resolution**: replace `docs/ideas/scripts/cleanup.md` with
-  `docs/cleanup.md` in those three lines. Add to WU-5 follow-up or fix
-  in a small follow-up commit on `pr/03-docs`.
+  `docs/cleanup.md` in those three lines. Land in a small follow-up
+  commit on `pr/03-docs` or a future reorg.
 
 #### W3 — `.gitignore` still has `shared/home/.ssh/*` rules
 
@@ -203,7 +225,7 @@ Total: 19 commits on the feature-branch-chain; nothing pushed to remote.
   src/home/.ssh/*
   !src/home/.ssh/config
   ```
-  Add to WU-5 follow-up or fix in a small follow-up commit.
+  Land in a small follow-up commit on `pr/03-docs` or a future reorg.
 
 #### W4 — `docs/git.md` and `docs/wezterm.md` reference non-existent paths
 
@@ -287,6 +309,8 @@ Total: 19 commits on the feature-branch-chain; nothing pushed to remote.
 | No `.gitkeep` in `src/home/config/` | `find src/home/config -name .gitkeep` | empty (PASS) |
 | No `../../shared/` in working tree | `git grep '../../shared/' -- ':!openspec/changes/archive'` | empty (PASS) |
 | No `~/.config/keyd/` symlink | `[[ -e ~/.config/keyd ]]` | false (PASS) |
+| C1 fixed: pre-flight fail message uses `--dots` | `grep -n '\-\-omarchy' src/utils/bash/setup-dots \| grep 511` | empty (PASS — only `--dots` at line 511) |
+| W1 fixed: spec delta override references `--omarchy` | Lines 255/265/267/351 of spec delta | all `--omarchy` (PASS) |
 | No env-2 references in active code | grep for `fedora`, `cachyos` (env-2 names) in `src/`, `tests/`, `setup` | none in active code (PASS) |
 
 > Note: the engram topic `dotfiles/repo-scope` confirms env-2 is out of
@@ -298,8 +322,9 @@ Total: 19 commits on the feature-branch-chain; nothing pushed to remote.
 The `omarchy-only-scope` change removed tests T3, T7, T8 (already
 documented in the WU-5 pre-flight section of `tasks.md`). This
 reorg does NOT remove additional tests. The TAP harness is unchanged
-in shape (5 tests, T1/T2/T4/T5/T6) and all 5 pass in the current
-tree. No coverage was lost as part of the reorg.
+in shape (5 tests, T1/T2/T3/T4/T5 in the new numbering — the
+five tests exercise the renamed scripts transparently) and all 5 pass
+in the current tree. No coverage was lost as part of the reorg.
 
 ## Archived changes note
 
@@ -341,33 +366,32 @@ intentional and matches the precedent set by the
 
 ## Final verdict
 
-**FAIL** — archive is blocked by one CRITICAL (C1) and one
-WARNING (W1) finding.
+**PASS WITH WARNINGS** — archive is unblocked. The C1 CRITICAL and W1
+WARNING from the previous pass are resolved by follow-up commit `156355c`.
+Live-system evidence (14 symlinks, TAP 5/5, hyprctl clean), spec compliance
+matrix, and design compliance matrix all pass. Remaining WARNINGs (W2/W3/W4)
+are housekeeping items that do not affect the reorg's contract and should
+land in small follow-up commits.
 
-The C1 fix is a 1-line edit in `src/utils/bash/setup-dots:511` and
-should land before archive. The W1 spec delta text fix
-(`--dots` → `--omarchy` in three lines of the spec delta) should
-land as part of the archive's spec merge.
-
-W2/W3/W4 are documented for follow-up commits on `pr/03-docs`; they
-do not block archive but should be addressed before the next
-reorg to prevent drift accumulation.
-
-S1/S2/S3 are informational.
+The archive phase may proceed:
+1. Merge the spec delta into `openspec/specs/setup-orchestration/spec.md`.
+2. Move `openspec/changes/repo-structure-omarchy-reorg/` into
+   `openspec/changes/archive/2026-06-18-repo-structure-omarchy-reorg/`.
 
 ## Relevant files
 
-- `src/utils/bash/setup-dots` — env script (line 511: C1; line 153
-  intentional `--omarchy` call; line 448 intentional `setup-deps
-  --omarchy` warn message)
+- `src/utils/bash/setup-dots` — env script (line 511: post-C1 fix uses
+  `--dots`; lines 142/153/448: intentional `--omarchy` package-manager
+  override references)
 - `src/utils/bash/setup-deps` — deps script (intentional `--omarchy`
-  override; see W1 for spec delta text mismatch)
-- `src/utils/bash/cleanup` — cleanup script (lines 3/42/90: W2)
+  override; spec delta now matches post-W1 fix)
+- `src/utils/bash/cleanup` — cleanup script (lines 3/42/90: W2 stale
+  `docs/ideas/scripts/cleanup.md` references)
 - `.gitignore` — stale `shared/home/.ssh/*` rules (W3)
 - `docs/git.md`, `docs/wezterm.md` — pre-omarchy-only-scope relics (W4)
 - `openspec/changes/repo-structure-omarchy-reorg/specs/setup-orchestration/spec.md`
-  — spec delta (W1: three `--dots` → `--omarchy` rewrites needed at
-  archive)
+  — spec delta (post-W1 fix: `--omarchy` at lines 255/265/267/351;
+  `--dots` retained at lines 65-67/96/108/115/142/144/169/171/175/177)
 - `openspec/changes/archive/*` — byte-identical to main (S3)
 - `tests/setup-deps.bash` — 5/5 passing
 - `src/home/config/tmux/tmux.conf` — `# Reason:` matches design
