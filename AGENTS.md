@@ -6,12 +6,14 @@ execution rules; full repo docs live in [`README.md`](README.md) and
 
 ## Repository Purpose
 
-Personal dotfiles for two work environments:
+Personal dotfiles for Omarchy-family hosts (stock Omarchy, CachyOS with
+Omarchy layered on top, Arch with Omarchy layered on top). Distribution-
+specific configuration is owned by the Omarchy installer; this repo's only
+AUR-helper concern is `yay`.
 
 | Environment | Main stack |
 | --- | --- |
 | **Omarchy** (Arch + Hyprland) | Hyprland, Alacritty, Zellij, nvim, Mako, Waybar |
-| **Fedora** | WezTerm, Zellij, nvim, Zsh, Starship, Git, SSH |
 
 The repo is the source of truth. Live files are symlinks; edit the repo
 and reload the affected service. Layout, setup, and policy:
@@ -24,7 +26,7 @@ and reload the affected service. Layout, setup, and policy:
 | Rule | Details |
 | --- | --- |
 | `p-` prefix (Hyprland) | Personal files that survive `omarchy update` |
-| Canonical source | `shared/` content is signed from omarchy; fedora follows |
+| Canonical source | `shared/` content is signed from omarchy |
 | Removal policy | Comment out with `# Reason:` instead of deleting |
 | Setup entrypoint | Root: `./setup`. Env executors: `scripts/setup-<env>` |
 | Sensitive SSH | `shared/home/.ssh/*` is gitignored except for the safe `config` template |
@@ -41,7 +43,7 @@ Source of truth: [`docs/conventions.md`](docs/conventions.md#formatting).
 
 ### Main tools
 
-Shared across both envs (canonical source in `shared/`): Zellij, Neovim +
+Shared canonical source in `shared/`: Zellij, Neovim +
 LazyVim, Starship, opencode.nvim.
 
 ## Forbidden Paths

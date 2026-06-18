@@ -1,8 +1,7 @@
 # `shared/` layer
 
-Canonical config shared across environments. `shared/` content is
-authored from Omarchy and re-used by `fedora/` (or any future env
-added at repo root). Per-env paths under `<env>/config/<tool>/` are
+Canonical config shared across the repo. `shared/` content is
+authored from Omarchy. Per-env paths under `<env>/config/<tool>/` are
 **relative folder symlinks** into `shared/`, so the whole tool tree
 is exposed with one symlink per env.
 
@@ -51,17 +50,16 @@ symlinked. See [`docs/ssh.md`](ssh.md).
 ### Exception: /etc/keyd/default.conf install pattern
 
 `omarchy/home/.config/keyd/default.conf` is the repo source for the
-keyd daemon config. It is **Omarchy only** (Fedora is out of scope —
-Piper and keyd are not installed on the Fedora env, and there is no
-`shared/` involvement). The keyd daemon runs as root and reads only
-from `/etc/keyd/`; the user-level path (`~/.config/keyd/`) is unused,
-so no `~/.config/keyd/` symlink is created. `scripts/setup-omarchy`
-copies the tracked file to `/etc/keyd/default.conf` with
-`install -m 644` (root-owned, daemon config — not a symlink) on every
-env run. This is the second tracked-on-repo-but-not-live-symlink
-exception, modeled on the SSH template above. See
-[`docs/inputs/keyboard-remap.md`](inputs/keyboard-remap.md) for the
-edit-and-reload flow and the VID:PID migration path.
+keyd daemon config. It is **Omarchy only** (Piper and keyd are
+Omarchy-only; there is no `shared/` involvement). The keyd daemon
+runs as root and reads only from `/etc/keyd/`; the user-level path
+(`~/.config/keyd/`) is unused, so no `~/.config/keyd/` symlink is
+created. `scripts/setup-omarchy` copies the tracked file to
+`/etc/keyd/default.conf` with `install -m 644` (root-owned, daemon
+config — not a symlink) on every env run. This is the second
+tracked-on-repo-but-not-live-symlink exception, modeled on the SSH
+template above. See [`docs/inputs/keyboard-remap.md`](inputs/keyboard-remap.md)
+for the edit-and-reload flow and the VID:PID migration path.
 
 ## Forbidden content
 

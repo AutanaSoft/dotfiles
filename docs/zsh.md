@@ -1,6 +1,6 @@
 # Zsh Guide
 
-This shell setup uses `zsh` with `starship`, `mise`, and an automatic `zellij` entrypoint. The `zsh-autosuggestions` and `zsh-syntax-highlighting` plugins are loaded directly from the Fedora packages.
+This shell setup uses `zsh` with `starship`, `mise`, and an automatic `zellij` entrypoint. The `zsh-autosuggestions` and `zsh-syntax-highlighting` plugins are loaded directly from the system packages.
 
 ## Quick Path
 

@@ -33,4 +33,4 @@ This repo stores the Windows WezTerm config because it is part of the daily term
 ## Related Files
 
 - `home/.wezterm.lua`
-- `fedora/README.md#setup-on-a-new-machine`
+- `omarchy/README.md`

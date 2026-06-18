@@ -1,22 +1,25 @@
 # dotfiles
 
-Versioned configuration for two work environments. The repo is the source of
-truth; live files at `~/` and `~/.config/...` are symlinks into this folder.
+Versioned configuration for Omarchy-family hosts (stock Omarchy, CachyOS with
+Omarchy layered on top, Arch with Omarchy layered on top). The repo is the
+source of truth; live files at `~/` and `~/.config/...` are symlinks into this
+folder. Distribution-specific configuration is owned by the Omarchy installer;
+this repo's only AUR-helper concern is `yay`.
 
 ## Quick Path
 
 1. Clone the repo.
-1. Run one of the setup commands below from the repo root.
+1. Run `./setup --omarchy` from the repo root.
 1. Edit, reload, validate on every change.
 
-## Environments
+## Environment
 
 | Environment | Folder | Main stack |
 | --- | --- | --- |
 | Omarchy (Arch + Hyprland) | `omarchy/` | Hyprland, Alacritty, Zellij, nvim, Mako, Waybar |
-| Fedora | `fedora/` | WezTerm, Zellij, nvim, Zsh, Starship, Git, SSH |
 
-See each env's README for the per-env runbook, managed paths, and doc index.
+See [`omarchy/README.md`](omarchy/README.md) for the per-env runbook, managed
+paths, and doc index.
 
 ## Setup
 
@@ -24,12 +27,10 @@ See each env's README for the per-env runbook, managed paths, and doc index.
 git clone git@github.com:AutanaSoft/autanasoft-dots.git dotfiles
 cd dotfiles
 ./setup --omarchy --fonts
-./setup --fedora --fonts    # fonts only; Fedora env setup is manual
 ```
 
 `./setup` is the root entrypoint. See [`docs/setup.md`](docs/setup.md) for
-script roles and options. Fedora env setup is manual for now:
-[`fedora/README.md`](fedora/README.md#setup-on-a-new-machine).
+script roles and options.
 
 ## Repo layout
 
@@ -39,7 +40,7 @@ script roles and options. Fedora env setup is manual for now:
 | `<env>/config/<app>/` | `~/.config/<app>` (shared tools symlink into [`shared/`](docs/shared-layer.md)) |
 | `<env>/bin/<name>` | `~/.local/bin/<name>` (omarchy only) |
 | `docs/` | Reference docs and conventions |
-| `shared/` | Canonical configs valid for both environments |
+| `shared/` | Canonical configs |
 
 ## Policy summary
 
@@ -57,4 +58,4 @@ script roles and options. Fedora env setup is manual for now:
 - [`docs/conventions.md`](docs/conventions.md) — repo style and doc skeleton
 - [`docs/setup.md`](docs/setup.md) — setup commands and script roles
 - [`docs/shared-layer.md`](docs/shared-layer.md) — shared config layer rules
-- [`fedora/README.md`](fedora/README.md), [`omarchy/README.md`](omarchy/README.md) — per-env runbook and doc index
+- [`omarchy/README.md`](omarchy/README.md) — per-env runbook and doc index

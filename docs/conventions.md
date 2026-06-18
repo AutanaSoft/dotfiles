@@ -17,7 +17,7 @@ contributors (humans and AI) follow these rules.
 | `config/` | Files and folders that map to `$HOME/.config` |
 | `bin/` | Personal executable scripts |
 | `docs/` | Guides, conventions, and operational notes |
-| `shared/` | Canonical configs valid for both environments |
+| `shared/` | Canonical configs |
 | `scripts/` | Env executors dispatched by the root `./setup` entrypoint |
 
 ## Formatting
@@ -57,8 +57,8 @@ Comment out removed content with `# Reason:` instead of deleting.
 Three doc categories, each with a fixed role and location:
 
 1. **Runbook** — step-by-step restoration procedure. Lives in the per-env
-   `README.md` (`fedora/README.md`, `omarchy/README.md`) under "Setup on a
-   new machine". Not in `docs/`.
+   `README.md` (`omarchy/README.md`) under "Setup on a new machine".
+   Not in `docs/`.
 1. **Conventions** — repo rules and current decisions. This file.
 1. **Reference** — looks up decisions taken in this repo, not tool tutorials.
 

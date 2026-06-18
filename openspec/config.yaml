@@ -15,17 +15,20 @@ versioned: true
 
 # Concise project context for any later SDD phase. Keep under 10 lines.
 context: |
-  Two-env personal dotfiles repo: `omarchy/` (Arch+Hyprland: Hyprland, Alacritty,
-  Zellij, nvim, Mako, Waybar) and `fedora/` (WezTerm, Zellij, nvim, Zsh, Starship,
-  SSH). Shared canonical configs in `shared/` (Zellij, nvim/LazyVim, Starship,
-  opencode.nvim); env-specific folders symlink into `shared/`. Repo is the source
-  of truth; live `~/` and `~/.config/...` are symlinks; root `./setup` dispatches
-  to `scripts/setup-omarchy` / `scripts/setup-deps` / `scripts/setup-fonts`.
-  Conventions: `p-` prefix survives `omarchy update`; removal = `# Reason:`; SSH
-  under `shared/home/.ssh/*` gitignored except `config` template. Indent 2sp
-  default; 4sp for KDL/shell/Hyprland `.conf`; MD exempt from trailing-trim.
-  Document artifacts default to English; replies to the developer in neutral
-  Latin American Spanish. Existing main spec: `openspec/specs/setup-orchestration/spec.md`.
+  Omarchy-family personal dotfiles repo: stock Omarchy, CachyOS with Omarchy
+  layered on top, and Arch with Omarchy layered on top share one dotfiles
+  layer (Hyprland, Alacritty, Zellij, nvim, Mako, Waybar). The Omarchy
+  installer handles distribution-specific config; this repo's only AUR-
+  helper concern is `yay`. Shared canonical configs in `shared/` (Zellij,
+  nvim/LazyVim, Starship, opencode.nvim); `omarchy/` symlinks into `shared/`.
+  Repo is the source of truth; live `~/` and `~/.config/...` are symlinks;
+  root `./setup` dispatches to `scripts/setup-omarchy` / `scripts/setup-deps` /
+  `scripts/setup-fonts`. Conventions: `p-` prefix survives `omarchy update`;
+  removal = `# Reason:`; SSH under `shared/home/.ssh/*` gitignored except
+  `config` template. Indent 2sp default; 4sp for KDL/shell/Hyprland `.conf`;
+  MD exempt from trailing-trim. Document artifacts default to English;
+  replies to the developer in neutral Latin American Spanish. Existing main
+  spec: `openspec/specs/setup-orchestration/spec.md`.
 
 # Strict TDD marker. Dotfiles repo, not application code: only one bash TAP
 # smoke test (`tests/setup-deps.bash`) exists; RED-GREEN-REFACTOR does not
@@ -42,7 +45,7 @@ rules:
   specs:
     - Use Given/When/Then for scenarios; RFC 2119 keywords (MUST, SHALL, SHOULD, MAY).
     - Reference symlink targets with the `<env>/<path>` → `~/...` form used in
-      `omarchy/README.md` and `fedora/README.md`.
+      `omarchy/README.md`.
   design:
     - Document the shared-vs-env boundary explicitly; justify any file that
       belongs in `shared/` vs the env folder.

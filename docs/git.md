@@ -33,4 +33,4 @@ This repo keeps a portable Git base in `home/.gitconfig`. Local identity can be 
 ## Related Files
 
 - `home/.gitconfig`
-- `fedora/README.md#setup-on-a-new-machine`
+- `omarchy/README.md`
