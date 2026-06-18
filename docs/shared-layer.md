@@ -48,6 +48,21 @@ that setup copies to `~/.ssh/config` only when the target is missing.
 The local file always wins — it is never overwritten and never
 symlinked. See [`docs/ssh.md`](ssh.md).
 
+### Exception: /etc/keyd/default.conf install pattern
+
+`omarchy/home/.config/keyd/default.conf` is the repo source for the
+keyd daemon config. It is **Omarchy only** (Fedora is out of scope —
+Piper and keyd are not installed on the Fedora env, and there is no
+`shared/` involvement). The keyd daemon runs as root and reads only
+from `/etc/keyd/`; the user-level path (`~/.config/keyd/`) is unused,
+so no `~/.config/keyd/` symlink is created. `scripts/setup-omarchy`
+copies the tracked file to `/etc/keyd/default.conf` with
+`install -m 644` (root-owned, daemon config — not a symlink) on every
+env run. This is the second tracked-on-repo-but-not-live-symlink
+exception, modeled on the SSH template above. See
+[`docs/inputs/keyboard-remap.md`](inputs/keyboard-remap.md) for the
+edit-and-reload flow and the VID:PID migration path.
+
 ## Forbidden content
 
 Do not place any of the following in `shared/`:

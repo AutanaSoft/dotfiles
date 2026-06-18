@@ -31,7 +31,7 @@
 # always wins. The repo template must contain no secrets or real
 # production values — see docs/ssh.md.
 #
-# Fonts are installed by the env flow itself (Step 2/4). When this
+# Fonts are installed by the env flow itself (Step 2/5). When this
 # script is run directly without going through root, the fonts dir
 # location is read from $DOTFILES_FONTS_DIR (set by root to
 # $HOME/.local/share/fonts/autanasoft) or, when unset, defaults to
@@ -382,6 +382,44 @@ apply_symlinks() {
 }
 
 # ---------------------------------------------------------------------------
+# Install keyd config + enable input-device services
+# ---------------------------------------------------------------------------
+# Precedent: this is the FIRST sudo service-enable touchpoint in the
+# Omarchy env flow. Future env executors that need a privileged
+# service-enable can use the same pattern (rely on sudo's default
+# timestamp cache, 5 min — do NOT add an explicit `sudo -v` upfront).
+# The two sudo calls below (`install` then `systemctl`) coalesce into
+# a single password prompt because they run back-to-back inside the
+# timestamp window.
+#
+# Order within the step: install the config FIRST, then start the
+# daemon. Reversing the order would risk a daemon restart loop on a
+# fresh host that has no /etc/keyd/default.conf yet (the keyd unit
+# would start, fail to find its config, and keep retrying).
+#
+# No ~/.config/keyd/ symlink is created here: keyd runs as root and
+# reads only from /etc/keyd/default.conf. The user-level path is
+# unused; see docs/shared-layer.md and docs/inputs/keyboard-remap.md
+# for the full reasoning.
+install_input_devices() {
+    local src="$REPO_ROOT/omarchy/home/.config/keyd/default.conf"
+    local target="/etc/keyd/default.conf"
+
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        log "[dry-run] would run: install -m 644 $src $target"
+        log "[dry-run] would run: systemctl enable --now keyd ratbagd"
+        return 0
+    fi
+
+    require_command install
+    require_command systemctl
+    log "Installing keyd config: $src -> $target (mode 644)"
+    sudo install -m 644 "$src" "$target"
+    log "Enabling and starting keyd + ratbagd services"
+    sudo systemctl enable --now keyd ratbagd
+}
+
+# ---------------------------------------------------------------------------
 # System validation: theme + reload
 # ---------------------------------------------------------------------------
 validate_system() {
@@ -416,14 +454,15 @@ validate_system() {
 # ---------------------------------------------------------------------------
 # Step counter
 # ---------------------------------------------------------------------------
-# The env script owns its own step counter. The 4 main steps are:
+# The env script owns its own step counter. The 5 main steps are:
 #   1. Install OS dependencies
 #   2. Install Nerd Fonts
 #   3. Apply symlinks
-#   4. Validate system
+#   4. Install keyd config and enable input-device services
+#   5. Validate system
 # The pre-flight between steps 2 and 3 is non-mutating and is not
 # counted as a step on its own.
-TOTAL_STEPS=4
+TOTAL_STEPS=5
 current_step=0
 
 step() {
@@ -448,19 +487,19 @@ main() {
     require_command omarchy
     require_command hyprctl
 
-    # Step 1/4: install OS dependencies via the deps helper. In dry-run
+    # Step 1/5: install OS dependencies via the deps helper. In dry-run
     # the helper previews every missing package's install command.
     step "Install OS dependencies (via scripts/setup-deps)"
     invoke_setup_deps
 
-    # Step 2/4: install Nerd Fonts via the fonts helper. Idempotent;
+    # Step 2/5: install Nerd Fonts via the fonts helper. Idempotent;
     # safe to re-run. In dry-run the helper previews the downloads.
     step "Install Nerd Fonts (via scripts/setup-fonts)"
     invoke_setup_fonts
 
     # Pre-flight: defense-in-depth for direct invocation without
     # going through root. The font install is idempotent but a missing
-    # fonts dir at this point means Step 2/4 was bypassed (e.g. someone
+    # fonts dir at this point means Step 2/5 was bypassed (e.g. someone
     # ran this script directly without setup-fonts). Non-mutating:
     # we only check the directory, we never install fonts. In dry-run,
     # warn and keep previewing so a clean machine can inspect the full
@@ -475,11 +514,17 @@ main() {
         fi
     fi
 
-    # Step 3/4: apply the symlink map.
+    # Step 3/5: apply the symlink map.
     step "Apply symlinks"
     apply_symlinks "$stamp"
 
-    # Step 4/4: validate the system (theme, hyprctl reload, etc.).
+    # Step 4/5: install keyd config and enable input-device services.
+    # First sudo service-enable touchpoint in the env flow; both sudo
+    # calls (install + systemctl) coalesce under the timestamp cache.
+    step "Install keyd config and enable input-device services"
+    install_input_devices
+
+    # Step 5/5: validate the system (theme, hyprctl reload, etc.).
     step "Validate system"
     validate_system
 

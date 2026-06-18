@@ -1191,8 +1191,9 @@ EOF
     # differences in the dry-run preview line.
     local yay_line pkg
     yay_line="$(grep -E 'yay -S --needed ' <<<"$output" | head -1)"
+    # Mirrors OMARCHY_PACKAGES in scripts/setup-deps (line ~61). Edit both in lockstep.
     local omarchy_pkgs=(
-        lsof hunspell hunspell-en_us hunspell-es_any zellij trash-cli
+        lsof hunspell hunspell-en_us hunspell-es_any zellij trash-cli keyd piper libratbag
     )
     for pkg in "${omarchy_pkgs[@]}"; do
         if ! grep -qF -- "$pkg" <<<"$yay_line"; then

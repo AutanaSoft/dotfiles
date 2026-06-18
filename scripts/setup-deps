@@ -65,6 +65,9 @@ OMARCHY_PACKAGES=(
     hunspell-es_any     # command: hunspell
     zellij              # command: zellij
     trash-cli           # command: trash (snacks.nvim explorer delete)
+    keyd                # command: keyd (keyboard remapping daemon)
+    piper               # command: piper (Logitech mouse GUI; ratbagd-backed)
+    libratbag           # provides: ratbagd (DBus service for Piper / mouse profiles)
 )
 
 FEDORA_PACKAGES=(
