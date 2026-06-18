@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SECONDARY_MONITOR="HDMI-A-1"
+
+print_usage() {
+  cat <<'EOF'
+Usage: monitor <on|off>
+
+Commands:
+  on    Enable the secondary monitor
+  off   Disable the secondary monitor
+EOF
+}
+
+enable_monitor() {
+  # Reloading Hyprland restores monitor state from the repo-managed config file.
+  hyprctl reload
+}
+
+disable_monitor() {
+  # Disabling a monitor causes Hyprland to move its workspaces and windows
+  # to the remaining active monitors.
+  hyprctl keyword monitor "${SECONDARY_MONITOR},disable"
+}
+
+main() {
+  if [[ $# -ne 1 ]]; then
+    print_usage
+    exit 1
+  fi
+
+  case "$1" in
+    on)
+      enable_monitor
+      ;;
+    off)
+      disable_monitor
+      ;;
+    *)
+      print_usage
+      exit 1
+      ;;
+  esac
+}
+
+main "$@"

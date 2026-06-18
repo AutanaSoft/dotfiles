@@ -1,0 +1,24 @@
+@define-color foreground #a9b1d6;
+@define-color background #1a1b26;
+
+window#waybar * {
+  font-family: 'Monaspace Krypton NF';
+  font-size: 12px;
+}
+
+window#waybar #workspaces button,
+window#waybar #cpu,
+window#waybar #battery,
+window#waybar #pulseaudio,
+window#waybar #custom-omarchy,
+window#waybar #custom-update,
+window#waybar #network,
+window#waybar #bluetooth,
+window#waybar #custom-expand-icon,
+window#waybar #custom-screenrecording-indicator,
+window#waybar #custom-idle-indicator,
+window#waybar #custom-notification-silencing-indicator,
+window#waybar #custom-voxtype {
+  font-family: 'JetBrainsMono Nerd Font';
+  font-size: 14px;
+}
