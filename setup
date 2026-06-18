@@ -8,25 +8,25 @@
 # script.
 #
 # Boundary:
-#   - Env scripts (scripts/setup-omarchy) own their own full env flow.
+#   - Env scripts (src/utils/bash/setup-dots) own their own full env flow.
 #     They call setup-deps and setup-fonts from inside their own main()
 #     and pre-flight their own pre-requisites.
-#   - scripts/setup-deps auto-detects the host environment by probing the
-#     available package managers (yay/pacman → omarchy). --omarchy remains
+#   - src/utils/bash/setup-deps auto-detects the host environment by probing
+#     the available package managers (yay/pacman → omarchy). --dots remains
 #     valid as an explicit override.
 #   - Root MUST NOT run a multi-step deps → fonts → env pipeline. It MUST
 #     NOT define run_deps / run_fonts / run_env helpers. It MUST NOT
 #     maintain a TOTAL_STEPS counter.
 #
 # Flags:
-#   --omarchy    — dispatch to scripts/setup-omarchy
-#   --fonts      — dispatch to scripts/setup-fonts (or absorbed by --omarchy)
-#   --deps       — dispatch to scripts/setup-deps   (or absorbed by --omarchy)
+#   --dots       — dispatch to src/utils/bash/setup-dots
+#   --fonts      — dispatch to src/utils/bash/setup-fonts (or absorbed by --dots)
+#   --deps       — dispatch to src/utils/bash/setup-deps   (or absorbed by --dots)
 #   --dry-run    — set DOTFILES_DRY_RUN=1; env scripts honor it
 #   --help / -h  — show usage and exit 0
 #
 # Precedence:
-#   - --omarchy absorbs --fonts and --deps. The env script handles them.
+#   - --dots absorbs --fonts and --deps. The env script handles them.
 #   - With no env flag, --fonts and --deps are direct dispatches.
 #
 # On any exit path (success, child-script failure, parse error, --help,
@@ -34,12 +34,12 @@
 # never leak into the calling shell.
 #
 # Examples:
-#   ./setup --omarchy                     # dispatch to setup-omarchy
-#   ./setup --omarchy --fonts             # absorbed; env script handles fonts
-#   ./setup --omarchy --deps              # absorbed; env script handles deps
+#   ./setup --dots                        # dispatch to setup-dots
+#   ./setup --dots --fonts                # absorbed; env script handles fonts
+#   ./setup --dots --deps                 # absorbed; env script handles deps
 #   ./setup --fonts                       # dispatch to setup-fonts
 #   ./setup --deps                        # dispatch to setup-deps (auto-detect)
-#   ./setup --dry-run --omarchy           # dry-run the env flow
+#   ./setup --dry-run --dots              # dry-run the env flow
 #   ./setup --unknown                     # unknown flag, non-zero exit
 
 set -euo pipefail
@@ -49,13 +49,13 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 SCRIPT_PATH="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 DOTFILES_ROOT="$SCRIPT_PATH"
-SCRIPTS_DIR="$DOTFILES_ROOT/scripts"
+SCRIPTS_DIR="$DOTFILES_ROOT/src/utils/bash"
 
 # ---------------------------------------------------------------------------
 # Per-run paths (computed once, exported, cleaned by trap).
 #   DOTFILES_BACKUP_DIR  : $DOTFILES_ROOT/backup/<utc-ts>/ (per-run)
 #   DOTFILES_FONTS_DIR   : centralized so the literal appears once.
-#                          Child scripts (setup-fonts and setup-omarchy)
+#                          Child scripts (setup-fonts and setup-dots)
 #                          read it; do not re-derive in those scripts.
 # ---------------------------------------------------------------------------
 DOTFILES_BACKUP_DIR="$DOTFILES_ROOT/backup/$(date -u +%Y%m%dT%H%M%SZ)"
@@ -75,40 +75,40 @@ REQUEST_DEPS=0
 # ---------------------------------------------------------------------------
 usage() {
     cat <<EOF
-Usage: $0 [--omarchy] [--fonts] [--deps] [--dry-run] [--help]
+Usage: $0 [--dots] [--fonts] [--deps] [--dry-run] [--help]
 
 Thin dispatcher: parse flags, export the DOTFILES_* path variables,
 register a cleanup trap, and invoke exactly one env or helper script.
-Env scripts own their own full flow; scripts/setup-deps auto-detects
-the host by probing package managers.
+Env scripts own their own full flow; src/utils/bash/setup-deps
+auto-detects the host by probing package managers.
 
 Precedence:
-  --omarchy absorbs --fonts and --deps (the env script handles them).
+  --dots absorbs --fonts and --deps (the env script handles them).
   Without an env flag, --fonts and --deps are direct dispatches.
 
 Environment (one of, or none):
-  --omarchy       Dispatch to scripts/setup-omarchy
+  --dots          Dispatch to src/utils/bash/setup-dots
 
 Options (optional):
-  --fonts         Dispatch to scripts/setup-fonts (absorbed by --omarchy)
-  --deps          Dispatch to scripts/setup-deps   (absorbed by --omarchy)
+  --fonts         Dispatch to src/utils/bash/setup-fonts (absorbed by --dots)
+  --deps          Dispatch to src/utils/bash/setup-deps   (absorbed by --dots)
   --dry-run       Set DOTFILES_DRY_RUN=1; env scripts honor it
   --help, -h      Show this help and exit
 
 Exported variables (unset on every exit path via EXIT trap):
   DOTFILES_ROOT        Absolute path to the repo root
-  DOTFILES_ENV         "omarchy" when --omarchy is set; unset otherwise
+  DOTFILES_ENV         "omarchy" when --dots is set; unset otherwise
   DOTFILES_DRY_RUN     "1" when --dry-run is set; unset otherwise
   DOTFILES_BACKUP_DIR  Per-run backup dir under \$DOTFILES_ROOT/backup
   DOTFILES_FONTS_DIR   \$HOME/.local/share/fonts/autanasoft (centralized)
 
 Examples:
-  $0 --omarchy
-  $0 --omarchy --fonts         # absorbed; env script handles fonts
-  $0 --omarchy --deps          # absorbed; env script handles deps
+  $0 --dots
+  $0 --dots --fonts             # absorbed; env script handles fonts
+  $0 --dots --deps              # absorbed; env script handles deps
   $0 --fonts
-  $0 --deps                    # setup-deps auto-detects the host
-  $0 --dry-run --omarchy
+  $0 --deps                     # setup-deps auto-detects the host
+  $0 --dry-run --dots
 EOF
 }
 
@@ -117,7 +117,7 @@ EOF
 # ---------------------------------------------------------------------------
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --omarchy)
+        --dots)
             DOTFILES_ENV="omarchy"
             shift
             ;;
@@ -156,7 +156,7 @@ fi
 if [[ -z "$DOTFILES_ENV" \
     && "$REQUEST_FONTS" -eq 0 \
     && "$REQUEST_DEPS" -eq 0 ]]; then
-    echo "ERROR: choose --omarchy, --fonts, --deps, or any combination." >&2
+    echo "ERROR: choose --dots, --fonts, --deps, or any combination." >&2
     usage >&2
     exit 2
 fi
@@ -200,14 +200,14 @@ trap 'unset DOTFILES_ROOT DOTFILES_ENV DOTFILES_DRY_RUN DOTFILES_BACKUP_DIR DOTF
 # Dispatch
 # ---------------------------------------------------------------------------
 # Exactly one target script. Order:
-#   1. --omarchy dispatches to scripts/setup-omarchy. --fonts and
+#   1. --dots dispatches to src/utils/bash/setup-dots. --fonts and
 #      --deps are absorbed — the env script owns the full flow.
-#   2. --fonts only dispatches to scripts/setup-fonts.
-#   3. --deps  only dispatches to scripts/setup-deps   (auto-detects).
+#   2. --fonts only dispatches to src/utils/bash/setup-fonts.
+#   3. --deps  only dispatches to src/utils/bash/setup-deps   (auto-detects).
 target_script=""
 case "$DOTFILES_ENV:$REQUEST_FONTS:$REQUEST_DEPS" in
     omarchy:*:*)
-        target_script="$SCRIPTS_DIR/setup-omarchy"
+        target_script="$SCRIPTS_DIR/setup-dots"
         ;;
     :1:0)
         target_script="$SCRIPTS_DIR/setup-fonts"
@@ -234,7 +234,7 @@ if [[ ! -x "$target_script" ]]; then
 fi
 
 # Subprocess args: forward --dry-run. Child scripts (setup-deps,
-# setup-fonts, setup-omarchy) all accept it.
+# setup-fonts, setup-dots) all accept it.
 declare -a child_args=()
 if [[ "$PARSED_DRY_RUN" -eq 1 ]]; then
     child_args=(--dry-run)

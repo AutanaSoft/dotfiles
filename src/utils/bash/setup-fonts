@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
-# scripts/setup-fonts — install Nerd Fonts used by the Autanasoft dotfiles.
+# src/utils/bash/setup-fonts — install Nerd Fonts used by the Autanasoft dotfiles.
 #
 # This script is the fonts executor. It is normally invoked by the root
-# `./setup --omarchy --fonts` (or `./setup --fedora --fonts`) orchestrator,
-# but it can also be run directly:
+# `./setup --dots --fonts` orchestrator, but it can also be run directly:
 #
-#     scripts/setup-fonts [--dry-run] [--help]
+#     src/utils/bash/setup-fonts [--dry-run] [--help]
 #
 # Fonts installed (all Nerd Fonts variants; user-local, no sudo):
 #   - Monaspace Nerd Fonts (provides 'Monaspace Krypton NF' used in alacritty,

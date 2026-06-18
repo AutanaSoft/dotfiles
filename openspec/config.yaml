@@ -19,16 +19,20 @@ context: |
   layered on top, and Arch with Omarchy layered on top share one dotfiles
   layer (Hyprland, Alacritty, Zellij, nvim, Mako, Waybar). The Omarchy
   installer handles distribution-specific config; this repo's only AUR-
-  helper concern is `yay`. Shared canonical configs in `shared/` (Zellij,
-  nvim/LazyVim, Starship, opencode.nvim); `omarchy/` symlinks into `shared/`.
-  Repo is the source of truth; live `~/` and `~/.config/...` are symlinks;
-  root `./setup` dispatches to `scripts/setup-omarchy` / `scripts/setup-deps` /
-  `scripts/setup-fonts`. Conventions: `p-` prefix survives `omarchy update`;
-  removal = `# Reason:`; SSH under `shared/home/.ssh/*` gitignored except
-  `config` template. Indent 2sp default; 4sp for KDL/shell/Hyprland `.conf`;
-  MD exempt from trailing-trim. Document artifacts default to English;
-  replies to the developer in neutral Latin American Spanish. Existing main
-  spec: `openspec/specs/setup-orchestration/spec.md`.
+  helper concern is `yay`. Canonical configs in `src/home/config/` (Zellij,
+  nvim/LazyVim, Starship, opencode.nvim, Hyprland `p-*` files, Alacritty,
+  Waybar, Mako); `src/etc/keyd/default.conf` flows to `/etc/` via sudo
+  install; `src/home/local/bin/` holds personal manual scripts. Repo is
+  the source of truth; live `~/` and `~/.config/...` are symlinks; root
+  `./setup` dispatches to `src/utils/bash/setup-dots` /
+  `src/utils/bash/setup-deps` / `src/utils/bash/setup-fonts` /
+  `src/utils/bash/cleanup`. Conventions: `p-` prefix survives
+  `omarchy update`; removal = `# Reason:`; SSH under `src/home/.ssh/*`
+  gitignored except `config` template. Indent 2sp default; 4sp for
+  KDL/shell/Hyprland `.conf`; MD exempt from trailing-trim. Document
+  artifacts default to English; replies to the developer in neutral
+  Latin American Spanish. Existing main spec:
+  `openspec/specs/setup-orchestration/spec.md`.
 
 # Strict TDD marker. Dotfiles repo, not application code: only one bash TAP
 # smoke test (`tests/setup-deps.bash`) exists; RED-GREEN-REFACTOR does not
@@ -44,23 +48,26 @@ rules:
     - Use English for all proposal/spec/design/tasks/verify/report artifacts.
   specs:
     - Use Given/When/Then for scenarios; RFC 2119 keywords (MUST, SHALL, SHOULD, MAY).
-    - Reference symlink targets with the `<env>/<path>` → `~/...` form used in
-      `omarchy/README.md`.
+    - Reference symlink targets with the `src/<path>` → `~/...` form used in
+      `src/README.md`.
   design:
     - Document the shared-vs-env boundary explicitly; justify any file that
-      belongs in `shared/` vs the env folder.
-    - For changes touching `shared/`, call out the `omarchy update` interaction.
+      belongs in `src/home/config/` vs `src/home/local/` vs `src/etc/`.
+    - For changes touching `src/home/config/`, call out the `omarchy update`
+      interaction.
   tasks:
     - Group by work unit; keep each unit completable in one session.
-    - For changes that touch `scripts/`, pair the implementation with a test
-      case in `tests/setup-deps.bash` (or a sibling bash TAP file) when feasible.
+    - For changes that touch `setup` or `src/utils/bash/`, pair the
+      implementation with a test case in `tests/setup-deps.bash` (or a sibling
+      bash TAP file) when feasible.
   apply:
     - Follow existing config patterns; do not invent new layout conventions.
     - Do not commit, push, or open PRs without explicit user request.
     tdd: false
     test_command: "bash tests/setup-deps.bash"
   verify:
-    - Run the bash TAP smoke test when the change touched `setup` or `scripts/`.
+    - Run the bash TAP smoke test when the change touched `setup` or
+      `src/utils/bash/`.
     - For Hyprland changes: document the `hyprctl reload && hyprctl configerrors`
       result (configerrors MUST be empty).
     test_command: "bash tests/setup-deps.bash"

@@ -5,7 +5,7 @@ This repo uses an `Alt-first` Zellij setup: pane actions use `Alt Shift`, tab ac
 terminal input — `Ctrl g` opens the mode menu and most actions return to `locked` after they
 run.
 
-The config is shared across both envs via `shared/zellij/`. The symlink map is in
+The config is canonical under `src/home/config/zellij/`. The symlink map is in
 [`docs/shared-layer.md`](shared-layer.md).
 
 ## Quick Path
@@ -47,6 +47,6 @@ The config is shared across both envs via `shared/zellij/`. The symlink map is i
 
 ## Helper Popup
 
-`Alt y` launches `zellij_forgot.wasm` (from `shared/zellij/plugins/`) and shows the current direct
+`Alt y` launches `zellij_forgot.wasm` (from `src/home/config/zellij/plugins/`) and shows the current direct
 shortcuts. The helper is configured with `LOAD_ZELLIJ_BINDINGS=false` so it does not bundle every
 default binding.

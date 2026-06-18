@@ -104,7 +104,7 @@ Operators (`d` / `c` / `y`) and visual (`v` + object) use the same objects. `i` 
 
 - `Alt+j` / `Alt+k` requires the terminal to send `Alt` to Neovim. Alacritty, Foot, and
   WezTerm do this by default. If it doesn't work, remap to `<C-A-j>` / `<C-A-k>` in
-  `shared/nvim/lua/config/keymaps.lua`.
+  `src/home/config/nvim/lua/config/keymaps.lua`.
 - Operators compose: `d2w` deletes two words, `c3j` changes three lines down, `yap` yanks a
   paragraph.
 - `vip` selects a paragraph; `dap` deletes it. Fastest way to refactor blocks.

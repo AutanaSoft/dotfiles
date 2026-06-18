@@ -26,10 +26,10 @@ and reload the affected service. Layout, setup, and policy:
 | Rule | Details |
 | --- | --- |
 | `p-` prefix (Hyprland) | Personal files that survive `omarchy update` |
-| Canonical source | `shared/` content is signed from omarchy |
+| Canonical source | `src/home/config/` is the only tracked config tree |
 | Removal policy | Comment out with `# Reason:` instead of deleting |
-| Setup entrypoint | Root: `./setup`. Env executors: `scripts/setup-<env>` |
-| Sensitive SSH | `shared/home/.ssh/*` is gitignored except for the safe `config` template |
+| Setup entrypoint | Root: `./setup`. Env executors: `src/utils/bash/<name>` |
+| Sensitive SSH | `src/home/.ssh/*` is gitignored except for the safe `config` template |
 
 ### Formatting
 
@@ -43,8 +43,9 @@ Source of truth: [`docs/conventions.md`](docs/conventions.md#formatting).
 
 ### Main tools
 
-Shared canonical source in `shared/`: Zellij, Neovim +
-LazyVim, Starship, opencode.nvim.
+Canonical source in `src/home/config/`: Zellij, Neovim +
+LazyVim, Starship, opencode.nvim, Hyprland (`p-` prefix), Alacritty,
+Waybar, Mako.
 
 ## Forbidden Paths
 
@@ -52,7 +53,9 @@ System-managed or per-host — never edit, never commit:
 
 - `~/.local/share/omarchy/` — managed by omarchy
 - SSH private keys, `known_hosts`, machine-specific tokens
-- Hyprland / Mako / Waybar / Walker configs (omarchy-only, not shared)
+- Hyprland / Mako / Waybar / Walker configs that are pure omarchy
+  defaults (only the per-host overrides in `src/home/config/` are
+  tracked; the rest stay at the omarchy default)
 
 Full list: [`docs/shared-layer.md`](docs/shared-layer.md#forbidden-content).
 
