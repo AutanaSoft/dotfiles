@@ -252,7 +252,7 @@ exit non-zero with the message above.
 
 ### Requirement: setup-deps explicit override
 
-`--dots` MUST remain a valid argument to
+`--omarchy` MUST remain a valid argument to
 `src/utils/bash/setup-deps` and acts as an explicit override of
 the auto-detection. When passed, the probe is skipped and the
 Omarchy env is forced. The override is useful for non-standard
@@ -262,9 +262,9 @@ as an unknown argument and exits 2 with the usage text.
 
 (Previously: path era `scripts/setup-deps`.)
 
-#### Scenario: --dots overrides detection
+#### Scenario: --omarchy overrides detection
 
-- GIVEN a non-Omarchy package manager (or none) is on `PATH` and `src/utils/bash/setup-deps --dots` runs
+- GIVEN a non-Omarchy package manager (or none) is on `PATH` and `src/utils/bash/setup-deps --omarchy` runs
 - WHEN the script processes flags
 - THEN it skips detection, uses the Omarchy package list, and does not consult any other package manager
 
@@ -348,7 +348,7 @@ installing the standalone `ratbagd` package would conflict).
 
 #### Scenario: Omarchy dry-run emits a single yay line with all three packages
 
-- GIVEN `src/utils/bash/setup-deps --dots --dry-run` is invoked and at least one of the new packages is missing
+- GIVEN `src/utils/bash/setup-deps --omarchy --dry-run` is invoked and at least one of the new packages is missing
 - WHEN the install phase runs
 - THEN the output contains exactly one `yay -S --needed` line
 - AND that line lists `keyd`, `piper`, and `libratbag` as positional arguments

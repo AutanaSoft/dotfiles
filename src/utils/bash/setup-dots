@@ -508,7 +508,7 @@ main() {
         if [[ "$DRY_RUN" -eq 1 ]]; then
             warn "Nerd Fonts not installed under $font_dir. Continuing because this is dry-run."
         else
-        fail "Nerd Fonts not installed under $font_dir. Run './setup --omarchy --fonts' first."
+        fail "Nerd Fonts not installed under $font_dir. Run './setup --dots --fonts' first."
         fi
     fi
 
