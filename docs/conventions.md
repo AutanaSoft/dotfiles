@@ -5,7 +5,7 @@ contributors (humans and AI) follow these rules.
 
 ## Quick Path
 
-1. Put `$HOME` files under `home/`, `~/.config` files under `config/`.
+1. Put `$HOME` files under `src/home/`, `~/.config` files under `src/home/config/`.
 1. Apply the formatting table below.
 1. Use [`docs/skeletons.md`](skeletons.md) for any new doc.
 
@@ -13,12 +13,12 @@ contributors (humans and AI) follow these rules.
 
 | Path | Purpose |
 | --- | --- |
-| `home/` | Files that live directly in `$HOME` |
-| `config/` | Files and folders that map to `$HOME/.config` |
-| `bin/` | Personal executable scripts |
+| `src/home/` | Files that live directly in `$HOME` (e.g. `.bashrc`, `.ssh/`) |
+| `src/home/config/` | Files and folders that map to `$HOME/.config/<app>/` |
+| `src/home/local/bin/` | Personal executable scripts (manual only) |
+| `src/etc/` | Files that flow to `/etc/` (system-managed, sudo install) |
+| `src/utils/bash/` | Setup helpers dispatched by the root `./setup` entrypoint |
 | `docs/` | Guides, conventions, and operational notes |
-| `shared/` | Canonical configs |
-| `scripts/` | Env executors dispatched by the root `./setup` entrypoint |
 
 ## Formatting
 
@@ -57,7 +57,7 @@ Comment out removed content with `# Reason:` instead of deleting.
 Three doc categories, each with a fixed role and location:
 
 1. **Runbook** — step-by-step restoration procedure. Lives in the per-env
-   `README.md` (`omarchy/README.md`) under "Setup on a new machine".
+   `README.md` (`src/README.md`) under "Setup on a new machine".
    Not in `docs/`.
 1. **Conventions** — repo rules and current decisions. This file.
 1. **Reference** — looks up decisions taken in this repo, not tool tutorials.
@@ -78,8 +78,8 @@ Three doc categories, each with a fixed role and location:
 
 ### Cross-linking
 
-- Each env `README.md` is the doc index for that env: tool→doc mapping and
-  doc index.
+- The per-env `README.md` (`src/README.md`) is the doc index for that env:
+  tool→doc mapping and doc index.
 - Hub-and-spoke for grouped tools (e.g. `nvim.md` → `nvim/normal-mode.md`):
   the parent doc lists subdocs in a "Reference Pages" table.
 
@@ -93,7 +93,8 @@ Three doc categories, each with a fixed role and location:
 
 | Type | Source of truth |
 | --- | --- |
-| Active shell dotfiles | `home/` |
-| Tool configs under `.config` | `config/` |
+| Active shell dotfiles | `src/home/` |
+| Tool configs under `.config` | `src/home/config/` |
+| System-level configs (root-installed) | `src/etc/` |
 | Human-readable guidance | `docs/` |
-| Cross-env canonical config | `shared/` (see [`docs/shared-layer.md`](shared-layer.md)) |
+| Env executor (Omarchy flow) | `src/utils/bash/setup-dots` |

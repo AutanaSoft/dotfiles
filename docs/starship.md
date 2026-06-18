@@ -1,21 +1,21 @@
 # Starship Guide
 
-This prompt is organized by module groups, but keeps the original behavior intact. The same
-`shared/starship.toml` is used in `omarchy/` via the shared layer
-(omarchy-canonical). See [`docs/shared-layer.md`](shared-layer.md) for the mapping.
+This prompt is organized by module groups, but keeps the original behavior intact. The
+canonical `src/home/config/starship.toml` is used as-is by `src/utils/bash/setup-dots`.
+See [`docs/shared-layer.md`](shared-layer.md) for the mapping.
 
 ## Quick Path
 
 1. Install `starship`.
-2. The dotfiles symlink `~/.config/starship.toml` to `shared/starship.toml` (already set up
-   by `omarchy refresh` on Omarchy).
+2. The dotfiles symlink `~/.config/starship.toml` to `src/home/config/starship.toml`
+   (already set up by `./setup --dots` on Omarchy).
 3. Open a new shell.
 
 ## File
 
 | File | Purpose |
 | --- | --- |
-| `shared/starship.toml` | Prompt configuration (canonical) |
+| `src/home/config/starship.toml` | Prompt configuration (canonical) |
 
 ## Organization
 
@@ -37,5 +37,5 @@ This prompt is organized by module groups, but keeps the original behavior intac
 
 ## Related Files
 
-- `config/starship.toml`
-- `home/.zshrc`
+- `src/home/config/starship.toml`
+- `src/home/.bashrc`

@@ -6,10 +6,10 @@ tracked file. Omarchy only.
 
 ## Quick path
 
-1. Edit `omarchy/home/.config/keyd/default.conf` in the repo.
+1. Edit `src/etc/keyd/default.conf` in the repo.
 2. Re-apply the Omarchy env flow:
    ```bash
-   ./setup --omarchy
+   ./setup --dots
    ```
    This copies the file to `/etc/keyd/default.conf` and re-enables the
    `keyd` service. The two `sudo` calls in the new step coalesce under
@@ -26,8 +26,8 @@ tracked file. Omarchy only.
 
 | Layer | Path | Owner | Notes |
 | --- | --- | --- | --- |
-| Repo (source of truth) | `omarchy/home/.config/keyd/default.conf` | user | Tracked in git. Lives in the env folder, not `shared/`, because keyd is Omarchy-only. |
-| Daemon (live) | `/etc/keyd/default.conf` | root | Read by keyd at boot. Re-installed on every `./setup --omarchy`. |
+| Repo (source of truth) | `src/etc/keyd/default.conf` | user | Tracked in git. Lives in `src/etc/` (not `src/home/config/`) because keyd is a system-level daemon. |
+| Daemon (live) | `/etc/keyd/default.conf` | root | Read by keyd at boot. Re-installed on every `./setup --dots`. |
 
 keyd runs as root and reads **only** from `/etc/keyd/`. There is no
 `~/.config/keyd/` symlink and the user-level path is unused. This is
@@ -39,9 +39,9 @@ is the SSH config template); see
 
 | Action | Command |
 | --- | --- |
-| Re-run the env flow | `./setup --omarchy` |
-| Copy + reload manually | `sudo install -m 644 omarchy/home/.config/keyd/default.conf /etc/keyd/default.conf && sudo keyd reload` |
-| Dry-run preview | `./setup --omarchy --dry-run` |
+| Re-run the env flow | `./setup --dots` |
+| Copy + reload manually | `sudo install -m 644 src/etc/keyd/default.conf /etc/keyd/default.conf && sudo keyd reload` |
+| Dry-run preview | `./setup --dots --dry-run` |
 
 The env flow is idempotent. Re-running does not duplicate state, and
 the keyd service is already `enabled` after the first run, so the
@@ -63,7 +63,7 @@ scoping.
 1. Plug the new keyboard in.
 2. Run `sudo keyd monitor` and press a key on the new device. The
    output contains a line like `event: devname="..." vid=0x046d pid=0xc52b`.
-3. In `omarchy/home/.config/keyd/default.conf`, replace
+3. In `src/etc/keyd/default.conf`, replace
    ```ini
    [ids]
    *
@@ -78,12 +78,12 @@ scoping.
    The conceptual placeholder for this scope is `usb:VID:PID` (the
    spec uses that label; the real config uses the bare hex form
    above).
-4. Reload: `./setup --omarchy` (or `sudo keyd reload` after a manual
+4. Reload: `./setup --dots` (or `sudo keyd reload` after a manual
    `install`).
 
 ## Checklist
 
-- [ ] `omarchy/home/.config/keyd/default.conf` is the only file you
+- [ ] `src/etc/keyd/default.conf` is the only file you
       edit. Do not hand-edit `/etc/keyd/default.conf` — it gets
       overwritten on the next env run.
 - [ ] `sudo keyd -V` shows `/etc/keyd/default.conf` as the active

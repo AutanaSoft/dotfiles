@@ -41,7 +41,7 @@ the toggle is implicit.
 
 Piper profiles are written by `ratbagd` over DBus to the G502's
 onboard EEPROM (firmware). There is no on-disk artefact to version
-control. After a fresh `./setup --omarchy` on a new machine, the
+control. After a fresh `./setup --dots` on a new machine, the
 mouse has the factory-default profile and you must recreate the two
 profiles in Piper by hand. The install step does NOT (and cannot)
 restore them automatically.
@@ -63,13 +63,13 @@ This is the recovery path, not a bug.
 
 ### Install notes
 
-- `piper` is in `OMARCHY_PACKAGES` in `scripts/setup-deps` and
-  installed by Step 1/5 of `./setup --omarchy`. `libratbag` provides
+- `piper` is in `OMARCHY_PACKAGES` in `src/utils/bash/setup-deps` and
+  installed by Step 1/5 of `./setup --dots`. `libratbag` provides
   the `ratbagd` DBus service; `systemctl enable --now keyd ratbagd`
   runs in Step 4/5 of the same flow.
 - Piper is a per-user GUI app — there is no autostart entry. Launch
   it on demand from the application launcher.
-- On a fresh host, the first `./setup --omarchy` will install
+- On a fresh host, the first `./setup --dots` will install
   `piper` and `libratbag`, enable `ratbagd`, but the G502 will still
   have its factory profile. The Piper run above is the only way to
   get the two custom profiles back.

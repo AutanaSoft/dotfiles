@@ -1,8 +1,8 @@
 # Neovim
 
-LazyVim configuration shared across both environments. Canonical source: `shared/nvim/`,
-exposed at runtime as a single folder symlink (`<env>/config/nvim/` → `shared/nvim/`). See
-[`docs/shared-layer.md`](shared-layer.md) for the symlink model.
+LazyVim configuration for the Omarchy env. Canonical source: `src/home/config/nvim/`,
+exposed at runtime as a single folder symlink (`~/.config/nvim` → `src/home/config/nvim`).
+See [`docs/shared-layer.md`](shared-layer.md) for the symlink model.
 
 ## Quick path
 
@@ -26,17 +26,18 @@ exposed at runtime as a single folder symlink (`<env>/config/nvim/` → `shared/
 
 | Path | Role |
 |------|------|
-| `shared/nvim/lazyvim.json` | Enabled LazyVim extras |
-| `shared/nvim/lazy-lock.json` | Shared plugin lockfile |
-| `shared/nvim/lua/plugins/` | One file per plugin or concern |
-| `shared/nvim/lua/config/` | LazyVim config overrides (`lazy`, `autocmds`, `keymaps`, `options`, `lint`) |
-| `shared/nvim/plugin/after/transparency.lua` | Transparent highlight overrides |
-| `shared/nvim/markdownlint.json` | Shared markdown lint rules |
+| `src/home/config/nvim/lazyvim.json` | Enabled LazyVim extras |
+| `src/home/config/nvim/lazy-lock.json` | Shared plugin lockfile |
+| `src/home/config/nvim/lua/plugins/` | One file per plugin or concern |
+| `src/home/config/nvim/lua/config/` | LazyVim config overrides (`lazy`, `autocmds`, `keymaps`, `options`, `lint`) |
+| `src/home/config/nvim/plugin/after/transparency.lua` | Transparent highlight overrides |
+| `src/home/config/nvim/markdownlint.json` | Shared markdown lint rules |
 
 ## Formatting & Linting
 
-LazyVim/Mason installs the editor tools from the enabled extras in `shared/nvim/lazyvim.json`.
-Run `:Lazy sync` after changing plugins or extras.
+LazyVim/Mason installs the editor tools from the enabled extras in
+`src/home/config/nvim/lazyvim.json`. Run `:Lazy sync` after changing plugins or
+extras.
 
 | Type | Formatter | Diagnostics |
 | --- | --- | --- |

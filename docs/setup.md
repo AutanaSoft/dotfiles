@@ -8,14 +8,14 @@ variables when it exits.
 ## Quick Path
 
 ```bash
-./setup --omarchy  # configure Omarchy / CachyOS + Omarchy
+./setup --dots  # configure Omarchy / CachyOS + Omarchy
 ```
 
 ## Accepted Flags
 
 | Flag        | Result                                                                     |
 | ----------- | -------------------------------------------------------------------------- |
-| `--omarchy` | Runs the Omarchy setup flow: dependencies, fonts, then environment config. |
+| `--dots`    | Runs the Omarchy setup flow: dependencies, fonts, then environment config. |
 | `--fonts`   | Installs Nerd Fonts only. Does not configure an environment.               |
 | `--deps`    | Installs OS dependencies only. The dependency script detects the system.   |
 | `--dry-run` | Shows the distro setup actions without mutating the system.                |
@@ -23,7 +23,7 @@ variables when it exits.
 
 ## Dependency Detection
 
-`./setup --deps` delegates to `scripts/setup-deps`, which detects the local
+`./setup --deps` delegates to `src/utils/bash/setup-deps`, which detects the local
 system by checking package managers on `PATH`:
 
 | Found             | Environment        |
@@ -34,7 +34,7 @@ If detection is wrong for an unusual host, run the helper directly with an
 explicit override:
 
 ```bash
-scripts/setup-deps --omarchy
+src/utils/bash/setup-deps --omarchy
 ```
 
 Dependencies are installed in a single batch. A single `yay` invocation
@@ -54,7 +54,8 @@ packages or modify your real home configuration.
 ## Related Files
 
 - `setup` — root entrypoint.
-- `scripts/setup-omarchy` — Omarchy setup flow.
-- `scripts/setup-deps` — OS package dependency installer.
-- `scripts/setup-fonts` — Nerd Fonts installer.
+- `src/utils/bash/setup-dots` — Omarchy setup flow.
+- `src/utils/bash/setup-deps` — OS package dependency installer.
+- `src/utils/bash/setup-fonts` — Nerd Fonts installer.
+- `src/utils/bash/cleanup` — selectively remove Omarchy preinstalls.
 - `tests/setup-deps.bash` — behavior tests.
