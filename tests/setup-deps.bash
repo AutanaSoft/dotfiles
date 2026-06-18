@@ -32,8 +32,8 @@
 # because the per-env shape no longer applies — the only env is now
 # Omarchy.
 #
-#   PR-1               T1  --omarchy invokes setup-omarchy once
-#                     T2  --omarchy --fonts/--deps are absorbed
+#   PR-1               T1  --dots invokes setup-dots once
+#                     T2  --dots --fonts/--deps are absorbed
 #                     T4  --fonts runs only setup-fonts; --deps only setup-deps
 #                     T6  DOTFILES_* (5 vars) cleanup under env -i + trap grep
 #   PR-2               T5  env-script pre-flight blocks on missing
@@ -123,7 +123,7 @@ EOF
 #   <sandbox>/home                       — temp HOME
 #   <sandbox>/home/.local/share/fonts/autanasoft/ — Nerd Fonts dir with
 #                                                one stub file, so the
-#                                                setup-omarchy pre-flight
+#                                                setup-dots pre-flight
 #                                                passes.
 #   <sandbox>/stubs                      — command stubs (chmod +x)
 #   <sandbox>/stub.log                   — sentinel log the stubs append to
@@ -145,7 +145,7 @@ make_sandbox() {
 
 # Variant of make_sandbox that does NOT create the Nerd Fonts dir.
 # Reserved for the deferred T5 (env-script pre-flight failure case):
-# setup-omarchy invoked without fonts installed must fail fast at the
+# setup-dots invoked without fonts installed must fail fast at the
 # pre-flight. Land with PR-2.
 make_sandbox_no_fonts() {
     local dir
@@ -279,8 +279,8 @@ assert_not_grep() {
 # ---------------------------------------------------------------------------
 # Test 1
 # ---------------------------------------------------------------------------
-# `./setup --dry-run --omarchy` invokes `scripts/setup-omarchy` exactly
-# once and the dispatcher targets setup-omarchy (not setup-deps or
+# `./setup --dry-run --dots` invokes `src/utils/bash/setup-dots` exactly
+# once and the dispatcher targets setup-dots (not setup-deps or
 # setup-fonts). The env script now owns the full flow, so its
 # subprocess calls (setup-deps, setup-fonts) appear in the output as a
 # consequence of the env script's flow — that is correct PR-2 behavior.
@@ -289,7 +289,7 @@ test_root_omarchy_invokes_setup_omarchy_once() {
     sandbox="$(make_sandbox)"
 
     set +e
-    output="$(run_setup "$sandbox" --dry-run --omarchy 2>&1)"
+    output="$(run_setup "$sandbox" --dry-run --dots 2>&1)"
     rc=$?
     set -e
 
@@ -298,15 +298,15 @@ test_root_omarchy_invokes_setup_omarchy_once() {
         return 1
     fi
 
-    # Root dispatched to setup-omarchy exactly once. The dispatcher's
+    # Root dispatched to setup-dots exactly once. The dispatcher's
     # breadcrumb is the externally observable signal that root chose
     # the omarchy target, not setup-deps or setup-fonts.
-    assert_grep "$output" '\[setup\] Dispatching to: setup-omarchy' \
-        'root dispatched to setup-omarchy'
-    # setup-omarchy ran and finished its flow.
-    assert_grep "$output" '\[setup-omarchy\]' 'setup-omarchy tag present'
-    assert_grep "$output" '\[setup-omarchy\] Setup complete' \
-        'setup-omarchy finished its main()'
+    assert_grep "$output" '\[setup\] Dispatching to: setup-dots' \
+        'root dispatched to setup-dots'
+    # setup-dots ran and finished its flow.
+    assert_grep "$output" '\[setup-dots\]' 'setup-dots tag present'
+    assert_grep "$output" '\[setup-dots\] Setup complete' \
+        'setup-dots finished its main()'
 
     # Root did NOT dispatch to setup-fonts or setup-deps. The dispatcher
     # emits a single "[setup] Dispatching to: ..." line per run, so the
@@ -322,19 +322,19 @@ test_root_omarchy_invokes_setup_omarchy_once() {
 # ---------------------------------------------------------------------------
 # Test 2
 # ---------------------------------------------------------------------------
-# `./setup --omarchy --fonts` and `./setup --omarchy --deps` are
-# absorbed by the dispatcher: root dispatches to `scripts/setup-omarchy`
+# `./setup --dots --fonts` and `./setup --dots --deps` are
+# absorbed by the dispatcher: root dispatches to `src/utils/bash/setup-dots`
 # exactly once, and does NOT also dispatch to `setup-fonts` or
 # `setup-deps`. The env script owns the full flow and calls the
 # sub-scripts internally as part of its own main().
 test_omarchy_with_fonts_or_deps_absorbed() {
     local sandbox output rc
 
-    # --- Sub-case A: --omarchy --fonts.
+    # --- Sub-case A: --dots --fonts.
     sandbox="$(make_sandbox)"
 
     set +e
-    output="$(run_setup "$sandbox" --dry-run --omarchy --fonts 2>&1)"
+    output="$(run_setup "$sandbox" --dry-run --dots --fonts 2>&1)"
     rc=$?
     set -e
 
@@ -343,20 +343,20 @@ test_omarchy_with_fonts_or_deps_absorbed() {
         return 1
     fi
 
-    assert_grep "$output" '\[setup\] Dispatching to: setup-omarchy' \
-        'sub-case A: root dispatched to setup-omarchy'
-    assert_grep "$output" '\[setup-omarchy\]' \
-        'sub-case A: setup-omarchy ran'
+    assert_grep "$output" '\[setup\] Dispatching to: setup-dots' \
+        'sub-case A: root dispatched to setup-dots'
+    assert_grep "$output" '\[setup-dots\]' \
+        'sub-case A: setup-dots ran'
     assert_not_grep "$output" '\[setup\] Dispatching to: setup-fonts' \
         'sub-case A: root did not dispatch to setup-fonts'
     assert_not_grep "$output" '\[setup\] Dispatching to: setup-deps' \
         'sub-case A: root did not dispatch to setup-deps'
 
-    # --- Sub-case B: --omarchy --deps.
+    # --- Sub-case B: --dots --deps.
     sandbox="$(make_sandbox)"
 
     set +e
-    output="$(run_setup "$sandbox" --dry-run --omarchy --deps 2>&1)"
+    output="$(run_setup "$sandbox" --dry-run --dots --deps 2>&1)"
     rc=$?
     set -e
 
@@ -365,10 +365,10 @@ test_omarchy_with_fonts_or_deps_absorbed() {
         return 1
     fi
 
-    assert_grep "$output" '\[setup\] Dispatching to: setup-omarchy' \
-        'sub-case B: root dispatched to setup-omarchy'
-    assert_grep "$output" '\[setup-omarchy\]' \
-        'sub-case B: setup-omarchy ran'
+    assert_grep "$output" '\[setup\] Dispatching to: setup-dots' \
+        'sub-case B: root dispatched to setup-dots'
+    assert_grep "$output" '\[setup-dots\]' \
+        'sub-case B: setup-dots ran'
     assert_not_grep "$output" '\[setup\] Dispatching to: setup-deps' \
         'sub-case B: root did not dispatch to setup-deps'
     assert_not_grep "$output" '\[setup\] Dispatching to: setup-fonts' \
@@ -381,8 +381,8 @@ test_omarchy_with_fonts_or_deps_absorbed() {
 # Test 4
 # ---------------------------------------------------------------------------
 # `./setup --fonts` (alone or with `--dry-run`) runs ONLY
-# `scripts/setup-fonts`. `./setup --deps` (alone or with `--dry-run`)
-# runs ONLY `scripts/setup-deps`. Root does not call the env executor
+# `src/utils/bash/setup-fonts`. `./setup --deps` (alone or with `--dry-run`)
+# runs ONLY `src/utils/bash/setup-deps`. Root does not call the env executor
 # for these convenience paths.
 test_fonts_or_deps_only_direct_dispatch() {
     local sandbox output rc stub_log
@@ -404,8 +404,8 @@ test_fonts_or_deps_only_direct_dispatch() {
     assert_grep "$output" '\[setup-fonts\]' 'sub-case A: setup-fonts ran'
     assert_not_grep "$output" '\[setup-deps\]' \
         'sub-case A: setup-deps did not run'
-    assert_not_grep "$output" '\[setup-omarchy\]' \
-        'sub-case A: setup-omarchy did not run'
+    assert_not_grep "$output" '\[setup-dots\]' \
+        'sub-case A: setup-dots did not run'
     # setup-fonts in dry-run does not call curl/unzip/fc-cache.
     if [[ -s "$stub_log" ]]; then
         if grep -qE '^(curl|unzip|fc-cache) ' "$stub_log"; then
@@ -417,8 +417,8 @@ test_fonts_or_deps_only_direct_dispatch() {
 
     # --- Sub-case B: --deps only.
     #
-    # The dispatcher's contract for --deps is: invoke scripts/setup-deps
-    # exactly once, do not call setup-fonts or setup-omarchy. With the
+    # The dispatcher's contract for --deps is: invoke src/utils/bash/setup-deps
+    # exactly once, do not call setup-fonts or setup-dots. With the
     # Omarchy-only scope lock, setup-deps auto-detects the host: when no
     # env flag is passed, it probes package managers and picks omarchy.
     # In make_sandbox yay and pacman are stubbed, so the probe picks
@@ -437,7 +437,7 @@ test_fonts_or_deps_only_direct_dispatch() {
     fi
 
     # The dispatcher's breadcrumb is the verifiable signal that
-    # scripts/setup-deps was the target.
+    # src/utils/bash/setup-deps was the target.
     assert_grep "$output" '\[setup\] Dispatching to: setup-deps' \
         'sub-case B: dispatcher invoked setup-deps'
     # setup-deps's own log tag is now emitted because auto-detect
@@ -446,8 +446,8 @@ test_fonts_or_deps_only_direct_dispatch() {
         'sub-case B: setup-deps ran (auto-detect succeeded)'
     assert_not_grep "$output" '\[setup-fonts\]' \
         'sub-case B: setup-fonts did not run'
-    assert_not_grep "$output" '\[setup-omarchy\]' \
-        'sub-case B: setup-omarchy did not run'
+    assert_not_grep "$output" '\[setup-dots\]' \
+        'sub-case B: setup-dots did not run'
 
     # --- Sub-case C: --fonts and --deps together without an env flag.
     # Root is a thin dispatcher and must invoke exactly one target, so
@@ -504,9 +504,9 @@ test_fonts_or_deps_only_direct_dispatch() {
 # ---------------------------------------------------------------------------
 # Test 5
 # ---------------------------------------------------------------------------
-# The env script (scripts/setup-omarchy) is responsible for the full env
+# The env script (src/utils/bash/setup-dots) is responsible for the full env
 # flow. Its pre-flight verifies the fonts dir is present and non-empty.
-# This is defense-in-depth for direct invocation (running setup-omarchy
+# This is defense-in-depth for direct invocation (running setup-dots
 # without going through root and without a fonts install).
 #
 # Two sub-cases triangulate the contract:
@@ -517,7 +517,7 @@ test_fonts_or_deps_only_direct_dispatch() {
 #      path) and setup-fonts picks up the same override (proves WU-5).
 test_env_script_preflight_handles_fonts_dir() {
     local sandbox output rc stub_log setup_omarchy
-    setup_omarchy="$REPO_ROOT/scripts/setup-omarchy"
+    setup_omarchy="$REPO_ROOT/src/utils/bash/setup-dots"
 
     # --- Sub-case A: missing fonts at default location in dry-run.
     sandbox="$(make_sandbox_no_fonts)"
@@ -542,7 +542,7 @@ test_env_script_preflight_handles_fonts_dir() {
 
     assert_grep "$output" 'Nerd Fonts not installed' \
         'sub-case A: dry-run warning message present'
-    assert_grep "$output" '\[setup-omarchy\] Setup complete' \
+    assert_grep "$output" '\[setup-dots\] Setup complete' \
         'sub-case A: dry-run continues through Setup complete'
 
     # --- Sub-case B: DOTFILES_FONTS_DIR override points to a non-empty dir.
@@ -575,7 +575,7 @@ test_env_script_preflight_handles_fonts_dir() {
     fi
 
     # The env script and setup-fonts must both consult the override.
-    # setup-omarchy logs the env var in its pre-flight and setup-fonts
+    # setup-dots logs the env var in its pre-flight and setup-fonts
     # logs "Install base: $FONT_BASE" with the override. Either side
     # is sufficient to prove the env var was read.
     if ! grep -qF "$custom_fonts" <<<"$output"; then
@@ -618,7 +618,7 @@ test_dotfiles_vars_unset_after_run() {
         PATH="$sandbox/stubs:/usr/bin:/bin" \
         STUB_LOG="$sandbox/stub.log" \
         bash -c '
-            "$1" --omarchy
+            "$1" --dots
             leaked="$(printenv | grep "^DOTFILES_" || true)"
             if [[ -n "$leaked" ]]; then
                 printf "DOTFILES_ vars leaked into calling env:\n%s\n" \
@@ -684,9 +684,9 @@ run_test() {
         fi
 }
 
-run_test "root --omarchy invokes setup-omarchy exactly once" \
+run_test "root --dots invokes setup-dots exactly once" \
     test_root_omarchy_invokes_setup_omarchy_once
-run_test "--omarchy --fonts and --omarchy --deps are absorbed by root" \
+run_test "--dots --fonts and --dots --deps are absorbed by root" \
     test_omarchy_with_fonts_or_deps_absorbed
 run_test "--fonts runs only setup-fonts; --deps runs only setup-deps" \
     test_fonts_or_deps_only_direct_dispatch
