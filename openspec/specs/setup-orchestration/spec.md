@@ -16,7 +16,7 @@ delta for the `setup-orchestration` capability.
 | `./setup --omarchy` | export paths, trap, invoke `scripts/setup-omarchy`, exit 0 | verify deps, install fonts, apply env |
 | `./setup --omarchy --fonts` | same as `--omarchy` (absorbed) | env script handles fonts |
 | `./setup --omarchy --deps` | same as `--omarchy` (absorbed) | env script handles deps (auto-detect) |
-| `./setup --fedora` (any combo) | print "not implemented", exit 0; never invokes sub-scripts | — |
+
 | `./setup --fonts` | invoke `scripts/setup-fonts` directly, exit 0 | — (idempotent) |
 | `./setup --deps` | invoke `scripts/setup-deps` directly, exit 0 | — (auto-detects host) |
 | `--help` / `-h` | print usage, exit 0 | — |
@@ -52,16 +52,15 @@ a `TOTAL_STEPS` counter.
 
 ### Requirement: Flag contract and precedence
 
-The dispatcher MUST accept `--omarchy`, `--fedora`, `--fonts`,
-`--deps`, `--dry-run`, `--help`, `-h`. `--omarchy` and `--fedora`
-MUST be mutually exclusive. Unknown flags MUST cause a non-zero
-exit after printing usage to stderr. No arguments MUST cause a
-non-zero exit after printing usage.
+The dispatcher MUST accept `--omarchy`, `--fonts`,
+`--deps`, `--dry-run`, `--help`, `-h`. Unknown flags MUST cause a
+non-zero exit after printing usage to stderr. No arguments MUST
+cause a non-zero exit after printing usage.
 
 | Flag | Effect |
 | --- | --- |
 | `--omarchy` | Dispatch to `scripts/setup-omarchy` |
-| `--fedora` | Print "not implemented", exit 0 |
+
 | `--fonts` | Dispatch to `scripts/setup-fonts` |
 | `--deps` | Dispatch to `scripts/setup-deps` |
 | `--dry-run` | Set `DOTFILES_DRY_RUN=1`; env scripts honor it |
@@ -72,12 +71,6 @@ non-zero exit after printing usage.
 - GIVEN `./setup --help`
 - WHEN the dispatcher parses arguments
 - THEN the output lists every flag above and the process exits 0
-
-#### Scenario: mutual exclusion of env flags
-
-- GIVEN `./setup --omarchy --fedora`
-- WHEN the dispatcher validates
-- THEN it exits non-zero with a usage message naming the conflict
 
 #### Scenario: unknown flag fails
 
@@ -192,21 +185,6 @@ boundary cleanly and the trap scope stays local to the dispatcher.
 - WHEN observed
 - THEN it performs no install, copy, download, or `pacman`/`dnf` invocation; it only checks directory existence and contents
 
-### Requirement: --fedora not-implemented behavior
-
-`./setup --fedora` (in any combination, including `--deps`,
-`--fonts`, `--dry-run`) MUST print a clear "not implemented"
-message, exit 0, and MUST NOT invoke `setup-deps`, `setup-fonts`,
-or `setup-omarchy`. No `scripts/setup-fedora` exists yet; this is
-explicitly a TODO. The dispatcher's `--fedora` path is a complete
-short-circuit: it returns before any sub-process call.
-
-#### Scenario: --fedora exits 0 and skips work
-
-- GIVEN `./setup --fedora` (any combination with `--deps`, `--fonts`, `--dry-run`)
-- WHEN the dispatcher runs
-- THEN it prints a not-implemented message, exits 0, and no `scripts/setup-fedora`, `setup-deps`, or `setup-fonts` invocation appears in any log
-
 ### Requirement: --fonts and --deps direct dispatch
 
 `./setup --fonts` MUST invoke `scripts/setup-fonts` directly, and
@@ -252,9 +230,7 @@ flag is passed.
 | --- | --- | --- |
 | `command -v yay` | `omarchy` | Yay is the documented Omarchy AUR helper |
 | `command -v pacman` | `omarchy` | Warn that `yay` is missing |
-| `command -v dnf` | `fedora` | DNF is the canonical Fedora package manager |
-| `command -v rpm` | `fedora` | Warn that `dnf` is missing |
-| none | (fail) | Clear error: "Could not detect a supported package manager (yay, pacman, dnf, rpm). Install one and re-run." |
+| none | (fail) | Clear error: "Could not detect a supported package manager (yay, pacman). Install one and re-run." |
 
 Detection is purely a probe — no install side effects, no
 recursive self-install. When detection fails, the script MUST
@@ -266,12 +242,6 @@ exit non-zero with the message above.
 - WHEN `scripts/setup-deps` runs
 - THEN it uses the Omarchy package list and the `pacman -Q`/`pacman -S` commands
 
-#### Scenario: dnf present resolves to fedora
-
-- GIVEN `dnf` is on `PATH` (and no `yay`/`pacman`) and no env flag is passed
-- WHEN `scripts/setup-deps` runs
-- THEN it uses the Fedora package list and the `rpm -q`/`dnf install` commands
-
 #### Scenario: pacman without yay resolves to omarchy with warning
 
 - GIVEN `pacman` is on `PATH` and `yay` is not
@@ -280,29 +250,25 @@ exit non-zero with the message above.
 
 #### Scenario: no package manager fails clearly
 
-- GIVEN no `yay`, `pacman`, `dnf`, or `rpm` is on `PATH` and no env flag is passed
+- GIVEN no `yay` or `pacman` is on `PATH` and no env flag is passed
 - WHEN `scripts/setup-deps` runs
 - THEN it exits non-zero with the "Could not detect a supported package manager" message
 
 ### Requirement: setup-deps explicit override
 
-`--omarchy` and `--fedora` MUST remain valid arguments to
-`scripts/setup-deps` and act as an explicit override of the auto-
-detection. When passed, the probe is skipped and the env is forced.
-The override is useful for non-standard hosts, ambiguous chroots,
-and deterministic test fixtures.
+`--omarchy` MUST remain a valid argument to `scripts/setup-deps`
+and acts as an explicit override of the auto-detection. When
+passed, the probe is skipped and the Omarchy env is forced. The
+override is useful for non-standard hosts, ambiguous chroots,
+and deterministic test fixtures. No other env override is
+recognized: any other env name is rejected as an unknown
+argument and exits 2 with the usage text.
 
 #### Scenario: --omarchy overrides detection
 
-- GIVEN `dnf` is on `PATH` and `scripts/setup-deps --omarchy` runs
+- GIVEN a non-Omarchy package manager (or none) is on `PATH` and `scripts/setup-deps --omarchy` runs
 - WHEN the script processes flags
-- THEN it skips detection, uses the Omarchy package list, and does not consult `dnf`
-
-#### Scenario: --fedora overrides detection
-
-- GIVEN `yay` is on `PATH` and `scripts/setup-deps --fedora` runs
-- WHEN the script processes flags
-- THEN it skips detection, uses the Fedora package list, and does not consult `pacman`
+- THEN it skips detection, uses the Omarchy package list, and does not consult any other package manager
 
 ### Requirement: setup-deps single-pass batch install
 
@@ -342,21 +308,6 @@ a final `installed` / `present` / `missing` summary line.
 - THEN it emits a summary line with `installed`, `present`, and `missing` counts
 - AND the `missing` count is 0
 
-### Requirement: Fedora single-pass install coalesces sudo
-
-When the resolved env is `fedora`, `scripts/setup-deps` MUST
-invoke `sudo dnf install -y <pkgs...>` once with all missing
-packages as positional args. The script MUST NOT perform any
-upfront `sudo -v` validation; the single `dnf` invocation MUST
-be the only point at which a sudo password prompt can appear.
-
-#### Scenario: fedora invokes sudo dnf once with all missing packages
-
-- GIVEN the env resolves to fedora and N >= 2 packages are missing
-- WHEN `scripts/setup-deps` runs (real or dry-run mode)
-- THEN the install log shows exactly one `sudo dnf install -y` line listing every missing package as a positional argument
-- AND no `sudo` invocation appears before that line
-
 ### Requirement: setup-fonts honors DOTFILES_FONTS_DIR
 
 `scripts/setup-fonts` MUST read `$DOTFILES_FONTS_DIR` when set by
@@ -383,11 +334,6 @@ The `OMARCHY_PACKAGES` array in `scripts/setup-deps` MUST
 include `keyd`, `piper`, and `libratbag`. The `libratbag` Arch
 package is the canonical install name (it provides `ratbagd`;
 installing the standalone `ratbagd` package would conflict).
-The `FEDORA_PACKAGES` array MUST NOT include any of
-`keyd`, `piper`, or `libratbag` (or any Fedora-only equivalent
-such as `libratbag-ratbagd`). This asymmetry is locked by
-user-confirmed scope: this change is Omarchy-only; Fedora users
-get nothing from it.
 
 #### Scenario: Omarchy package list contains the three input-device packages
 
@@ -396,12 +342,6 @@ get nothing from it.
 - THEN it MUST contain `keyd`, `piper`, and `libratbag` as entries
 - AND the standalone `ratbagd` package MUST NOT be present (it conflicts with `libratbag` on Arch)
 
-#### Scenario: Fedora package list is unchanged
-
-- GIVEN `scripts/setup-deps` is on disk
-- WHEN the `FEDORA_PACKAGES` array is read
-- THEN it MUST NOT contain `keyd`, `piper`, `libratbag`, or `ratbagd`
-
 #### Scenario: Omarchy dry-run emits a single yay line with all three packages
 
 - GIVEN `scripts/setup-deps --omarchy --dry-run` is invoked and at least one of the new packages is missing
@@ -409,22 +349,12 @@ get nothing from it.
 - THEN the output contains exactly one `yay -S --needed` line
 - AND that line lists `keyd`, `piper`, and `libratbag` as positional arguments
 
-#### Scenario: Fedora dry-run is unchanged
-
-- GIVEN `scripts/setup-deps --fedora --dry-run` is invoked
-- WHEN the install phase runs
-- THEN the output contains exactly one `sudo dnf install -y` line
-- AND that line does NOT list `keyd`, `piper`, `libratbag`, or `ratbagd` in its args
-
 ### Requirement: TAP test coverage for the input-devices packages
 
 `tests/setup-deps.bash` test T8 sub-case C substring array
 MUST include `keyd`, `piper`, and `libratbag` as substring
-assertions against the single `yay -S --needed` line. Sub-case
-D's Fedora substring array MUST remain unchanged — no new
-packages on the Fedora path. The minimum `TEST_PLAN=8` is
-preserved (no new top-level test required; the contract is
-extended inside an existing sub-case).
+assertions against the single `yay -S --needed` line. Minimum
+`TEST_PLAN=5`.
 
 #### Scenario: T8 sub-case C substring array contains all three new packages
 
@@ -432,12 +362,6 @@ extended inside an existing sub-case).
 - WHEN the test executes
 - THEN `keyd`, `piper`, and `libratbag` MUST each appear as a substring assertion against the yay line
 - AND any of them missing from the substring array causes the sub-case to fail
-
-#### Scenario: T8 sub-case D Fedora substring array is unchanged
-
-- GIVEN `tests/setup-deps.bash` T8 sub-case D substring array
-- WHEN the test executes
-- THEN it MUST equal the pre-change array (no new packages added)
 
 ### Requirement: keyd config file in the Omarchy repo layer
 
@@ -557,10 +481,13 @@ only.
 ### Requirement: Documentation and test coverage
 
 `docs/setup.md` MUST document the `./setup` entrypoint,
-accepted flags, and the not-implemented `--fedora` case; the
-implementation contract lives in OpenSpec. `docs/setup.md` MUST
-also describe `setup-deps` as a single-pass batch installer per env.
-`tests/setup-deps.bash` MUST additionally cover the new
-single-pass install flow: one `yay` line and one `sudo dnf` line
-per batch, all-present skips the PM, failure aborts. Minimum
-`TEST_PLAN=8`.
+accepted flags, and the env-selection model; the implementation
+contract lives in OpenSpec. `docs/setup.md` MUST also describe
+`setup-deps` as a single-pass batch installer.
+`tests/setup-deps.bash` MUST cover the thin-dispatcher contract:
+root invokes `setup-omarchy` once; root absorbs `--omarchy
+--fonts` / `--omarchy --deps`; `--fonts` runs only `setup-fonts`
+and `--deps` runs only `setup-deps`; env pre-flight blocks on
+missing fonts and honors the `DOTFILES_FONTS_DIR` override;
+`DOTFILES_*` cleanup fires on success and on child failure.
+Minimum `TEST_PLAN=5`.
