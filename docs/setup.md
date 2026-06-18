@@ -16,16 +16,10 @@ variables when it exits.
 | Flag        | Result                                                                     |
 | ----------- | -------------------------------------------------------------------------- |
 | `--omarchy` | Runs the Omarchy setup flow: dependencies, fonts, then environment config. |
-| `--fedora`  | Prints a not-implemented message and exits successfully.                   |
 | `--fonts`   | Installs Nerd Fonts only. Does not configure an environment.               |
 | `--deps`    | Installs OS dependencies only. The dependency script detects the system.   |
 | `--dry-run` | Shows the distro setup actions without mutating the system.                |
 | `--help`    | Prints usage help.                                                         |
-
-## Valid Combinations
-
-- Use one environment flag at a time: `--omarchy` or `--fedora`, not both.
-- `--fonts` and `--deps` can run alone.
 
 ## Dependency Detection
 
@@ -34,20 +28,17 @@ system by checking package managers on `PATH`:
 
 | Found             | Environment        |
 | ----------------- | ------------------ |
-| `yay` or `pacman` | Arch-like system   |
-| `dnf` or `rpm`    | Fedora-like system |
+| `yay` or `pacman` | Omarchy-family     |
 
 If detection is wrong for an unusual host, run the helper directly with an
 explicit override:
 
 ```bash
 scripts/setup-deps --omarchy
-scripts/setup-deps --fedora
 ```
 
-Dependencies are installed in a single batch per environment. On Fedora this
-coalesces to a single sudo password prompt; on Omarchy a single `yay`
-invocation produces one install confirmation for the whole batch.
+Dependencies are installed in a single batch. A single `yay` invocation
+produces one install confirmation for the whole batch.
 
 ## Verification
 

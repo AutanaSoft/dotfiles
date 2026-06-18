@@ -8,28 +8,24 @@
 # script.
 #
 # Boundary:
-#   - Env scripts (scripts/setup-omarchy, future scripts/setup-fedora) own
-#     their own full env flow. They call setup-deps and setup-fonts from
-#     inside their own main() and pre-flight their own pre-requisites.
+#   - Env scripts (scripts/setup-omarchy) own their own full env flow.
+#     They call setup-deps and setup-fonts from inside their own main()
+#     and pre-flight their own pre-requisites.
 #   - scripts/setup-deps auto-detects the host environment by probing the
-#     available package managers (yay/pacman → omarchy, dnf/rpm → fedora).
-#     --omarchy and --fedora remain valid as explicit overrides.
+#     available package managers (yay/pacman → omarchy). --omarchy remains
+#     valid as an explicit override.
 #   - Root MUST NOT run a multi-step deps → fonts → env pipeline. It MUST
 #     NOT define run_deps / run_fonts / run_env helpers. It MUST NOT
 #     maintain a TOTAL_STEPS counter.
 #
 # Flags:
 #   --omarchy    — dispatch to scripts/setup-omarchy
-#   --fedora     — print "not implemented" and exit 0 (no sub-scripts)
 #   --fonts      — dispatch to scripts/setup-fonts (or absorbed by --omarchy)
 #   --deps       — dispatch to scripts/setup-deps   (or absorbed by --omarchy)
 #   --dry-run    — set DOTFILES_DRY_RUN=1; env scripts honor it
 #   --help / -h  — show usage and exit 0
 #
 # Precedence:
-#   - --fedora (any combination with --fonts / --deps / --dry-run) wins
-#     over every other flag except --omarchy, which is mutually exclusive
-#     and causes a non-zero exit.
 #   - --omarchy absorbs --fonts and --deps. The env script handles them.
 #   - With no env flag, --fonts and --deps are direct dispatches.
 #
@@ -41,12 +37,9 @@
 #   ./setup --omarchy                     # dispatch to setup-omarchy
 #   ./setup --omarchy --fonts             # absorbed; env script handles fonts
 #   ./setup --omarchy --deps              # absorbed; env script handles deps
-#   ./setup --fedora                      # not implemented, exit 0
-#   ./setup --fedora --fonts              # skip wins; no sub-scripts invoked
 #   ./setup --fonts                       # dispatch to setup-fonts
 #   ./setup --deps                        # dispatch to setup-deps (auto-detect)
 #   ./setup --dry-run --omarchy           # dry-run the env flow
-#   ./setup --omarchy --fedora            # mutually exclusive, non-zero exit
 #   ./setup --unknown                     # unknown flag, non-zero exit
 
 set -euo pipefail
@@ -76,14 +69,13 @@ PARSED_DRY_RUN=0
 REQUEST_HELP=0
 REQUEST_FONTS=0
 REQUEST_DEPS=0
-ENV_FLAG_COUNT=0
 
 # ---------------------------------------------------------------------------
 # Usage
 # ---------------------------------------------------------------------------
 usage() {
     cat <<EOF
-Usage: $0 [--omarchy|--fedora] [--fonts] [--deps] [--dry-run] [--help]
+Usage: $0 [--omarchy] [--fonts] [--deps] [--dry-run] [--help]
 
 Thin dispatcher: parse flags, export the DOTFILES_* path variables,
 register a cleanup trap, and invoke exactly one env or helper script.
@@ -91,15 +83,11 @@ Env scripts own their own full flow; scripts/setup-deps auto-detects
 the host by probing package managers.
 
 Precedence:
-  --fedora (any combination with --fonts / --deps / --dry-run) short-
-  circuits to a "not implemented" message and exits 0. --omarchy and
-  --fedora are mutually exclusive. With --omarchy, --fonts and --deps
-  are absorbed (the env script handles them). Without an env flag,
-  --fonts and --deps are direct dispatches.
+  --omarchy absorbs --fonts and --deps (the env script handles them).
+  Without an env flag, --fonts and --deps are direct dispatches.
 
 Environment (one of, or none):
   --omarchy       Dispatch to scripts/setup-omarchy
-  --fedora        Print "Fedora env executor is not implemented" and exit 0
 
 Options (optional):
   --fonts         Dispatch to scripts/setup-fonts (absorbed by --omarchy)
@@ -118,7 +106,6 @@ Examples:
   $0 --omarchy
   $0 --omarchy --fonts         # absorbed; env script handles fonts
   $0 --omarchy --deps          # absorbed; env script handles deps
-  $0 --fedora                  # not implemented, exit 0
   $0 --fonts
   $0 --deps                    # setup-deps auto-detects the host
   $0 --dry-run --omarchy
@@ -132,12 +119,6 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --omarchy)
             DOTFILES_ENV="omarchy"
-            ENV_FLAG_COUNT=$((ENV_FLAG_COUNT + 1))
-            shift
-            ;;
-        --fedora)
-            DOTFILES_ENV="fedora"
-            ENV_FLAG_COUNT=$((ENV_FLAG_COUNT + 1))
             shift
             ;;
         --fonts | --font)
@@ -172,16 +153,10 @@ fi
 # ---------------------------------------------------------------------------
 # Validation
 # ---------------------------------------------------------------------------
-if [[ "$ENV_FLAG_COUNT" -gt 1 ]]; then
-    echo "ERROR: --omarchy and --fedora are mutually exclusive." >&2
-    usage >&2
-    exit 2
-fi
-
 if [[ -z "$DOTFILES_ENV" \
     && "$REQUEST_FONTS" -eq 0 \
     && "$REQUEST_DEPS" -eq 0 ]]; then
-    echo "ERROR: choose --omarchy, --fedora, --fonts, --deps, or any combination." >&2
+    echo "ERROR: choose --omarchy, --fonts, --deps, or any combination." >&2
     usage >&2
     exit 2
 fi
@@ -225,18 +200,10 @@ trap 'unset DOTFILES_ROOT DOTFILES_ENV DOTFILES_DRY_RUN DOTFILES_BACKUP_DIR DOTF
 # Dispatch
 # ---------------------------------------------------------------------------
 # Exactly one target script. Order:
-#   1. --fedora wins. It is a complete short-circuit: print the
-#      "not implemented" line, exit 0, never invoke a sub-script.
-#   2. --omarchy dispatches to scripts/setup-omarchy. --fonts and
+#   1. --omarchy dispatches to scripts/setup-omarchy. --fonts and
 #      --deps are absorbed — the env script owns the full flow.
-#   3. --fonts only dispatches to scripts/setup-fonts.
-#   4. --deps  only dispatches to scripts/setup-deps   (auto-detects).
-if [[ "$DOTFILES_ENV" == "fedora" ]]; then
-    echo "[setup] WARN: Fedora env executor is not implemented yet. See fedora/README.md for manual setup." >&2
-    echo "[setup] Setup complete (no changes)."
-    exit 0
-fi
-
+#   2. --fonts only dispatches to scripts/setup-fonts.
+#   3. --deps  only dispatches to scripts/setup-deps   (auto-detects).
 target_script=""
 case "$DOTFILES_ENV:$REQUEST_FONTS:$REQUEST_DEPS" in
     omarchy:*:*)

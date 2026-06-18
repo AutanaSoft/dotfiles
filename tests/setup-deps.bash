@@ -25,20 +25,21 @@
 # ---------------------------------------------------------------------------
 # PR-2 + PR-3 (stacked-to-main) test plan
 # ---------------------------------------------------------------------------
-# The full spec describes 7 tests (T1–T7). PR-2 landed T1, T2, T3, T4,
-# T5, and T6. PR-3 lands T7 (setup-deps auto-detect with WU-4).
+# The full spec describes 6 tests (T1, T2, T4, T5, T6, T7). PR-2 landed
+# T1, T2, T4, T5, and T6. PR-3 lands T7 (setup-deps auto-detect with
+# WU-4). T3 (the env-only short-circuit) was removed in the dispatcher
+# collapse.
 #
 #   PR-1               T1  --omarchy invokes setup-omarchy once
 #                     T2  --omarchy --fonts/--deps are absorbed
-#                     T3  --fedora (any combo) short-circuits, exit 0
 #                     T4  --fonts runs only setup-fonts; --deps only setup-deps
 #                     T6  DOTFILES_* (5 vars) cleanup under env -i + trap grep
 #   PR-2               T5  env-script pre-flight blocks on missing
 #                            $DOTFILES_FONTS_DIR; honors override (defense
 #                            in depth for direct invocation).
 #   PR-3 (this file)   T7  scripts/setup-deps auto-detects
-#                            (yay→omarchy, dnf→fedora, none→fail)
-#                            + --omarchy/--fedora override skips detection
+#                            (yay→omarchy, none→fail)
+#                            + --omarchy override skips detection
 #
 # `make_sandbox_no_fonts` (defined below) is the fixture for T5's
 # missing-fonts sub-case.
@@ -65,14 +66,14 @@ fi
 # ---------------------------------------------------------------------------
 TESTS_RUN=0
 TESTS_FAILED=0
-# PR-3 covers T1..T7 — full contract. T7 lands with WU-4 (setup-deps
-# auto-detect). Prior PRs (PR-1, PR-2) covered T1..T6.
+# PR-3 covers T1, T2, T4, T5, T6, T7 — full contract. T7 lands with
+# WU-4 (setup-deps auto-detect). Prior PRs (PR-1, PR-2) covered T1, T2,
+# T4, T5, T6.
 # T8 lands with WU-6 (setup-deps single-pass batch install). The
-# existing T7 sub-cases A and B still pass because the new code
-# emits the same yay -S --needed / sudo dnf install -y substrings
-# (one line, full command); T8 isolates the new "exactly one
-# install call per env" contract with a clean name.
-TEST_PLAN=8
+# existing T7 sub-cases still pass because the new code emits the
+# same yay -S --needed substring (one line, full command); T8 isolates
+# the "exactly one install call per run" contract with a clean name.
+TEST_PLAN=7
 
 # Single workspace for the whole run; each test creates its own
 # subdir. The EXIT trap removes the whole tree, so tests do not have
@@ -381,64 +382,6 @@ test_omarchy_with_fonts_or_deps_absorbed() {
 }
 
 # ---------------------------------------------------------------------------
-# Test 3
-# ---------------------------------------------------------------------------
-# `./setup --fedora` (alone or combined with `--fonts`, `--deps`,
-# `--dry-run`) short-circuits to a "not implemented" message, exits 0,
-# and does NOT invoke `setup-deps`, `setup-fonts`, or `setup-omarchy`.
-# The new contract: root never reaches a sub-script call for `--fedora`.
-test_fedora_short_circuit_exits_zero() {
-    local sandbox output rc stub_log
-
-    # --- Sub-case A: --fedora alone.
-    sandbox="$(make_sandbox)"
-    stub_log="$sandbox/stub.log"
-
-    set +e
-    output="$(run_setup "$sandbox" --fedora 2>&1)"
-    rc=$?
-    set -e
-
-    if [[ $rc -ne 0 ]]; then
-        printf 'sub-case A: expected exit 0, got %d\n%s\n' "$rc" "$output" >&2
-        return 1
-    fi
-
-    assert_grep "$output" 'Fedora env executor is not implemented' \
-        'sub-case A: skip warning present'
-    assert_not_grep "$output" '\[setup-deps\]' 'sub-case A: no setup-deps'
-    assert_not_grep "$output" '\[setup-fonts\]' 'sub-case A: no setup-fonts'
-    assert_not_grep "$output" '\[setup-omarchy\]' 'sub-case A: no setup-omarchy'
-    assert_not_grep "$output" '\[setup-fedora\]' 'sub-case A: no setup-fedora'
-    assert_not_grep "$(cat -- "$stub_log")" '^(pacman|yay|dnf|rpm) ' \
-        'sub-case A: no package-manager stubs invoked'
-
-    # --- Sub-case B: --fedora --fonts --deps --dry-run (any combo).
-    sandbox="$(make_sandbox)"
-    stub_log="$sandbox/stub.log"
-
-    set +e
-    output="$(run_setup "$sandbox" --fedora --fonts --deps --dry-run 2>&1)"
-    rc=$?
-    set -e
-
-    if [[ $rc -ne 0 ]]; then
-        printf 'sub-case B: expected exit 0, got %d\n%s\n' "$rc" "$output" >&2
-        return 1
-    fi
-
-    assert_grep "$output" 'Fedora env executor is not implemented' \
-        'sub-case B: skip warning present'
-    assert_not_grep "$output" '\[setup-deps\]' 'sub-case B: no setup-deps'
-    assert_not_grep "$output" '\[setup-fonts\]' 'sub-case B: no setup-fonts'
-    assert_not_grep "$output" '\[setup-omarchy\]' 'sub-case B: no setup-omarchy'
-    assert_not_grep "$(cat -- "$stub_log")" '^(pacman|yay|dnf|rpm|curl|unzip|fc-cache) ' \
-        'sub-case B: no env/font tool stubs invoked'
-
-    return 0
-}
-
-# ---------------------------------------------------------------------------
 # Test 4
 # ---------------------------------------------------------------------------
 # `./setup --fonts` (alone or with `--dry-run`) runs ONLY
@@ -467,8 +410,6 @@ test_fonts_or_deps_only_direct_dispatch() {
         'sub-case A: setup-deps did not run'
     assert_not_grep "$output" '\[setup-omarchy\]' \
         'sub-case A: setup-omarchy did not run'
-    assert_not_grep "$output" '\[setup-fedora\]' \
-        'sub-case A: setup-fedora did not run'
     # setup-fonts in dry-run does not call curl/unzip/fc-cache.
     if [[ -s "$stub_log" ]]; then
         if grep -qE '^(curl|unzip|fc-cache) ' "$stub_log"; then
@@ -483,10 +424,10 @@ test_fonts_or_deps_only_direct_dispatch() {
     # The dispatcher's contract for --deps is: invoke scripts/setup-deps
     # exactly once, do not call setup-fonts or setup-omarchy. With PR-3
     # (WU-4) setup-deps auto-detects the host: when no env flag is
-    # passed, it probes package managers and picks omarchy or fedora.
-    # In make_sandbox all four PMs (pacman, rpm, yay, dnf) are stubbed,
-    # so the probe picks yay first → omarchy. The T4 contract is
-    # purely about dispatch; the auto-detect behavior is T7's concern.
+    # passed, it probes package managers and picks omarchy.
+    # In make_sandbox yay and pacman are stubbed, so the probe picks
+    # yay first → omarchy. The T4 contract is purely about dispatch;
+    # the auto-detect behavior is T7's concern.
     sandbox="$(make_sandbox)"
     stub_log="$sandbox/stub.log"
 
@@ -512,8 +453,6 @@ test_fonts_or_deps_only_direct_dispatch() {
         'sub-case B: setup-fonts did not run'
     assert_not_grep "$output" '\[setup-omarchy\]' \
         'sub-case B: setup-omarchy did not run'
-    assert_not_grep "$output" '\[setup-fedora\]' \
-        'sub-case B: setup-fedora did not run'
 
     # --- Sub-case C: --fonts and --deps together without an env flag.
     # Root is a thin dispatcher and must invoke exactly one target, so
@@ -1347,8 +1286,6 @@ run_test "root --omarchy invokes setup-omarchy exactly once" \
     test_root_omarchy_invokes_setup_omarchy_once
 run_test "--omarchy --fonts and --omarchy --deps are absorbed by root" \
     test_omarchy_with_fonts_or_deps_absorbed
-run_test "--fedora (any combo) short-circuits to not-implemented and exits 0" \
-    test_fedora_short_circuit_exits_zero
 run_test "--fonts runs only setup-fonts; --deps runs only setup-deps" \
     test_fonts_or_deps_only_direct_dispatch
 run_test "env-script pre-flight handles missing/overridden \$DOTFILES_FONTS_DIR" \
