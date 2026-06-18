@@ -2,9 +2,9 @@
 # scripts/setup-deps — install OS packages required by the selected env.
 #
 # This script is the dependencies executor. It is normally invoked by the
-# root `./setup --<env>` orchestrator, but it can also be run directly:
+# root `./setup --omarchy` orchestrator, but it can also be run directly:
 #
-#     scripts/setup-deps [--omarchy|--fedora] [--dry-run] [--help]
+#     scripts/setup-deps [--omarchy] [--dry-run] [--help]
 #
 # When the root `./setup` orchestrator invokes it, the selected environment
 # is passed through the `DOTFILES_ENV` environment variable and the dry-run
@@ -16,19 +16,13 @@
 # in a single batch per env. Re-running is a no-op when every
 # package is already present.
 #
-# Omarchy / Arch:
+# Omarchy (Arch + Hyprland, CachyOS + Omarchy, Arch + Omarchy):
 #   - Package manager: yay (AUR helper, wraps pacman)
 #   - Install command: yay -S --needed <pkgs...>   (single batch)
 #   - Verify installed: pacman -Q <pkg>
 #
-# Fedora:
-#   - Package manager: dnf (system)
-#   - Install command: sudo dnf install -y <pkgs...>   (single batch)
-#   - Verify installed: rpm -q <pkg> (fallback: dnf list installed <pkg>)
-#
 # Notes:
-#   - Package names do not always match the command they provide (e.g.
-#     `hunspell-en_US` on Arch vs `hunspell-en-US` on Fedora), so this
+#   - Package names do not always match the command they provide, so this
 #     script checks by package name, not by `command -v`.
 #   - In --dry-run mode the script reports what it would do but never
 #     runs the install command. A missing package manager is only fatal
@@ -55,9 +49,9 @@ DOTFILES_ENV_LOCAL="${DOTFILES_ENV:-}"
 DRY_RUN=0
 REQUEST_HELP=0
 
-# Package lists per env. Names match the native package manager
-# (pacman on Arch, dnf on Fedora). Comments next to each package note
-# the command the package provides when the names diverge.
+# Package list for the Omarchy-family host. Names match the native Arch
+# package manager (pacman). Comments next to each package note the
+# command the package provides when the names diverge.
 OMARCHY_PACKAGES=(
     lsof
     hunspell
@@ -70,41 +64,31 @@ OMARCHY_PACKAGES=(
     libratbag           # provides: ratbagd (DBus service for Piper / mouse profiles)
 )
 
-FEDORA_PACKAGES=(
-    lsof
-    hunspell
-    hunspell-en-US      # command: hunspell
-    hunspell-es         # command: hunspell
-    trash-cli           # command: trash (snacks.nvim explorer delete)
-)
-
 # ---------------------------------------------------------------------------
 # Usage
 # ---------------------------------------------------------------------------
 usage() {
     cat <<EOF
-Usage: $0 [--omarchy|--fedora] [--dry-run] [--help]
+Usage: $0 [--omarchy] [--dry-run] [--help]
 
 Installs the OS packages required by the selected environment.
 
 This script is the dependencies executor. Prefer invoking it via the root
-entrypoint: \`./setup --<env> [--fonts] [--dry-run]\`.
+entrypoint: \`./setup --omarchy [--fonts] [--dry-run]\`.
 
 When the root \`./setup\` orchestrator calls this script, it passes the
 selected environment through \`DOTFILES_ENV\` and the dry-run mode
 through \`DOTFILES_DRY_RUN=1\`. Either works as input.
 
 Environment selection (in order of precedence):
-  1. Explicit flag: --omarchy or --fedora on the command line
+  1. Explicit flag: --omarchy on the command line
      (overrides auto-detection; useful for chroots, toolboxes, and
      deterministic test fixtures).
-  2. DOTFILES_ENV: 'omarchy' or 'fedora' (set by the root orchestrator).
+  2. DOTFILES_ENV: 'omarchy' (set by the root orchestrator).
   3. Auto-detection: probe the host PATH in this fixed order:
        yay    → omarchy   (AUR helper is the documented Omarchy entry)
        pacman → omarchy   (with WARN: install yay for AUR access)
-       dnf    → fedora    (canonical Fedora package manager)
-       rpm    → fedora    (with WARN: install dnf)
-     If none of these is on PATH, this script exits non-zero with
+     If neither of these is on PATH, this script exits non-zero with
      "Could not detect a supported package manager".
 
 Options:
@@ -116,7 +100,6 @@ Options:
 Packages (verified with the package manager, not 'command -v'):
 
   Omarchy: ${OMARCHY_PACKAGES[*]}
-  Fedora:  ${FEDORA_PACKAGES[*]}
 EOF
 }
 
@@ -127,10 +110,6 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --omarchy)
             DOTFILES_ENV_LOCAL="omarchy"
-            shift
-            ;;
-        --fedora)
-            DOTFILES_ENV_LOCAL="fedora"
             shift
             ;;
         --dry-run)
@@ -181,9 +160,9 @@ fail() {
 # Environment detection
 # ---------------------------------------------------------------------------
 # Probe package managers in the documented order. Echoes the detected
-# env ("omarchy" or "fedora") on stdout. Returns 0 on success, 1 when
-# no supported package manager is on PATH. Detection is purely a probe:
-# the script never calls `command -v` on a tool it then needs to install.
+# env ("omarchy") on stdout. Returns 0 on success, 1 when no supported
+# package manager is on PATH. Detection is purely a probe: the script
+# never calls `command -v` on a tool it then needs to install.
 detect_env() {
     if command -v yay >/dev/null 2>&1; then
         printf 'omarchy\n'
@@ -192,15 +171,6 @@ detect_env() {
     if command -v pacman >/dev/null 2>&1; then
         warn "yay is not on PATH; install it for AUR access. Detecting as omarchy via pacman."
         printf 'omarchy\n'
-        return 0
-    fi
-    if command -v dnf >/dev/null 2>&1; then
-        printf 'fedora\n'
-        return 0
-    fi
-    if command -v rpm >/dev/null 2>&1; then
-        warn "dnf is not on PATH; install it. Detecting as fedora via rpm."
-        printf 'fedora\n'
         return 0
     fi
     return 1
@@ -215,10 +185,10 @@ detect_env() {
 if [[ -z "$DOTFILES_ENV_LOCAL" ]]; then
     if detected_env="$(detect_env)"; then
         DOTFILES_ENV_LOCAL="$detected_env"
-        log "Detected env: $DOTFILES_ENV_LOCAL (no --omarchy/--fedora passed)"
+        log "Detected env: $DOTFILES_ENV_LOCAL (no --omarchy passed)"
     else
         cat >&2 <<EOF
-ERROR: Could not detect a supported package manager (yay, pacman, dnf, rpm). Install one and re-run.
+ERROR: Could not detect a supported package manager (yay, pacman). Install one and re-run.
 EOF
         usage >&2
         exit 2
@@ -235,9 +205,6 @@ fi
 #         omarchy)
 #             printf 'yay -S --needed %s\n' "$pkg"
 #             ;;
-#         fedora)
-#             printf 'sudo dnf install -y %s\n' "$pkg"
-#             ;;
 #     esac
 # }
 
@@ -248,31 +215,14 @@ fi
 # install command.
 pkg_installed() {
     local pkg="$1"
-    case "$DOTFILES_ENV_LOCAL" in
-        omarchy)
-            if ! command -v pacman >/dev/null 2>&1; then
-                if [[ "$DRY_RUN" -eq 1 ]]; then
-                    warn "pacman not on PATH; cannot verify '$pkg' in dry-run. Assuming missing."
-                    return 1
-                fi
-                fail "pacman is not on PATH; cannot verify packages on Omarchy."
-            fi
-            pacman -Q "$pkg" >/dev/null 2>&1
-            ;;
-        fedora)
-            if command -v rpm >/dev/null 2>&1; then
-                rpm -q "$pkg" >/dev/null 2>&1
-            elif command -v dnf >/dev/null 2>&1; then
-                dnf list installed "$pkg" >/dev/null 2>&1
-            else
-                if [[ "$DRY_RUN" -eq 1 ]]; then
-                    warn "Neither rpm nor dnf on PATH; cannot verify '$pkg' in dry-run. Assuming missing."
-                    return 1
-                fi
-                fail "Neither rpm nor dnf is on PATH; cannot verify packages on Fedora."
-            fi
-            ;;
-    esac
+    if ! command -v pacman >/dev/null 2>&1; then
+        if [[ "$DRY_RUN" -eq 1 ]]; then
+            warn "pacman not on PATH; cannot verify '$pkg' in dry-run. Assuming missing."
+            return 1
+        fi
+        fail "pacman is not on PATH; cannot verify packages on Omarchy."
+    fi
+    pacman -Q "$pkg" >/dev/null 2>&1
 }
 
 # Reason: replaced by install_batch in change setup-deps-batch-install
@@ -287,28 +237,12 @@ pkg_installed() {
 #     fi
 #
 #     # Real install path: require the package manager.
-#     case "$DOTFILES_ENV_LOCAL" in
-#         omarchy)
-#             if ! command -v yay >/dev/null 2>&1; then
-#                 fail "yay is not on PATH; install it before running setup-deps for Omarchy."
-#             fi
-#             ;;
-#         fedora)
-#             if ! command -v dnf >/dev/null 2>&1; then
-#                 fail "dnf is not on PATH; install it before running setup-deps for Fedora."
-#             fi
-#             ;;
-#     esac
+#     if ! command -v yay >/dev/null 2>&1; then
+#         fail "yay is not on PATH; install it before running setup-deps for Omarchy."
+#     fi
 #
 #     log "Installing missing package '$pkg'..."
-#     case "$DOTFILES_ENV_LOCAL" in
-#         omarchy)
-#             yay -S --needed "$pkg"
-#             ;;
-#         fedora)
-#             sudo dnf install -y "$pkg"
-#             ;;
-#     esac
+#     yay -S --needed "$pkg"
 # }
 
 # ---------------------------------------------------------------------------
@@ -336,37 +270,17 @@ collect_missing() {
 # command and return 0. In real mode, require the PM on PATH up front
 # and exec the command. set -e propagates a non-zero exit; a single
 # failure aborts the run.
-#
-# Fedora contract: the only sudo touchpoint in the script is this one
-# dnf invocation. There is no upfront `sudo -v` validation.
 install_batch() {
-    local cmd
-    case "$DOTFILES_ENV_LOCAL" in
-        omarchy)
-            cmd=(yay -S --needed "${MISSING[@]}")
-            ;;
-        fedora)
-            cmd=(sudo dnf install -y "${MISSING[@]}")
-            ;;
-    esac
+    local cmd=(yay -S --needed "${MISSING[@]}")
 
     if [[ "$DRY_RUN" -eq 1 ]]; then
         log "[dry-run] would run: ${cmd[*]}"
         return 0
     fi
 
-    case "$DOTFILES_ENV_LOCAL" in
-        omarchy)
-            if ! command -v yay >/dev/null 2>&1; then
-                fail "yay is not on PATH; install it before running setup-deps for Omarchy."
-            fi
-            ;;
-        fedora)
-            if ! command -v dnf >/dev/null 2>&1; then
-                fail "dnf is not on PATH; install it before running setup-deps for Fedora."
-            fi
-            ;;
-    esac
+    if ! command -v yay >/dev/null 2>&1; then
+        fail "yay is not on PATH; install it before running setup-deps for Omarchy."
+    fi
 
     log "Running: ${cmd[*]}"
     "${cmd[@]}"
@@ -376,15 +290,7 @@ install_batch() {
 # Main
 # ---------------------------------------------------------------------------
 main() {
-    local packages=()
-    case "$DOTFILES_ENV_LOCAL" in
-        omarchy)
-            packages=("${OMARCHY_PACKAGES[@]}")
-            ;;
-        fedora)
-            packages=("${FEDORA_PACKAGES[@]}")
-            ;;
-    esac
+    local packages=("${OMARCHY_PACKAGES[@]}")
 
     log "Repo root: $REPO_ROOT"
     log "Env:       $DOTFILES_ENV_LOCAL"
