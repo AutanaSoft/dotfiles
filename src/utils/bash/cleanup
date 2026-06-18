@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/cleanup-omarchy — selectively remove the 29 Omarchy preinstalls
+# src/utils/bash/cleanup — selectively remove the 29 Omarchy preinstalls
 # marked [R] in docs/ideas/scripts/cleanup.md.
 #
 # Drift: this script operates on a hardcoded list. New preinstalls added by
@@ -11,7 +11,7 @@
 # Enforcement is by code review (REQ-CLEANUP-011).
 #
 # Audit log: each non-list run creates a single TSV file at
-# backup/cleanup-omarchy.<utc-ts>.log. Path is printed to stdout on success
+# backup/cleanup.<utc-ts>.log. Path is printed to stdout on success
 # and to stderr on partial failure.
 
 set -euo pipefail
@@ -23,7 +23,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 if [[ -n "${DOTFILES_ROOT:-}" ]]; then
     REPO_ROOT="$DOTFILES_ROOT"
 else
-    REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+    REPO_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 fi
 
 # Defaults
@@ -35,7 +35,7 @@ REQUEST_HELP=0
 
 # Constants
 BACKUP_DIR="$REPO_ROOT/backup"
-LOG_TEMPLATE="$BACKUP_DIR/cleanup-omarchy.<ts>.log"
+LOG_TEMPLATE="$BACKUP_DIR/cleanup.<ts>.log"
 STUB_BIN_DIR="$HOME/.local/bin"
 DESKTOP_DIR="$HOME/.local/share/applications"
 
@@ -90,7 +90,7 @@ Selectively remove the 29 Omarchy preinstalls marked [R] in
 docs/ideas/scripts/cleanup.md. Operates on a hardcoded list of 29 items
 across 4 categories (stubs, packages, web apps, TUIs; TUIs is empty in v1).
 Idempotent: re-runnable, items already gone are logged as "skipped". A
-single audit log is written to backup/cleanup-omarchy.<utc-ts>.log.
+single audit log is written to backup/cleanup.<utc-ts>.log.
 
 This script is standalone: it is NOT wired to root ./setup and is NOT
 entered in omarchy/README.md. Discoverable via --help.
@@ -167,15 +167,15 @@ fi
 
 # Logging helpers
 log() {
-    echo "[cleanup-omarchy] $*"
+    echo "[cleanup] $*"
 }
 
 warn() {
-    echo "[cleanup-omarchy] WARN: $*" >&2
+    echo "[cleanup] WARN: $*" >&2
 }
 
 fail() {
-    echo "[cleanup-omarchy] ERROR: $*" >&2
+    echo "[cleanup] ERROR: $*" >&2
     exit 1
 }
 
@@ -474,7 +474,7 @@ main() {
     # Build the audit log path (one log per run).
     local stamp
     stamp="$(date -u +%Y%m%dT%H%M%SZ)"
-    local log_path="$BACKUP_DIR/cleanup-omarchy.$stamp.log"
+    local log_path="$BACKUP_DIR/cleanup.$stamp.log"
 
     # Execute (or simulate in dry-run mode).
     local mode="run"
