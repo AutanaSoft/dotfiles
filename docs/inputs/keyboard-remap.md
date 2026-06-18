@@ -11,12 +11,13 @@ tracked file. Omarchy only.
    ```bash
    ./setup --dots
    ```
-   This copies the file to `/etc/keyd/default.conf` and re-enables the
-   `keyd` service. The two `sudo` calls in the new step coalesce under
+   This copies the file to `/etc/keyd/default.conf`, re-enables the
+   `keyd` service, and reloads the running daemon so the new bindings
+   take effect. The three `sudo` calls in the new step coalesce under
    the timestamp cache — one password prompt.
 3. Verify the new bindings are live:
    ```bash
-   sudo keyd -V
+   sudo keyd -v
    sudo keyd monitor
    ```
 
@@ -51,7 +52,7 @@ the keyd service is already `enabled` after the first run, so the
 
 | Command | What it shows |
 | --- | --- |
-| `sudo keyd -V` | keyd version and the active config file in use. |
+| `sudo keyd -v` | keyd version. To see which config file keyd is reading, inspect `/etc/keyd/default.conf` directly or check the `DEVICE: match ...` lines in `sudo journalctl -u keyd`. |
 | `sudo keyd monitor` | Real-time key events. **This is also where you find the `<vid>:<pid>` of every connected device** — use it for the VID:PID migration below. |
 
 ### VID:PID migration (adding a second keyboard)
@@ -86,8 +87,9 @@ scoping.
 - [ ] `src/etc/keyd/default.conf` is the only file you
       edit. Do not hand-edit `/etc/keyd/default.conf` — it gets
       overwritten on the next env run.
-- [ ] `sudo keyd -V` shows `/etc/keyd/default.conf` as the active
-      config after every reload.
+- [ ] `sudo keyd -v` runs cleanly, and the device-match lines in
+      `sudo journalctl -u keyd` point to `/etc/keyd/default.conf` after
+      every reload.
 - [ ] When adding a second keyboard, the migration path uses
       `sudo keyd monitor` to discover the device IDs, not a guess.
 - [ ] Disabled keys use `= noop`, not `= clear` (`clear()` clears

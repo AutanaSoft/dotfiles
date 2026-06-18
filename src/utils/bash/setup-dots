@@ -386,9 +386,9 @@ apply_symlinks() {
 # Omarchy env flow. Future env executors that need a privileged
 # service-enable can use the same pattern (rely on sudo's default
 # timestamp cache, 5 min — do NOT add an explicit `sudo -v` upfront).
-# The two sudo calls below (`install` then `systemctl`) coalesce into
-# a single password prompt because they run back-to-back inside the
-# timestamp window.
+# The three sudo calls below (`install`, `systemctl`, `keyd reload`)
+# coalesce into a single password prompt because they run back-to-back
+# inside the timestamp window.
 #
 # Order within the step: install the config FIRST, then start the
 # daemon. Reversing the order would risk a daemon restart loop on a
@@ -406,6 +406,7 @@ install_input_devices() {
     if [[ "$DRY_RUN" -eq 1 ]]; then
         log "[dry-run] would run: install -m 644 $src $target"
         log "[dry-run] would run: systemctl enable --now keyd ratbagd"
+        log "[dry-run] would run: keyd reload"
         return 0
     fi
 
@@ -415,6 +416,11 @@ install_input_devices() {
     sudo install -m 644 "$src" "$target"
     log "Enabling and starting keyd + ratbagd services"
     sudo systemctl enable --now keyd ratbagd
+    # Reload the running daemon so it picks up the new config. Without
+    # this, `systemctl enable --now` is a no-op when keyd is already
+    # active (the common case after the first setup run), and the new
+    # bindings never reach the running daemon.
+    sudo keyd reload
 }
 
 # ---------------------------------------------------------------------------
