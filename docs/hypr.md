@@ -53,14 +53,16 @@ the non-obvious decisions.
 
 Most app windows are floated at **1043×587** (a personal 16:9 size).
 Calculator opens at its natural size. PiP windows are forced to
-1043×587 instead of Omarchy's `apps/pip.conf` default — see the
-inline rationale in the file.
+1043×587 and a 2 px border instead of Omarchy's `apps/pip.conf`
+defaults (600×338, no border) — see the inline rationale in the
+file.
 
 | App                                       | Size     |
 | ----------------------------------------- | -------- |
 | Nautilus, Spotify, Cliamp, Nvim           | 1043×587 |
-| Alacritty (any window), Discord, Netflix  | 1043×587 |
+| Alacritty (any window), Discord           | 1043×587 |
 | WhatsApp, YouTube (webapps)               | 1043×587 |
+| Netflix                                   | 1043×587 (PiP, pinned) |
 | Calculator                                | natural  |
 
 ### Keybindings — `p-bindings.conf`
