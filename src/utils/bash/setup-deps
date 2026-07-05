@@ -61,6 +61,8 @@ OMARCHY_PACKAGES=(
     keyd                # command: keyd (keyboard remapping daemon)
     piper               # command: piper (Logitech mouse GUI; ratbagd-backed)
     libratbag           # provides: ratbagd (DBus service for Piper / mouse profiles)
+    postgresql          # server + psql + libpq (local backend DB)
+    valkey              # provides: redis (in-memory store; BSD-licensed fork of Redis)
 )
 
 # ---------------------------------------------------------------------------
