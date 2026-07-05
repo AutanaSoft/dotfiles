@@ -1,5 +1,6 @@
 .atl/
 backup/
+openspec/
 
 # SSH: only `config` is tracked, as a safe template (no secrets, no real
 # hostnames/users/keys). Anything else that lands in src/home/.ssh/
