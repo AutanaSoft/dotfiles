@@ -1,0 +1,12 @@
+# /etc/fstab — dotfiles reference (user data partitions only)
+#
+# Reference scope: partitions mounted under /home/lcardenas/.
+# System partitions live in /etc/fstab on the host and are not tracked here.
+UUID=da5cdd81-0925-4ea4-8784-6ef0b70dfece /home/lcardenas/Documents btrfs subvol=/@documents,defaults,noatime,compress=zstd:1 0 0
+UUID=da5cdd81-0925-4ea4-8784-6ef0b70dfece /home/lcardenas/Downloads  btrfs subvol=/@downloads,defaults,noatime,compress=zstd:1 0 0
+UUID=da5cdd81-0925-4ea4-8784-6ef0b70dfece /home/lcardenas/Music      btrfs subvol=/@music,defaults,noatime,compress=zstd:1 0 0
+UUID=da5cdd81-0925-4ea4-8784-6ef0b70dfece /home/lcardenas/Pictures   btrfs subvol=/@pictures,defaults,noatime,compress=zstd:1 0 0
+UUID=da5cdd81-0925-4ea4-8784-6ef0b70dfece /home/lcardenas/Projects   btrfs subvol=/@projects,defaults,noatime,compress=zstd:1 0 0
+UUID=da5cdd81-0925-4ea4-8784-6ef0b70dfece /home/lcardenas/Videos     btrfs subvol=/@videos,defaults,noatime,compress=zstd:1 0 0
+UUID=da5cdd81-0925-4ea4-8784-6ef0b70dfece /home/lcardenas/Work       btrfs subvol=/@work,defaults,noatime,compress=zstd:1 0 0
+UUID=da5cdd81-0925-4ea4-8784-6ef0b70dfece /home/lcardenas/Games      btrfs subvol=/@games,defaults,noatime,compress=zstd:1 0 0
