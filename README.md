@@ -10,7 +10,8 @@ this repo's only AUR-helper concern is `yay`.
 
 1. Clone the repo.
 2. Run `./setup --dots` from the repo root.
-3. Edit, reload, validate on every change.
+3. See [`docs/post-setup.md`](docs/post-setup.md).
+4. Edit, reload, validate on every change.
 
 ## Supported Hosts
 
