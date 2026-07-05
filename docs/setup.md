@@ -40,17 +40,6 @@ src/utils/bash/setup-deps --omarchy
 Dependencies are installed in a single batch. A single `yay` invocation
 produces one install confirmation for the whole batch.
 
-## Verification
-
-Run the repo-native setup tests:
-
-```bash
-bash tests/setup-deps.bash
-```
-
-The tests use temporary directories and command stubs, so they do not install
-packages or modify your real home configuration.
-
 ## Related Files
 
 - `setup` — root entrypoint.
@@ -58,4 +47,3 @@ packages or modify your real home configuration.
 - `src/utils/bash/setup-deps` — OS package dependency installer.
 - `src/utils/bash/setup-fonts` — Nerd Fonts installer.
 - `src/utils/bash/cleanup` — selectively remove Omarchy preinstalls.
-- `tests/setup-deps.bash` — behavior tests.

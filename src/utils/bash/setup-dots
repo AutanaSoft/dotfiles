@@ -26,7 +26,7 @@
 # before being replaced by symlinks pointing into the repo.
 #
 # SSH config is NOT symlinked. Setup copies the tracked safe template
-# at `src/home/.ssh/config` to `~/.ssh/config` (mode 600) only when
+# at `src/home/ssh/config` to `~/.ssh/config` (mode 600) only when
 # the source exists and the local target does not. The local file
 # always wins. The repo template must contain no secrets or real
 # production values — see docs/ssh.md.
@@ -281,7 +281,7 @@ ensure_symlink() {
 # message is logged. Directory and file modes are enforced:
 # $HOME/.ssh is 700, $HOME/.ssh/config is 600.
 seed_ssh_config() {
-    local src="$REPO_ROOT/src/home/.ssh/config"
+    local src="$REPO_ROOT/src/home/ssh/config"
     local ssh_dir="$HOME/.ssh"
     local target="$ssh_dir/config"
 
@@ -364,7 +364,7 @@ apply_symlinks() {
 
     # ~/.bashrc
     ensure_symlink \
-        "$REPO_ROOT/src/home/.bashrc" \
+        "$REPO_ROOT/src/home/bashrc" \
         "$HOME/.bashrc" \
         "$stamp"
 
