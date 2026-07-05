@@ -1,24 +1,36 @@
-## Repository Purpose
+# AGENTS
 
-Personal dotfiles for Omarchy-family hosts (stock Omarchy, CachyOS with
-Omarchy layered on top, Arch with Omarchy layered on top). Distribution-
-specific configuration is owned by the Omarchy installer; this repo's only
-AUR-helper concern is `yay`.
+Stack, idioma y reglas duras para que un agente (humano o IA) trabaje en este repo sin romper convenciones. Si una regla aquí choca con una skill instalada, este archivo gana.
 
-## Communication Rules
+## Comunicación con el usuario
 
-### Language
+- Respuestas cortas y directas por defecto.
+- Español Neutral Técnico, sin variantes regionales ni jerga.
+- Una pregunta a la vez. Después de preguntar, STOP y espera.
 
-- Reply to the developer in neutral Latin American Spanish (no voseo, no regional slang).
-- Technical artifacts (code, identifiers, comments, docs) in English unless the user requests otherwise.
+## Commits y pushes
 
-### Execution
+- **Commit**: solo si el usuario lo pide explícitamente.
+- **Push**: solo si el usuario lo pide explícitamente.
+- Mensajes en Conventional Commits. Sin "Co-Authored-By" ni atribución a IA. Sin emojis.
 
-1. Do not commit, push, or PR without explicit request.
-1. Clarify requirements before executing when in doubt.
-1. Verify technical claims before stating them. If the developer is wrong, explain why with evidence.
+## Comentarios y documentación inline
 
-### Response format
+- **Idioma**: inglés (US), técnico, sin importar el idioma de conversación.
+- **Qué documentar**: exports (funciones, clases, tipos, interfaces) cuando el contrato no sea obvio. Omitir helpers autoexplicativos y one-liners.
+- **Contenido**: por qué (intención, decisión, trampa), no el qué.
+- **Código comentado**: prohibido. Borrar; git preserva el historial.
+- **Emojis**: prohibidos en código y commits.
 
-- Short by default. Expand only when the task requires it.
-- One question at a time. Wait for the answer before continuing.
+## Verificación (contrato del agente)
+
+- No asumas APIs, convenciones ni comportamiento desde memoria. Verifica contra la doc oficial antes de escribir o modificar código.
+- Cita fuente (URL de docs + versión del paquete) en claims técnicos no obvios.
+- Si el usuario marca algo como incorrecto: verifica contra la doc antes de aceptar o rechazar. La memoria y los "probablemente" no son evidencia.
+
+## Cambios del usuario en código generado
+
+- **Asume intención**: cualquier diferencia entre lo que generaste y el presente en el repo es, por defecto, intencional.
+- **No revertir sin confirmar**: no deshagas, reescribas ni "corrijas" esos cambios sin confirmación explícita.
+- **Cómo preguntar**: si lo consideras un error o bug, plantea la observación con evidencia (URL, línea, diff) y pregunta antes de tocar.
+- **Excepción**: si el usuario pidió revertir o ajustar explícitamente ("vuelve atrás", "aplica esto en lugar de lo anterior"), procede.

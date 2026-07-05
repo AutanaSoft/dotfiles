@@ -9,55 +9,46 @@ this repo's only AUR-helper concern is `yay`.
 ## Quick Path
 
 1. Clone the repo.
-1. Run `./setup --dots` from the repo root.
-1. Edit, reload, validate on every change.
+2. Run `./setup --dots` from the repo root.
+3. Edit, reload, validate on every change.
 
-## Environment
+## Supported Hosts
 
-| Environment | Folder | Main stack |
-| --- | --- | --- |
-| Omarchy (Arch + Hyprland) | `src/home/config/` | Hyprland, Alacritty, Zellij, nvim, Mako, Waybar |
+| Host              | Notes                                              |
+| ----------------- | -------------------------------------------------- |
+| Stock Omarchy     | Primary target                                     |
+| CachyOS + Omarchy | Works — Omarchy installer handles distro specifics |
+| Arch + Omarchy    | Works — Omarchy installer handles distro specifics |
 
-See [`src/README.md`](src/README.md) for the per-env runbook, managed
-paths, and doc index.
+The repo carries one env config (`src/home/`); host differences are resolved at
+install time by `src/utils/bash/setup-deps`, which auto-detects via
+`yay`/`pacman` on `PATH`.
 
 ## Setup
 
 ```bash
-git clone git@github.com:AutanaSoft/autanasoft-dots.git dotfiles
+git clone git@github.com:AutanaSoft/dotfiles.git dotfiles
 cd dotfiles
-./setup --dots --fonts
+./setup --dots
 ```
 
-`./setup` is the root entrypoint. See [`docs/setup.md`](docs/setup.md) for
-script roles and options.
+`./setup` is the only entrypoint. Common flags:
 
-## Repo layout
+| Flag        | What it does                                              |
+| ----------- | --------------------------------------------------------- |
+| `--dots`    | Full env flow: deps + fonts + dotfile links (recommended) |
+| `--deps`    | OS deps only — auto-detects host                          |
+| `--fonts`   | Nerd Fonts only                                           |
+| `--dry-run` | Preview without mutating the system                       |
 
-| Path | Maps to |
-| --- | --- |
-| `src/home/.<dotfile>` | `~/.<dotfile>` |
-| `src/home/config/<app>/` | `~/.config/<app>/` (tools whose config survives `omarchy update`) |
-| `src/home/local/bin/<name>` | `~/.local/bin/<name>` (personal, manual only) |
-| `src/etc/<path>` | `/etc/<path>` (system-managed, root-installed) |
-| `src/utils/bash/<name>` | Setup helpers (invoked by root `./setup`) |
-| `src/README.md` | Per-env runbook + managed-paths table |
-| `docs/` | Reference docs and conventions |
+See [`docs/setup.md`](docs/setup.md) for details and verification.
 
-## Policy summary
+## Repo Layout
 
-| Rule | See |
-| --- | --- |
-| Setup entrypoint is the root `./setup`; env executors live in `src/utils/bash/` | [`docs/setup.md`](docs/setup.md) |
-| Only files diverging from upstream defaults are tracked | [`docs/shared-layer.md`](docs/shared-layer.md#tracking-policy) |
-| System files, per-host secrets, omarchy-only configs are forbidden in the repo | [`docs/shared-layer.md`](docs/shared-layer.md#forbidden-content) |
-| AI agents do not commit, push, or PR without explicit request | [`AGENTS.md`](AGENTS.md) |
-| Style, doc skeleton, and formatting rules | [`docs/conventions.md`](docs/conventions.md) |
-
-## Related docs
-
-- [`AGENTS.md`](AGENTS.md) — AI agent and contributor guidance
-- [`docs/conventions.md`](docs/conventions.md) — repo style and doc skeleton
-- [`docs/setup.md`](docs/setup.md) — setup commands and script roles
-- [`docs/shared-layer.md`](docs/shared-layer.md) — shared config layer rules
-- [`src/README.md`](src/README.md) — per-env runbook and doc index
+| Path                        | Maps to                                                    |
+| --------------------------- | ---------------------------------------------------------- |
+| `src/home/.<dotfile>`       | `~/.<dotfile>`                                             |
+| `src/home/config/<app>/`    | `~/.config/<app>/` (configs that survive `omarchy update`) |
+| `src/home/local/bin/<name>` | `~/.local/bin/<name>` (personal, manual only)              |
+| `src/etc/<path>`            | `/etc/<path>` (system-managed, root-installed)             |
+| `src/utils/bash/<name>`     | Setup helpers (invoked by root `./setup`)                  |
