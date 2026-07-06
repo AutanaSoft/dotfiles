@@ -1,0 +1,273 @@
+#!/usr/bin/env bash
+# src/utils/bash/setup-locale — install the system locale from src/etc/locale.conf.
+#
+# This script is the locale executor. It is normally invoked by the root
+# `./setup --locale` orchestrator, but it can also be run directly:
+#
+#     src/utils/bash/setup-locale [--dry-run] [--help]
+#
+# What it does:
+#   1. Reads the LANG value from src/etc/locale.conf.
+#   2. Runs `sudo localedef -i <locale_base> -f <charset> ... <name>` to
+#      compile the locale binary directly into /usr/lib/locale/. This
+#      bypasses /etc/locale.gen entirely — that file is left untouched.
+#      Note: the Omarchy locale-gen wrapper does NOT accept command-line
+#      arguments (it only reads /etc/locale.gen), so we use localedef
+#      directly instead.
+#   3. Installs src/etc/locale.conf to /etc/locale.conf (mode 644) so
+#      the system picks up the LANG on the next session/login.
+#
+# Why a separate script:
+#   The locale is user-specific (the Autanasoft repo ships es_VE.UTF-8,
+#   but a fork or sibling install may want something else). It is
+#   therefore OPT-IN via the root `./setup --locale` flag, not part of
+#   the default `./setup --dots` flow.
+#
+# Keyboard layout (kb_layout) is intentionally NOT touched here: the
+# system VC keymap and Hyprland `kb_layout` are independent from the
+# message locale. The repo's es_VE.UTF-8 LANG pairs with a US keyboard
+# layout (Compose on Caps) by design.
+#
+# Note on session re-login:
+#   The new LANG only takes effect for desktop apps (GTK, Qt, Firefox,
+#   etc.) after the next session/login. LANG is read from
+#   /etc/locale.conf at session start; running services in the current
+#   session keep the previous value until they restart.
+
+set -euo pipefail
+
+# ---------------------------------------------------------------------------
+# Resolve script path (CWD-independent). Prefer DOTFILES_ROOT when the
+# root ./setup orchestrator exports it; otherwise derive it from this
+# file's location.
+# ---------------------------------------------------------------------------
+SCRIPT_PATH="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -n "${DOTFILES_ROOT:-}" ]]; then
+    REPO_ROOT="$DOTFILES_ROOT"
+else
+    REPO_ROOT="$(cd -- "$SCRIPT_PATH/.." && pwd)"
+fi
+
+# ---------------------------------------------------------------------------
+# Defaults
+# ---------------------------------------------------------------------------
+DRY_RUN=0
+LOCALE_CONF_SRC="$REPO_ROOT/src/etc/locale.conf"
+LOCALE_CONF_TARGET="/etc/locale.conf"
+
+# ---------------------------------------------------------------------------
+# Usage
+# ---------------------------------------------------------------------------
+usage() {
+    cat <<EOF
+Usage: $0 [--dry-run] [--help]
+
+Generates the system locale declared in src/etc/locale.conf and installs
+the file to /etc/locale.conf.
+
+This script is the locale executor. Prefer invoking it via the root
+entrypoint: \`./setup --locale [--dry-run]\`.
+
+Source:      $LOCALE_CONF_SRC
+Target:      $LOCALE_CONF_TARGET
+Permissions: 0644 (mode 644)
+
+Options:
+  --dry-run    Print the actions that would run, but do NOT call sudo
+               or write to /etc.
+  --help, -h   Show this help and exit.
+EOF
+}
+
+# ---------------------------------------------------------------------------
+# Argument parsing
+# ---------------------------------------------------------------------------
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dry-run)
+            DRY_RUN=1
+            shift
+            ;;
+        --help | -h)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "Unknown argument: $1" >&2
+            usage >&2
+            exit 2
+            ;;
+    esac
+done
+
+# ---------------------------------------------------------------------------
+# Logging helpers
+# ---------------------------------------------------------------------------
+log() {
+    echo "[setup-locale] $*"
+}
+
+warn() {
+    echo "[setup-locale] WARN: $*" >&2
+}
+
+fail() {
+    echo "[setup-locale] ERROR: $*" >&2
+    exit 1
+}
+
+# ---------------------------------------------------------------------------
+# Pre-flight
+# ---------------------------------------------------------------------------
+require_command() {
+    local cmd="$1"
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+        fail "Required command '$cmd' is not on PATH. Install it before running this script."
+    fi
+}
+
+if [[ ! -f "$LOCALE_CONF_SRC" ]]; then
+    fail "Source locale config not found: $LOCALE_CONF_SRC"
+fi
+
+# Only the commands actually used in non-dry-run mode are required up front.
+if [[ "$DRY_RUN" -eq 0 ]]; then
+    require_command localedef
+    require_command install
+fi
+
+# ---------------------------------------------------------------------------
+# Read LANG from the source file
+# ---------------------------------------------------------------------------
+# Pulls the first `LANG=...` line and unquotes it. Supports both single
+# and double quotes around the value. When the value is UNQUOTED, a
+# trailing `#` comment is stripped; when QUOTED, the `#` is preserved
+# as data. This keeps the script driven by src/etc/locale.conf rather
+# than a hardcoded locale, so changing the source file is enough to
+# retarget the install.
+read_lang_from_source() {
+    local raw value first last
+    raw="$(grep -E '^[[:space:]]*LANG[[:space:]]*=' "$LOCALE_CONF_SRC" | head -n1 || true)"
+    if [[ -z "$raw" ]]; then
+        fail "No LANG= entry found in $LOCALE_CONF_SRC"
+    fi
+    value="${raw#*=}"
+    # Trim leading and trailing whitespace.
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    # Detect a matching pair of surrounding single or double quotes.
+    first="${value:0:1}"
+    last="${value: -1}"
+    if [[ "${#value}" -ge 2 ]] \
+        && { [[ "$first" == '"' && "$last" == '"' ]] \
+          || [[ "$first" == "'" && "$last" == "'" ]]; }; then
+        # Quoted: the inner content is protected, so a '#' inside the
+        # value is data, not a comment delimiter.
+        value="${value:1:-1}"
+    else
+        # Unquoted: strip a trailing comment (whitespace + '#' + anything).
+        value="${value%%[[:space:]]#*}"
+        value="${value%"${value##*[![:space:]]}"}"
+    fi
+    if [[ -z "$value" ]]; then
+        fail "LANG= entry in $LOCALE_CONF_SRC is empty"
+    fi
+    echo "$value"
+}
+
+# ---------------------------------------------------------------------------
+# Install: compile locale + write /etc/locale.conf
+# ---------------------------------------------------------------------------
+# Splits the LANG value on '.' to derive the locale base name and the
+# charmap. Example: "es_VE.UTF-8" → base="es_VE", charset="UTF-8",
+# full name "es_VE.UTF-8" passed as the localedef output name.
+#
+# Before overwriting /etc/locale.conf, makes a best-effort backup into
+# $DOTFILES_BACKUP_DIR (exported by the root ./setup dispatcher). The
+# backup is soft-fail: if the directory cannot be created or the copy
+# fails, a WARN is logged and the install proceeds. /etc/locale.conf
+# routinely holds per-user overrides (LC_TIME, LC_MONETARY, LC_NUMERIC,
+# LANGUAGE, etc.) that the repo's source file does not carry, so the
+# backup gives the user a recovery path that git history cannot.
+install_locale() {
+    local lang_value="$1"
+
+    local locale_base charset
+    if [[ "$lang_value" == *.* ]]; then
+        locale_base="${lang_value%%.*}"
+        charset="${lang_value#*.}"
+    else
+        locale_base="$lang_value"
+        charset="UTF-8"
+    fi
+
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        if [[ -n "${DOTFILES_BACKUP_DIR:-}" && -f "$LOCALE_CONF_TARGET" ]]; then
+            log "[dry-run] would back up: $LOCALE_CONF_TARGET -> $DOTFILES_BACKUP_DIR/etc/locale.conf"
+        fi
+        log "[dry-run] would run: localedef -i $locale_base -f $charset -A /usr/share/locale/locale.alias $lang_value"
+        log "[dry-run] would run: install -m 644 $LOCALE_CONF_SRC $LOCALE_CONF_TARGET"
+        return 0
+    fi
+
+    # Best-effort backup of any pre-existing /etc/locale.conf before we
+    # overwrite it. Soft-fail: log a WARN and continue if mkdir or cp fails.
+    if [[ -n "${DOTFILES_BACKUP_DIR:-}" && -f "$LOCALE_CONF_TARGET" ]]; then
+        local backup_path="$DOTFILES_BACKUP_DIR/etc/locale.conf"
+        if mkdir -p "$(dirname "$backup_path")" 2>/dev/null \
+            && sudo cp "$LOCALE_CONF_TARGET" "$backup_path" 2>/dev/null; then
+            log "Backed up $LOCALE_CONF_TARGET -> $backup_path"
+        else
+            log "WARN: could not back up $LOCALE_CONF_TARGET; continuing without backup."
+        fi
+    fi
+
+    log "Compiling locale: localedef -i $locale_base -f $charset ... $lang_value"
+    sudo localedef -i "$locale_base" -f "$charset" -A /usr/share/locale/locale.alias "$lang_value"
+    log "Installing locale config: $LOCALE_CONF_SRC -> $LOCALE_CONF_TARGET (mode 644)"
+    sudo install -m 644 "$LOCALE_CONF_SRC" "$LOCALE_CONF_TARGET"
+}
+
+# ---------------------------------------------------------------------------
+# Verify: read /etc/locale.conf back and confirm the expected LANG is there
+# ---------------------------------------------------------------------------
+# Cheap post-install observability: grep the target for the LANG value
+# (with an optional trailing comment allowed). If the file does not
+# contain it, log a WARN with the actual value so the user can diagnose
+# "I ran this and LANG is still en_US" without re-reading the file
+# manually. A non-readable target degrades to a soft warn.
+verify_locale_conf() {
+    local lang_value="$1"
+    if [[ ! -r "$LOCALE_CONF_TARGET" ]]; then
+        log "WARN: $LOCALE_CONF_TARGET is not readable; skipping verification."
+        return 0
+    fi
+    if grep -qE "^LANG=${lang_value}[[:space:]]*(#.*)?$" "$LOCALE_CONF_TARGET"; then
+        log "Verified: $LOCALE_CONF_TARGET contains LANG=$lang_value"
+    else
+        log "WARN: $LOCALE_CONF_TARGET does not contain expected LANG=$lang_value"
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+main() {
+    local lang_value
+    lang_value="$(read_lang_from_source)"
+
+    log "Repo root:  $REPO_ROOT"
+    log "Source:     $LOCALE_CONF_SRC"
+    log "Target:     $LOCALE_CONF_TARGET"
+    log "LANG value: $lang_value"
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        log "Mode:       DRY-RUN (no sudo, no writes to /etc)"
+    fi
+
+    install_locale "$lang_value"
+    verify_locale_conf "$lang_value"
+
+    log "Setup complete. Re-login (or reboot) for the new LANG to take effect on GUI apps."
+}
+
+main "$@"
