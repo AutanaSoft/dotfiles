@@ -22,12 +22,17 @@
 #   --dots       — dispatch to src/utils/bash/setup-dots
 #   --fonts      — dispatch to src/utils/bash/setup-fonts (or absorbed by --dots)
 #   --deps       — dispatch to src/utils/bash/setup-deps   (or absorbed by --dots)
+#   --locale     — dispatch to src/utils/bash/setup-locale (standalone only;
+#                  NOT absorbed by --dots because locale is user-specific and
+#                  must stay opt-in)
 #   --dry-run    — set DOTFILES_DRY_RUN=1; env scripts honor it
 #   --help / -h  — show usage and exit 0
 #
 # Precedence:
 #   - --dots absorbs --fonts and --deps. The env script handles them.
-#   - With no env flag, --fonts and --deps are direct dispatches.
+#   - --locale is a standalone helper, never absorbed by --dots.
+#   - With no env flag, --fonts, --deps, and --locale are direct
+#     dispatches. Only one standalone helper may be passed at a time.
 #
 # On any exit path (success, child-script failure, parse error, --help,
 # interrupt) the EXIT trap unsets the five DOTFILES_* variables so they
@@ -39,6 +44,7 @@
 #   ./setup --dots --deps                 # absorbed; env script handles deps
 #   ./setup --fonts                       # dispatch to setup-fonts
 #   ./setup --deps                        # dispatch to setup-deps (auto-detect)
+#   ./setup --locale                      # dispatch to setup-locale (opt-in)
 #   ./setup --dry-run --dots              # dry-run the env flow
 #   ./setup --unknown                     # unknown flag, non-zero exit
 
@@ -69,13 +75,14 @@ PARSED_DRY_RUN=0
 REQUEST_HELP=0
 REQUEST_FONTS=0
 REQUEST_DEPS=0
+REQUEST_LOCALE=0
 
 # ---------------------------------------------------------------------------
 # Usage
 # ---------------------------------------------------------------------------
 usage() {
     cat <<EOF
-Usage: $0 [--dots] [--fonts] [--deps] [--dry-run] [--help]
+Usage: $0 [--dots] [--fonts] [--deps] [--locale] [--dry-run] [--help]
 
 Thin dispatcher: parse flags, export the DOTFILES_* path variables,
 register a cleanup trap, and invoke exactly one env or helper script.
@@ -84,7 +91,10 @@ auto-detects the host by probing package managers.
 
 Precedence:
   --dots absorbs --fonts and --deps (the env script handles them).
-  Without an env flag, --fonts and --deps are direct dispatches.
+  --locale is a standalone helper, never absorbed by --dots: the
+  locale is user-specific and must stay opt-in for forks/siblings.
+  Without an env flag, --fonts, --deps, and --locale are direct
+  dispatches. Only one standalone helper may be passed at a time.
 
 Environment (one of, or none):
   --dots          Dispatch to src/utils/bash/setup-dots
@@ -92,6 +102,9 @@ Environment (one of, or none):
 Options (optional):
   --fonts         Dispatch to src/utils/bash/setup-fonts (absorbed by --dots)
   --deps          Dispatch to src/utils/bash/setup-deps   (absorbed by --dots)
+  --locale        Dispatch to src/utils/bash/setup-locale (standalone only;
+                  generates the LANG declared in src/etc/locale.conf and
+                  installs it to /etc/locale.conf)
   --dry-run       Set DOTFILES_DRY_RUN=1; env scripts honor it
   --help, -h      Show this help and exit
 
@@ -108,6 +121,7 @@ Examples:
   $0 --dots --deps              # absorbed; env script handles deps
   $0 --fonts
   $0 --deps                     # setup-deps auto-detects the host
+  $0 --locale                   # opt-in locale install (es_VE.UTF-8 by default)
   $0 --dry-run --dots
 EOF
 }
@@ -127,6 +141,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --deps)
             REQUEST_DEPS=1
+            shift
+            ;;
+        --locale)
+            REQUEST_LOCALE=1
             shift
             ;;
         --dry-run)
@@ -153,18 +171,19 @@ fi
 # ---------------------------------------------------------------------------
 # Validation
 # ---------------------------------------------------------------------------
-if [[ -z "$DOTFILES_ENV" \
-    && "$REQUEST_FONTS" -eq 0 \
-    && "$REQUEST_DEPS" -eq 0 ]]; then
-    echo "ERROR: choose --dots, --fonts, --deps, or any combination." >&2
+# Count active standalone helper flags (mutually exclusive).
+standalone_count=$((REQUEST_FONTS + REQUEST_DEPS + REQUEST_LOCALE))
+
+# At least one target must be selected.
+if [[ -z "$DOTFILES_ENV" && "$standalone_count" -eq 0 ]]; then
+    echo "ERROR: choose --dots, --fonts, --deps, --locale, or any combination." >&2
     usage >&2
     exit 2
 fi
 
-if [[ -z "$DOTFILES_ENV" \
-    && "$REQUEST_FONTS" -eq 1 \
-    && "$REQUEST_DEPS" -eq 1 ]]; then
-    echo "ERROR: choose only one standalone helper: --fonts or --deps." >&2
+# Only one standalone helper may be passed at a time.
+if [[ "$standalone_count" -gt 1 ]]; then
+    echo "ERROR: choose only one standalone helper: --fonts, --deps, or --locale." >&2
     usage >&2
     exit 2
 fi
@@ -199,27 +218,40 @@ trap 'unset DOTFILES_ROOT DOTFILES_ENV DOTFILES_DRY_RUN DOTFILES_BACKUP_DIR DOTF
 # ---------------------------------------------------------------------------
 # Dispatch
 # ---------------------------------------------------------------------------
+# --locale is a standalone helper and is intentionally NOT absorbed by
+# --dots (locale is user-specific and must stay opt-in). If the user
+# passes both, surface a one-line note so the dropped flag is not
+# silent; the dispatch still proceeds to setup-dots.
+if [[ -n "$DOTFILES_ENV" && "$REQUEST_LOCALE" -eq 1 ]]; then
+    echo "[setup] Note: --locale is standalone-only and is not run by --dots. Run './setup --locale' separately."
+fi
+
 # Exactly one target script. Order:
 #   1. --dots dispatches to src/utils/bash/setup-dots. --fonts and
 #      --deps are absorbed — the env script owns the full flow.
-#   2. --fonts only dispatches to src/utils/bash/setup-fonts.
-#   3. --deps  only dispatches to src/utils/bash/setup-deps   (auto-detects).
+#      --locale is NOT absorbed: it stays opt-in.
+#   2. --fonts   dispatches to src/utils/bash/setup-fonts.
+#   3. --deps    dispatches to src/utils/bash/setup-deps   (auto-detects).
+#   4. --locale  dispatches to src/utils/bash/setup-locale.
 target_script=""
-case "$DOTFILES_ENV:$REQUEST_FONTS:$REQUEST_DEPS" in
-    omarchy:*:*)
+case "$DOTFILES_ENV:$REQUEST_FONTS:$REQUEST_DEPS:$REQUEST_LOCALE" in
+    omarchy:*:*:*)
         target_script="$SCRIPTS_DIR/setup-dots"
         ;;
-    :1:0)
+    :1:0:0)
         target_script="$SCRIPTS_DIR/setup-fonts"
         ;;
-    :0:1)
+    :0:1:0)
         target_script="$SCRIPTS_DIR/setup-deps"
+        ;;
+    :0:0:1)
+        target_script="$SCRIPTS_DIR/setup-locale"
         ;;
     *)
         # Should be unreachable: validation above already rejected every
         # other combination. Fail loud if a future flag change breaks
         # the table.
-        echo "ERROR: internal dispatch table has no entry for '$DOTFILES_ENV:$REQUEST_FONTS:$REQUEST_DEPS'." >&2
+        echo "ERROR: internal dispatch table has no entry for '$DOTFILES_ENV:$REQUEST_FONTS:$REQUEST_DEPS:$REQUEST_LOCALE'." >&2
         exit 2
         ;;
 esac
@@ -234,7 +266,7 @@ if [[ ! -x "$target_script" ]]; then
 fi
 
 # Subprocess args: forward --dry-run. Child scripts (setup-deps,
-# setup-fonts, setup-dots) all accept it.
+# setup-fonts, setup-dots, setup-locale) all accept it.
 declare -a child_args=()
 if [[ "$PARSED_DRY_RUN" -eq 1 ]]; then
     child_args=(--dry-run)
