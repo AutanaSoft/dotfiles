@@ -3,7 +3,6 @@
 # ------------------------------------------------------------------------------
 [tools]
 # starship = "latest"
-# zellij = "latest"
 node = "latest"
 pnpm = "latest"
 prettier = "latest"
