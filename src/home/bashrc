@@ -9,10 +9,5 @@ source ~/.local/share/omarchy/default/bash/rc
 #
 # Make an alias for invoking commands you use constantly
 # alias p='python'
-alias c='opencode --port'
-
-alias wg-open='sudo wg-quick down wg1 2>/dev/null; sudo wg-quick up wg0'
-alias wg-full='sudo wg-quick down wg0 2>/dev/null; sudo wg-quick up wg1'
-alias wg-off='sudo wg-quick down wg0 2>/dev/null; sudo wg-quick down wg1 2>/dev/null; echo "wg off"'
-alias wg-status='sudo wg show'
+source ~/.config/bash/rc
 

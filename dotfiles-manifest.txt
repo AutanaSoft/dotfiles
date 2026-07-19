@@ -15,6 +15,7 @@
 #   - Tab-separated fields
 
 # --- Directory symlinks ---
+dir	src/home/config/bash	.config/bash
 dir	src/home/config/nvim	.config/nvim
 dir	src/home/config/omarchy/themes/tokyo-night-autana	.config/omarchy/themes/tokyo-night-autana
 
