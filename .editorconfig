@@ -16,36 +16,36 @@ root = true
 # DEFAULT RULES — Apply to all files unless overridden below
 # ============================================================================
 [*]
-charset = utf-8                    # File encoding
-end_of_line = lf                   # Line endings: LF (Unix-style)
-insert_final_newline = true        # Ensure files end with a newline
-trim_trailing_whitespace = true    # Remove trailing spaces on lines
-indent_style = space               # Use spaces, not tabs
-indent_size = 2                    # 2 spaces per indentation level
-max_line_length = 100              # Soft limit for line length
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+max_line_length = 100
 
 # ============================================================================
 # JAVASCRIPT / TYPESCRIPT — Web development files
 # ============================================================================
 [*.{js,jsx,ts,tsx}]
-max_line_length = 120              # Wider limit for JS/TS (more readable)
-quote_type = single                # Prefer single quotes: 'text'
-ij_typescript_use_double_quotes = false  # IntelliJ IDEA: disable double quotes
+max_line_length = 120
+quote_type = single
+ij_typescript_use_double_quotes = false
 
 # ============================================================================
 # MARKDOWN — Documentation files
 # ============================================================================
 # Markdown uses trailing spaces for hard line breaks; don't trim.
 [*.{md,markdown}]
-max_line_length = 100              # Keep lines reasonably short for readability
-trim_trailing_whitespace = false   # Preserve trailing spaces (used for line breaks)
+max_line_length = 100
+trim_trailing_whitespace = false
 
 # ============================================================================
 # PYTHON — PEP 8 compliant settings
 # ============================================================================
 [*.py]
-indent_size = 4                    # PEP 8 standard: 4 spaces
-max_line_length = 79               # PEP 8 standard: 79 characters
+indent_size = 4
+max_line_length = 79
 
 # ============================================================================
 # MAKEFILE — Build configuration
@@ -53,5 +53,4 @@ max_line_length = 79               # PEP 8 standard: 79 characters
 # Makefiles require tabs (recipe lines must start with TAB).
 # Using spaces will cause "missing separator" errors.
 [Makefile]
-indent_style = tab                 # Tabs are mandatory for Makefile recipes
-
+indent_style = tab
