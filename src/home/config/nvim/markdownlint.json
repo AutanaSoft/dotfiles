@@ -7,6 +7,8 @@
     "tables": true,
     "strict": false
   },
+  "MD024": { "siblings_only": true },
+  "MD026": { "punctuation": ".,;:" },
   "MD032": true,
   "MD060": true
 }

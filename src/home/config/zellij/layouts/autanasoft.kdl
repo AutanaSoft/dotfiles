@@ -48,7 +48,7 @@ layout {
                 tab_active "#[fg=$green,bold,italic] {index}:{name} "
 
                 // --- datetime ---
-                datetime          "#[fg=$blue] {format} "
+                datetime          "#[fg=$blue,bold] {format} "
                 datetime_format   "%A, %d %b %Y %I:%M %p"
                 datetime_timezone "America/Caracas"
             }
