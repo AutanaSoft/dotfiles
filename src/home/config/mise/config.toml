@@ -2,7 +2,7 @@
 # Mise Config
 # ------------------------------------------------------------------------------
 [tools]
-# starship = "latest"
+starship = "latest"
 node = "latest"
 pnpm = "latest"
 prettier = "latest"
