@@ -56,7 +56,7 @@ OMARCHY_PACKAGES=(
     hunspell
     hunspell-en_us      # command: hunspell
     hunspell-es_any     # command: hunspell
-    zellij              # command: zellij
+    # zellij              # command: zellij
     trash-cli           # command: trash (snacks.nvim explorer delete)
     keyd                # command: keyd (keyboard remapping daemon)
     piper               # command: piper (Logitech mouse GUI; ratbagd-backed)

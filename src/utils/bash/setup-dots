@@ -17,6 +17,11 @@
 #   symlink map, and validate the system. The root `./setup` is a thin
 #   dispatcher; it does not coordinate this flow.
 #
+# Symlink manifest:
+#   The symlink map is defined in dotfiles-manifest.txt at the repo root.
+#   To add, remove, or change symlinks, edit that file — not this script.
+#   See the manifest header for the format specification.
+#
 # Pre-requisites (not installed by this script):
 #   - `omarchy` command on PATH
 #   - `hyprctl` available (a running Hyprland session)
@@ -271,112 +276,96 @@ ensure_symlink() {
 }
 
 # ---------------------------------------------------------------------------
-# SSH config seeding
+# File copy helper (for configs that shouldn't be live-tracked)
 # ---------------------------------------------------------------------------
-# Copy the tracked safe SSH template from the repo to $HOME/.ssh/config
-# when the source exists. The repo file MUST stay placeholder-only
-# (no real hostnames, users, or identity file paths) — it is a
-# template, not a real config. The local file at $HOME/.ssh/config
-# has priority: if it already exists, the copy is skipped and a
-# message is logged. Directory and file modes are enforced:
-# $HOME/.ssh is 700, $HOME/.ssh/config is 600.
-seed_ssh_config() {
-    local src="$REPO_ROOT/src/home/ssh/config"
-    local ssh_dir="$HOME/.ssh"
-    local target="$ssh_dir/config"
+# Copy a file from the repo to $HOME when the source exists. The local
+# file at the target has priority: if it already exists, the copy is
+# skipped and a message is logged. Directory and file modes are enforced
+# by the caller.
+copy_file() {
+    local src="$1"
+    local target="$2"
 
     if [[ ! -e "$src" && ! -L "$src" ]]; then
-        log "No shared SSH template at $src; skipping (create it to seed ~/.ssh/config)."
+        log "No source file at $src; skipping."
         return 0
     fi
 
     # Local target has priority: never overwrite.
     if [[ -e "$target" || -L "$target" ]]; then
-        log "Skipping SSH config seed: $target already exists (local file has priority)."
+        log "Skipping copy: $target already exists (local file has priority)."
         return 0
     fi
 
-    log "Seeding SSH config: $src -> $target (mode 600)"
+    log "Copying: $src -> $target"
     if [[ "$DRY_RUN" -eq 1 ]]; then
-        if [[ ! -d "$ssh_dir" ]]; then
-            log "[dry-run] would create directory: $ssh_dir (mode 700)"
-        fi
-        log "[dry-run] would copy: $src -> $target (mode 600)"
+        log "[dry-run] would copy: $src -> $target"
         return 0
     fi
 
-    if [[ ! -d "$ssh_dir" ]]; then
-        log "Creating SSH directory: $ssh_dir (mode 700)"
-        mkdir -m 700 "$ssh_dir"
-    fi
-    install -m 600 "$src" "$target"
+    mkdir -p "$(dirname -- "$target")"
+    cp "$src" "$target"
 }
 
 # ---------------------------------------------------------------------------
-# Apply symlink map
+# Apply symlink map (reads from dotfiles-manifest.txt)
 # ---------------------------------------------------------------------------
+# The manifest file lists all symlinks and file operations. This function
+# reads it line by line and dispatches to the appropriate helper.
+#
+# Manifest format (tab-separated):
+#   <action> <source-relative-to-repo> <target-relative-to-home>
+#
+# Actions:
+#   dir   - symlink entire directory
+#   file  - symlink single file
+#   glob  - expand wildcard pattern
+#   copy  - copy file instead of symlink
+#   skip  - explicit exclusion (logged, no action)
 apply_symlinks() {
     local stamp="$1"
+    local manifest="$REPO_ROOT/dotfiles-manifest.txt"
 
-    # nvim and zellij: folder symlinks.
-    ensure_symlink \
-        "$REPO_ROOT/src/home/config/nvim" \
-        "$HOME/.config/nvim" \
-        "$stamp"
-    ensure_symlink \
-        "$REPO_ROOT/src/home/config/zellij" \
-        "$HOME/.config/zellij" \
-        "$stamp"
+    if [[ ! -f "$manifest" ]]; then
+        fail "Manifest not found: $manifest"
+    fi
 
-    # hypr: per-file symlinks so defaults from omarchy stay intact.
-    local hypr_src
-    for hypr_src in "$REPO_ROOT"/src/home/config/hypr/*.conf; do
-        [[ -e "$hypr_src" ]] || continue
-        ensure_symlink \
-            "$hypr_src" \
-            "$HOME/.config/hypr/$(basename -- "$hypr_src")" \
-            "$stamp"
-    done
+    while IFS=$'\t' read -r action source target; do
+        # Skip comments and empty lines
+        [[ -z "$action" || "$action" =~ ^[[:space:]]*# ]] && continue
 
-    # waybar: tracked config file.
-    ensure_symlink \
-        "$REPO_ROOT/src/home/config/waybar/config.jsonc" \
-        "$HOME/.config/waybar/config.jsonc" \
-        "$stamp"
+        # Trim whitespace
+        action="$(echo "$action" | xargs)"
+        source="$(echo "$source" | xargs)"
+        target="$(echo "$target" | xargs)"
 
-    # alacritty: tracked config file.
-    ensure_symlink \
-        "$REPO_ROOT/src/home/config/alacritty/alacritty.toml" \
-        "$HOME/.config/alacritty/alacritty.toml" \
-        "$stamp"
+        local src_path="$REPO_ROOT/$source"
+        local tgt_path="$HOME/$target"
 
-    # Theme directory: full tracked subtree.
-    ensure_symlink \
-        "$REPO_ROOT/src/home/config/omarchy/themes/tokyo-night-autana" \
-        "$HOME/.config/omarchy/themes/tokyo-night-autana" \
-        "$stamp"
-
-    # starship.toml
-    ensure_symlink \
-        "$REPO_ROOT/src/home/config/starship.toml" \
-        "$HOME/.config/starship.toml" \
-        "$stamp"
-
-    # ~/.bashrc
-    ensure_symlink \
-        "$REPO_ROOT/src/home/bashrc" \
-        "$HOME/.bashrc" \
-        "$stamp"
-
-    # ~/.ssh/config — copy from the tracked safe template. The local
-    # file has priority (skipped if it already exists). See seed_ssh_config
-    # above for the full behavior.
-    seed_ssh_config
-
-    # NOTE: src/home/local/bin/monitor is intentionally NOT
-    # symlinked; it is a personal/manual script the user runs ad-hoc.
-    # NOTE: src/home/config/mako/ and src/home/config/omarchy/hooks/
-    # stay at the Omarchy default.
+        case "$action" in
+            dir|file)
+                ensure_symlink "$src_path" "$tgt_path" "$stamp"
+                ;;
+            glob)
+                local expanded
+                # Remove trailing slash from target if present
+                tgt_path="${tgt_path%/}"
+                for expanded in $src_path; do
+                    [[ -e "$expanded" ]] || continue
+                    ensure_symlink "$expanded" "$tgt_path/$(basename -- "$expanded")" "$stamp"
+                done
+                ;;
+            copy)
+                copy_file "$src_path" "$tgt_path"
+                ;;
+            skip)
+                log "Skipping (explicit exclusion): $source"
+                ;;
+            *)
+                warn "Unknown action '$action' in manifest; skipping line"
+                ;;
+        esac
+    done < "$manifest"
 }
 
 # ---------------------------------------------------------------------------
@@ -431,7 +420,6 @@ validate_system() {
         log "[dry-run] would run: omarchy theme set tokyo-night-autana"
         log "[dry-run] would run: hyprctl reload"
         log "[dry-run] would run: hyprctl configerrors"
-        log "[dry-run] would check: zellij --version (skipped if zellij is not on PATH)"
         return 0
     fi
 
@@ -443,16 +431,6 @@ validate_system() {
 
     log "Validating Hyprland config (any errors below are fatal)"
     hyprctl configerrors
-
-    # zellij is installed by `setup-deps`. When this script is
-    # run directly (without the orchestrator), zellij might be missing;
-    # degrade to a soft warning instead of failing the whole run.
-    if command -v zellij >/dev/null 2>&1; then
-        log "Verifying zellij install"
-        zellij --version
-    else
-        warn "zellij not on PATH; skipping version check. Run 'src/utils/bash/setup-deps --omarchy' to install it."
-    fi
 }
 
 # ---------------------------------------------------------------------------

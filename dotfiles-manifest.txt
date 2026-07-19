@@ -1,0 +1,36 @@
+# Dotfiles symlink manifest
+# Format: <action> <source-relative-to-repo> <target-relative-to-home>
+#
+# Actions:
+#   dir   - symlink entire directory
+#   file  - symlink single file
+#   glob  - expand wildcard pattern (e.g., *.conf)
+#   copy  - copy file instead of symlink (local file has priority)
+#   skip  - explicit exclusion (files exist in repo but not managed)
+#
+# Notes:
+#   - Paths are relative to $REPO_ROOT (source) and $HOME (target)
+#   - Comments start with #
+#   - Empty lines are ignored
+#   - Tab-separated fields
+
+# --- Directory symlinks ---
+dir	src/home/config/nvim	.config/nvim
+dir	src/home/config/omarchy/themes/tokyo-night-autana	.config/omarchy/themes/tokyo-night-autana
+
+# --- File symlinks ---
+file	src/home/config/waybar/config.jsonc	.config/waybar/config.jsonc
+file	src/home/config/alacritty/alacritty.toml	.config/alacritty/alacritty.toml
+file	src/home/config/starship.toml	.config/starship.toml
+file	src/home/bashrc	.bashrc
+
+# --- Wildcard symlinks (expand pattern) ---
+glob	src/home/config/hypr/*.conf	.config/hypr/
+
+# --- Copy instead of symlink (local file has priority) ---
+copy	src/home/ssh/config	.ssh/config
+
+# --- Explicit exclusions ---
+skip	src/home/local/bin/monitor	-
+skip	src/home/config/mako/	-
+skip	src/home/config/omarchy/hooks/	-
