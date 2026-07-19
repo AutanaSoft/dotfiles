@@ -1,4 +1,12 @@
+# ------------------------------------------------------------------------------
+# Mise Config
+# ------------------------------------------------------------------------------
 [tools]
-go = "latest"
+# starship = "latest"
+# zellij = "latest"
 node = "latest"
+pnpm = "latest"
+prettier = "latest"
 python = "latest"
+go = "latest"
+gh = "latest"

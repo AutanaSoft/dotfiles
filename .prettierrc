@@ -1,9 +1,31 @@
 {
   "printWidth": 100,
-  "tabWidth": 2,
+  "proseWrap": "preserve",
   "useTabs": false,
   "semi": true,
   "singleQuote": true,
   "trailingComma": "es5",
-  "bracketSpacing": true
+  "bracketSpacing": true,
+  "tabWidth": 2,
+  "overrides": [
+    {
+      "files": ["*.js", "*.jsx", "*.ts", "*.tsx"],
+      "options": {
+        "printWidth": 120
+      }
+    },
+    {
+      "files": "*.md",
+      "options": {
+        "printWidth": 100
+      }
+    },
+    {
+      "files": "*.py",
+      "options": {
+        "tabWidth": 4,
+        "printWidth": 79
+      }
+    }
+  ]
 }
