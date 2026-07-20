@@ -46,10 +46,10 @@ See [`docs/setup.md`](docs/setup.md) for details and verification.
 
 ## Repo Layout
 
-| Path                        | Maps to                                                    |
-| --------------------------- | ---------------------------------------------------------- |
-| `src/home/<dotfile>`       | `~/.<dotfile>` (source has no leading dot per the no-dot-prefix convention) |
-| `src/home/config/<app>/`    | `~/.config/<app>/` (configs that survive `omarchy update`) |
-| `src/home/local/bin/<name>` | `~/.local/bin/<name>` (personal, manual only)              |
-| `src/etc/<path>`            | `/etc/<path>` (system-managed, root-installed)             |
-| `src/utils/bash/<name>`     | Setup helpers (invoked by root `./setup`)                  |
+| Path                        | Maps to                                                                     |
+| --------------------------- | --------------------------------------------------------------------------- |
+| `src/home/<dotfile>`        | `~/.<dotfile>` (source has no leading dot per the no-dot-prefix convention) |
+| `src/home/config/<app>/`    | `~/.config/<app>/` (configs that survive `omarchy update`)                  |
+| `src/home/local/bin/<name>` | `~/.local/bin/<name>` (personal, manual only)                               |
+| `src/etc/<path>`            | `/etc/<path>` (system-managed, root-installed)                              |
+| `src/utils/bash/<name>`     | Setup helpers (invoked by root `./setup`)                                   |
