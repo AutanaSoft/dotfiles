@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# src/utils/bash/setup-dots — apply this repo's dotfiles to a local Omarchy install.
+# omarchy/utils/bash/setup-dots — apply this repo's dotfiles to a local Omarchy install.
 #
 # This script is the Omarchy-specific executor. It is normally invoked by the
 # root `./setup --dots` orchestrator, but it can also be run directly:
 #
-#     src/utils/bash/setup-dots [--dry-run] [--help]
+#     omarchy/utils/bash/setup-dots [--dry-run] [--help]
 #
 # Supports installs created from the Omarchy ISO, Arch + Omarchy layer, and
 # CachyOS minimal + Omarchy layer. This script does NOT install Omarchy; it
@@ -12,8 +12,8 @@
 #
 # Env-script ownership (the new contract):
 #   This script owns the full Omarchy env flow: install OS dependencies
-#   (via src/utils/bash/setup-deps), install Nerd Fonts (via
-#   src/utils/bash/setup-fonts), pre-flight the fonts directory, apply the
+#   (via omarchy/utils/bash/setup-deps), install Nerd Fonts (via
+#   omarchy/utils/bash/setup-fonts), pre-flight the fonts directory, apply the
 #   symlink map, and validate the system. The root `./setup` is a thin
 #   dispatcher; it does not coordinate this flow.
 #
@@ -31,7 +31,7 @@
 # before being replaced by symlinks pointing into the repo.
 #
 # SSH config is NOT symlinked. Setup copies the tracked safe template
-# at `src/home/ssh/config` to `~/.ssh/config` (mode 600) only when
+# at `omarchy/home/ssh/config` to `~/.ssh/config` (mode 600) only when
 # the source exists and the local target does not. The local file
 # always wins. The repo template must contain no secrets or real
 # production values — see docs/ssh.md.
@@ -48,7 +48,7 @@ set -euo pipefail
 # Resolve repo root from this script's path (CWD-independent).
 # When invoked by the root `./setup` orchestrator, DOTFILES_ROOT is exported
 # and used as the source of truth; otherwise we derive it from this file's
-# location (src/utils/bash/../../..).
+# location (omarchy/utils/bash/../../..).
 # ---------------------------------------------------------------------------
 if [[ -n "${DOTFILES_ROOT:-}" ]]; then
     REPO_ROOT="$DOTFILES_ROOT"
@@ -84,7 +84,7 @@ Pre-requisites:
   - 'omarchy' command on PATH
   - 'hyprctl' available (a running Hyprland session)
   - System packages and Nerd Fonts are handled by this script through
-    src/utils/bash/setup-deps and src/utils/bash/setup-fonts.
+    omarchy/utils/bash/setup-deps and omarchy/utils/bash/setup-fonts.
 
 Existing targets are moved to:
   $REPO_ROOT/backup/<timestamp>/<home-relative-path>
@@ -92,7 +92,7 @@ Existing targets are moved to:
 Fonts are installed by this script as part of the Omarchy setup flow.
 For fonts-only setup, use:
   ./setup --fonts
-  src/utils/bash/setup-fonts --help
+  omarchy/utils/bash/setup-fonts --help
 EOF
 }
 
@@ -143,7 +143,7 @@ require_command() {
 # ---------------------------------------------------------------------------
 # Subprocess invocation helpers (env-script owns the full flow)
 # ---------------------------------------------------------------------------
-# Invoke src/utils/bash/setup-deps as a subprocess, passing the dry-run flag
+# Invoke omarchy/utils/bash/setup-deps as a subprocess, passing the dry-run flag
 # through. setup-deps accepts an explicit --omarchy override for the rare
 # case where auto-detection is wrong; this script is always the omarchy
 # executor, so we pass the flag. Errors propagate (the env script's
@@ -163,7 +163,7 @@ invoke_setup_deps() {
     "$deps_script" "${args[@]}"
 }
 
-# Invoke src/utils/bash/setup-fonts as a subprocess, passing the dry-run flag
+# Invoke omarchy/utils/bash/setup-fonts as a subprocess, passing the dry-run flag
 # through. The fonts script reads $DOTFILES_FONTS_DIR (set by root or
 # by direct callers) so the override path crosses the process boundary
 # automatically.
@@ -389,7 +389,7 @@ apply_symlinks() {
 # unused; see docs/shared-layer.md and docs/inputs/keyboard-remap.md
 # for the full reasoning.
 install_input_devices() {
-    local src="$REPO_ROOT/src/etc/keyd/default.conf"
+    local src="$REPO_ROOT/omarchy/etc/keyd/default.conf"
     local target="/etc/keyd/default.conf"
 
     if [[ "$DRY_RUN" -eq 1 ]]; then
@@ -471,12 +471,12 @@ main() {
 
     # Step 1/5: install OS dependencies via the deps helper. In dry-run
     # the helper previews every missing package's install command.
-    step "Install OS dependencies (via src/utils/bash/setup-deps)"
+    step "Install OS dependencies (via omarchy/utils/bash/setup-deps)"
     invoke_setup_deps
 
     # Step 2/5: install Nerd Fonts via the fonts helper. Idempotent;
     # safe to re-run. In dry-run the helper previews the downloads.
-    step "Install Nerd Fonts (via src/utils/bash/setup-fonts)"
+    step "Install Nerd Fonts (via omarchy/utils/bash/setup-fonts)"
     invoke_setup_fonts
 
     # Pre-flight: defense-in-depth for direct invocation without

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# src/utils/bash/setup-deps — install OS packages required by the selected env.
+# omarchy/utils/bash/setup-deps — install OS packages required by the selected env.
 #
 # root `./setup --dots` orchestrator, but it can also be run directly:
 #
-#     src/utils/bash/setup-deps [--omarchy] [--dry-run] [--help]
+#     omarchy/utils/bash/setup-deps [--omarchy] [--dry-run] [--help]
 #
 # When the root `./setup` orchestrator invokes it, the selected environment
 # is passed through the `DOTFILES_ENV` environment variable and the dry-run

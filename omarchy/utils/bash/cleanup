@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# src/utils/bash/cleanup — selectively remove the 29 Omarchy preinstalls
+# omarchy/utils/bash/cleanup — selectively remove the 29 Omarchy preinstalls
 # marked [R] in docs/ideas/scripts/cleanup.md.
 #
 # Drift: this script operates on a hardcoded list. New preinstalls added by
@@ -93,7 +93,7 @@ Idempotent: re-runnable, items already gone are logged as "skipped". A
 single audit log is written to backup/cleanup.<utc-ts>.log.
 
 This script is standalone: it is NOT wired to root ./setup and is NOT
-entered in src/README.md. Discoverable via --help.
+entered in omarchy/README.md. Discoverable via --help.
 
 Options:
   --interactive     Open a gum choose picker to deselect items before the

@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# src/utils/bash/setup-locale — install the system locale from src/etc/locale.conf.
+# omarchy/utils/bash/setup-locale — install the system locale from omarchy/etc/locale.conf.
 #
 # This script is the locale executor. It is normally invoked by the root
 # `./setup --locale` orchestrator, but it can also be run directly:
 #
-#     src/utils/bash/setup-locale [--dry-run] [--help]
+#     omarchy/utils/bash/setup-locale [--dry-run] [--help]
 #
 # What it does:
-#   1. Reads the LANG value from src/etc/locale.conf.
+#   1. Reads the LANG value from omarchy/etc/locale.conf.
 #   2. Runs `sudo localedef -i <locale_base> -f <charset> ... <name>` to
 #      compile the locale binary directly into /usr/lib/locale/. This
 #      bypasses /etc/locale.gen entirely — that file is left untouched.
 #      Note: the Omarchy locale-gen wrapper does NOT accept command-line
 #      arguments (it only reads /etc/locale.gen), so we use localedef
 #      directly instead.
-#   3. Installs src/etc/locale.conf to /etc/locale.conf (mode 644) so
+#   3. Installs omarchy/etc/locale.conf to /etc/locale.conf (mode 644) so
 #      the system picks up the LANG on the next session/login.
 #
 # Why a separate script:
@@ -52,7 +52,7 @@ fi
 # Defaults
 # ---------------------------------------------------------------------------
 DRY_RUN=0
-LOCALE_CONF_SRC="$REPO_ROOT/src/etc/locale.conf"
+LOCALE_CONF_SRC="$REPO_ROOT/omarchy/etc/locale.conf"
 LOCALE_CONF_TARGET="/etc/locale.conf"
 
 # ---------------------------------------------------------------------------
@@ -62,7 +62,7 @@ usage() {
     cat <<EOF
 Usage: $0 [--dry-run] [--help]
 
-Generates the system locale declared in src/etc/locale.conf and installs
+Generates the system locale declared in omarchy/etc/locale.conf and installs
 the file to /etc/locale.conf.
 
 This script is the locale executor. Prefer invoking it via the root
@@ -142,7 +142,7 @@ fi
 # Pulls the first `LANG=...` line and unquotes it. Supports both single
 # and double quotes around the value. When the value is UNQUOTED, a
 # trailing `#` comment is stripped; when QUOTED, the `#` is preserved
-# as data. This keeps the script driven by src/etc/locale.conf rather
+# as data. This keeps the script driven by omarchy/etc/locale.conf rather
 # than a hardcoded locale, so changing the source file is enough to
 # retarget the install.
 read_lang_from_source() {
