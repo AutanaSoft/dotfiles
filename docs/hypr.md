@@ -1,7 +1,7 @@
 # Hyprland
 
 User-managed Hyprland configuration for Omarchy. Lives under
-`src/home/config/hypr/`; the repo is the source of truth and live
+`omarchy/home/config/hypr/`; the repo is the source of truth and live
 files in `~/.config/hypr/` are symlinks into the repo.
 
 Reference: <https://wiki.hypr.land/Configuring/>
@@ -89,5 +89,5 @@ it for the full list. Notable reassignments:
 
 ## See also
 
-- [`src/README.md`](../src/README.md) — managed paths and setup.
+- [`omarchy/README.md`](../omarchy/README.md) — managed paths and setup.
 - [`AGENTS.md`](../AGENTS.md) — repo conventions.

@@ -27,12 +27,12 @@ Reload the shell and verify with `sudo -K && sudo true`.
 ## Personal fstab
 
 The personal `fstab` lives in the repo at
-[`src/etc/fstab`](../src/etc/fstab). Edit it there, then apply on the
+[`omarchy/etc/fstab`](../omarchy/etc/fstab). Edit it there, then apply on the
 host:
 
 ```bash
 # 1. Install from the repo
-sudo install -m 644 src/etc/fstab /etc/fstab
+sudo install -m 644 omarchy/etc/fstab /etc/fstab
 
 # 2. Reload systemd
 sudo systemctl daemon-reload
@@ -46,7 +46,7 @@ not block boot.
 
 ## SSH
 
-Setup copies the safe template at `src/home/ssh/config` to
+Setup copies the safe template at `omarchy/home/ssh/config` to
 `~/.ssh/config` the first time. Edit the placeholders
 (`your.server.ip.or.domain`, `your-user`, key paths) with your real
 values. This workflow uses direct key files, not ssh-agent/ssh-add.
@@ -216,6 +216,6 @@ bind to `0.0.0.0` without auth.
 ## Related Files
 
 - `setup` — dispatcher run before this checklist.
-- `src/etc/fstab` — repo source for personal `/etc/fstab`.
-- `src/home/ssh/config` — SSH client template (placeholders; copied
+- `omarchy/etc/fstab` — repo source for personal `/etc/fstab`.
+- `omarchy/home/ssh/config` — SSH client template (placeholders; copied
   to `~/.ssh/config` once).

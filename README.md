@@ -21,8 +21,8 @@ this repo's only AUR-helper concern is `yay`.
 | CachyOS + Omarchy | Works — Omarchy installer handles distro specifics |
 | Arch + Omarchy    | Works — Omarchy installer handles distro specifics |
 
-The repo carries one env config (`src/home/`); host differences are resolved at
-install time by `src/utils/bash/setup-deps`, which auto-detects via
+The repo carries one env config (`omarchy/home/`); host differences are resolved at
+install time by `omarchy/utils/bash/setup-deps`, which auto-detects via
 `yay`/`pacman` on `PATH`.
 
 ## Setup
@@ -48,8 +48,8 @@ See [`docs/setup.md`](docs/setup.md) for details and verification.
 
 | Path                        | Maps to                                                                     |
 | --------------------------- | --------------------------------------------------------------------------- |
-| `src/home/<dotfile>`        | `~/.<dotfile>` (source has no leading dot per the no-dot-prefix convention) |
-| `src/home/config/<app>/`    | `~/.config/<app>/` (configs that survive `omarchy update`)                  |
-| `src/home/local/bin/<name>` | `~/.local/bin/<name>` (personal, manual only)                               |
-| `src/etc/<path>`            | `/etc/<path>` (system-managed, root-installed)                              |
-| `src/utils/bash/<name>`     | Setup helpers (invoked by root `./setup`)                                   |
+| `omarchy/home/<dotfile>`        | `~/.<dotfile>` (source has no leading dot per the no-dot-prefix convention) |
+| `omarchy/home/config/<app>/`    | `~/.config/<app>/` (configs that survive `omarchy update`)                  |
+| `omarchy/home/local/bin/<name>` | `~/.local/bin/<name>` (personal, manual only)                               |
+| `omarchy/etc/<path>`            | `/etc/<path>` (system-managed, root-installed)                              |
+| `omarchy/utils/bash/<name>`     | Setup helpers (invoked by root `./setup`)                                   |

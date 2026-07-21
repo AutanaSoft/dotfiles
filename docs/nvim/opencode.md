@@ -2,7 +2,7 @@
 
 Integration of OpenCode CLI in Neovim via
 [`nickjvandyke/opencode.nvim`](https://github.com/nickjvandyke/opencode.nvim). Spec lives
-in `src/home/config/nvim/lua/plugins/opencode.lua`.
+in `omarchy/home/config/nvim/lua/plugins/opencode.lua`.
 
 ## Quick path
 
@@ -13,9 +13,9 @@ in `src/home/config/nvim/lua/plugins/opencode.lua`.
 
 | Area | Path |
 |------|------|
-| Plugin spec | `src/home/config/nvim/lua/plugins/opencode.lua` |
-| Nvim base config | `src/home/config/nvim/lua/config/{lazy,autocmds,keymaps,options}.lua` |
-| Live Neovim config | `~/.config/nvim` → `src/home/config/nvim/` (folder symlink) |
+| Plugin spec | `omarchy/home/config/nvim/lua/plugins/opencode.lua` |
+| Nvim base config | `omarchy/home/config/nvim/lua/config/{lazy,autocmds,keymaps,options}.lua` |
+| Live Neovim config | `~/.config/nvim` → `omarchy/home/config/nvim/` (folder symlink) |
 
 ## Keymaps
 
