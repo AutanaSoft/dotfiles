@@ -1,4 +1,4 @@
-# AGENTS — Dotfiles (familia Omarchy)
+# AGENTS
 
 Reglas estrictas para que un agente (humano o IA) trabaje en este repositorio sin romper
 las convenciones.
@@ -7,29 +7,9 @@ Si una regla aquí entra en conflicto con una skill instalada, este archivo prev
 
 Léelo completo antes de tu primera edición: cada sección indica su alcance y límites.
 
-## Estructura
+## Estructura del repositorio
 
-El repositorio contiene capas de personalización por distribución. Actualmente solo existe la capa
-Arch Linux (`omarchy/`); Fedora se agregará después.
-
-- **omarchy/**: dotfiles y configuración para Arch Linux, CachyOS y Omarchy
-- **setup**: entrypoint que detecta la distribución y aplica la capa correcta
-- **docs/**: guías específicas (hypr.md, nvim/, setup.md)
-- **backup/**: generado por `setup`, gitignored — nunca commitear
-
-Reglas de edición:
-
-- `<distro>/home/config/<app>/`: persiste tras actualizaciones del sistema
-- `<distro>/home/local/bin/`: personal y manual
-- `<distro>/home/ssh/`: solo `config` (el resto de `~/.ssh/` queda excluido)
-- `<distro>/etc/`: requiere root en la instalación — editar con cuidado
-- `<distro>/utils/bash/`: invocado por `setup`, afecta el entrypoint y contrato de variables
-
-Convención de nombres: los archivos fuente no llevan `.` al inicio (`<distro>/home/bashrc`);
-el destino enlazado en `$HOME` lo agrega (`~/.bashrc`).
-
-Detalle en `README.md` (sección Repo Layout). El `setup` actual es la referencia de estilo para
-cualquier nuevo bash en el repositorio.
+Consulta [README.md](README.md) para la estructura y convenciones específicas de este repositorio.
 
 ## Comunicación con el usuario
 
