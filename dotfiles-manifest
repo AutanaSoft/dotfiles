@@ -18,6 +18,8 @@
 dir	omarchy/home/config/bash	.config/bash
 dir	omarchy/home/config/nvim	.config/nvim
 dir	omarchy/home/config/omarchy/themes/tokyo-night-autana	.config/omarchy/themes/tokyo-night-autana
+dir	omarchy/home/config/mise	.config/mise
+dir	omarchy/home/config/tmux	.config/tmux
 
 # --- File symlinks ---
 file	omarchy/home/config/waybar/config.jsonc	.config/waybar/config.jsonc

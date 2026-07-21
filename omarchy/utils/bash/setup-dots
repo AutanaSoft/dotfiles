@@ -18,7 +18,7 @@
 #   dispatcher; it does not coordinate this flow.
 #
 # Symlink manifest:
-#   The symlink map is defined in dotfiles-manifest.txt at the repo root.
+#   The symlink map is defined in dotfiles-manifest at the repo root.
 #   To add, remove, or change symlinks, edit that file — not this script.
 #   See the manifest header for the format specification.
 #
@@ -226,8 +226,46 @@ backup_target() {
 }
 
 # ---------------------------------------------------------------------------
-# Symlink helper
+# Symlink helpers
 # ---------------------------------------------------------------------------
+# Prepare the parent directory of a symlink target before the target itself
+# is examined. This protects `mkdir -p` (used below to create the parent)
+# against a stale or broken symlink left over from a previous repo layout
+# (e.g. when `src/` was renamed to `omarchy/` and a previous run created
+# `~/.config/alacritty` as a link to a path that no longer exists).
+#
+# Behavior:
+#   - parent missing                  : nothing to do
+#   - parent is a regular directory   : nothing to do
+#   - parent is a broken symlink      : remove and log (mkdir -p will recreate)
+#   - parent is a valid symlink       : fail closed. Traversing it would let
+#                                       later writes mutate the repo source
+#                                       tree; the user must back it up and
+#                                       remove it manually before re-running.
+#   - parent is anything else         : fail closed with a clear message.
+prepare_symlink_parent() {
+    local parent="$1"
+    [[ -z "$parent" || "$parent" == "/" ]] && return 0
+
+    if [[ ! -e "$parent" && ! -L "$parent" ]]; then
+        return 0
+    fi
+
+    if [[ -d "$parent" && ! -L "$parent" ]]; then
+        return 0
+    fi
+
+    if [[ -L "$parent" && ! -e "$parent" ]]; then
+        log "Removing stale parent symlink: $parent"
+        if [[ "$DRY_RUN" -eq 0 ]]; then
+            rm -- "$parent"
+        fi
+        return 0
+    fi
+
+    fail "Parent path is not a regular directory: $parent. Back it up and remove it before re-running setup."
+}
+
 # Idempotently ensure $target is a symlink pointing to $source.
 #   - If $target already points (after resolving) to the same real path as
 #     $source, do nothing.
@@ -243,7 +281,7 @@ ensure_symlink() {
     fi
 
     # Already linked to the right thing? Leave it alone.
-    if [[ -L "$target" ]]; then
+    if [[ -L "$target" && -e "$target" ]]; then
         local resolved_target resolved_source
         resolved_target="$(readlink -f -- "$target" 2>/dev/null || true)"
         resolved_source="$(readlink -f -- "$source" 2>/dev/null || true)"
@@ -253,8 +291,19 @@ ensure_symlink() {
         fi
     fi
 
-    # Target exists (regular file, dir, or wrong symlink) — back it up.
-    if [[ -e "$target" || -L "$target" ]]; then
+    # Validate the parent before moving or replacing the target. A valid
+    # symlink parent can redirect these operations into a different tree.
+    prepare_symlink_parent "$(dirname -- "$target")"
+
+    # Target is a broken or wrong symlink: remove it. Symlinks carry no file
+    # data, so backing one up would only preserve an obsolete destination.
+    if [[ -L "$target" ]]; then
+        log "Removing stale target symlink: $target"
+        if [[ "$DRY_RUN" -eq 0 ]]; then
+            rm -- "$target"
+        fi
+    # A real target may contain user data, so preserve it before replacement.
+    elif [[ -e "$target" ]]; then
         local backup_path
         backup_path="$(backup_target "$target" "$stamp")"
         log "Backing up existing target: $target -> $backup_path"
@@ -308,7 +357,7 @@ copy_file() {
 }
 
 # ---------------------------------------------------------------------------
-# Apply symlink map (reads from dotfiles-manifest.txt)
+# Apply symlink map (reads from dotfiles-manifest)
 # ---------------------------------------------------------------------------
 # The manifest file lists all symlinks and file operations. This function
 # reads it line by line and dispatches to the appropriate helper.
@@ -324,7 +373,7 @@ copy_file() {
 #   skip  - explicit exclusion (logged, no action)
 apply_symlinks() {
     local stamp="$1"
-    local manifest="$REPO_ROOT/dotfiles-manifest.txt"
+    local manifest="$REPO_ROOT/dotfiles-manifest"
 
     if [[ ! -f "$manifest" ]]; then
         fail "Manifest not found: $manifest"

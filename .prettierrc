@@ -26,6 +26,14 @@
         "tabWidth": 4,
         "printWidth": 79
       }
+    },
+    {
+      "files": "*manifest*",
+      "options": {
+        "useTabs": true,
+        "tabWidth": 2,
+        "printWidth": 1000
+      }
     }
   ]
 }

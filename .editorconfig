@@ -54,3 +54,12 @@ max_line_length = 79
 # Using spaces will cause "missing separator" errors.
 [Makefile]
 indent_style = tab
+
+# ============================================================================
+# MANIFEST FILES — Tab-separated data format
+# ============================================================================
+# Tab characters are data, not indentation. Editors must not normalize them.
+# `indent_style = unset` preserves whatever the user typed (tabs in our case).
+[*manifest*]
+indent_style = unset
+indent_size = unset
