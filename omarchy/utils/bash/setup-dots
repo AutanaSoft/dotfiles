@@ -18,9 +18,10 @@
 #   dispatcher; it does not coordinate this flow.
 #
 # Symlink manifest:
-#   The symlink map is defined in dotfiles-manifest at the repo root.
-#   To add, remove, or change symlinks, edit that file — not this script.
-#   See the manifest header for the format specification.
+#   The symlink map is defined in dotfiles-manifest at the distro root
+#   (i.e. omarchy/dotfiles-manifest, sibling of this script's parent
+#   directory). To add, remove, or change symlinks, edit that file —
+#   not this script. See the manifest header for the format specification.
 #
 # Pre-requisites (not installed by this script):
 #   - `omarchy` command on PATH
@@ -373,7 +374,7 @@ copy_file() {
 #   skip  - explicit exclusion (logged, no action)
 apply_symlinks() {
     local stamp="$1"
-    local manifest="$REPO_ROOT/dotfiles-manifest"
+    local manifest="$(dirname -- "${BASH_SOURCE[0]}")/../../dotfiles-manifest"
 
     if [[ ! -f "$manifest" ]]; then
         fail "Manifest not found: $manifest"
