@@ -4,8 +4,8 @@ openspec/
 tmp/
 
 # SSH: only `config` is tracked, as a safe template (no secrets, no real
-# hostnames/users/keys). Anything else that lands in src/home/ssh/
+# hostnames/users/keys). Anything else that lands in omarchy/home/ssh/
 # (private keys, known_hosts, real machine-specific configs) is per-host
 # and must never enter the repo.
-src/home/ssh/*
-!src/home/ssh/config
+omarchy/home/ssh/*
+!omarchy/home/ssh/config
