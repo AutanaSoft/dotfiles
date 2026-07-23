@@ -58,8 +58,9 @@ indent_style = tab
 # ============================================================================
 # MANIFEST FILES — Tab-separated data format
 # ============================================================================
-# Tab characters are data, not indentation. Editors must not normalize them.
-# `indent_style = unset` preserves whatever the user typed (tabs in our case).
+# Tab characters are data, not indentation. Force `tab` so editors insert
+# literal tab characters instead of spaces (LazyVim defaults to expandtab).
 [*manifest*]
-indent_style = unset
+indent_style = tab
 indent_size = unset
+tab_width = 2
