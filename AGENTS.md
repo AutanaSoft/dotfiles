@@ -1,49 +1,49 @@
 # AGENTS
 
-Strict rules for any agent (human or AI) to work in this repository without breaking conventions.
+Strict rules for an agent, human or AI, to work in this repository without breaking its conventions.
 
-If a rule here conflicts with an installed skill, this file takes precedence.
+If a rule in this file conflicts with an installed skill, this file prevails.
 
-Read it completely before your first edit: each section states its scope and limits.
+Read it completely before the first edit. Each section defines its scope and limits.
 
-## Repository structure
+## Repository Context
 
-See [README.md](README.md) for the structure and conventions specific to this repository.
+Review [README.md](/README.md) before editing. It contains the repository's structure and local conventions.
 
-## User communication
+## Code Style
 
-- Short, direct answers by default.
-- One question at a time. After asking, STOP and wait.
+- When generating or editing code, follow `.editorconfig` as the primary style source and `.prettierrc` as the supplementary formatting configuration.
+- Respect the linter and static analysis configured by the project; do not introduce warnings.
+- Do not disable formatting, linting, or type rules without a localized, documented justification.
 
-## Commits and pushes
+## Communication
 
-- **Commit**: Do not create or generate without the user's explicit request.
-- **Push**: Do not push without the user's explicit request.
-- **Skill:** Always use `commit-message` to create or generate commits.
+- Respond concisely, directly, and with a neutral technical tone.
+- Ask only one question at a time and wait for the response before continuing.
+- Report blockers, necessary assumptions, and verifications that were not performed.
 
-## Inline comments and documentation
+## Commits and Pushes
 
-- **What to document**: exports (functions, classes, types, interfaces) when the contract is
-  not obvious. Skip self-explanatory helpers and one-liners.
-- **Content**: the why (intent, decision, gotcha), not the what.
-- **Commented-out code**: forbidden. Delete it; git preserves history.
+- Do not create or generate commits without an explicit user request.
+- Do not push without an explicit user request.
+- When preparing a commit, use the `commit-message` skill if it is available.
 
-## Code generation
+## Comments and Documentation
 
-- **Plan before implementing**: before any change, deliver a plan with scope, affected files,
-  and steps. Do not execute until the developer approves.
-- **Zero assumptions**: do not invent APIs, conventions, or behaviors. Verify against official
-  documentation (cite URL + version) or ask the developer. Memory and "probably" are not evidence.
-- **No implicit changes**: do not touch files outside the scope declared in the plan.
-- **If the user flags an error**: verify against documentation before accepting or rejecting.
+- Document exports when their contract is not evident; omit self-explanatory helpers and one-liners.
+- Explain intent, decision, or limitation, not a literal description of the code.
+- Do not keep commented-out code; Git history preserves prior versions.
 
-## User changes to generated code
+## Planning and Verification
 
-- **Assume intent**: any difference between the generated code and what is in the repository
-  is, by default, intentional.
-- **Do not revert without confirmation**: do not undo, rewrite, or "fix" those changes without
-  explicit confirmation.
-- **How to ask**: if something looks like an error or bug, raise the observation with evidence
-  (URL, line, diff) and ask before touching anything.
-- **Exception**: if the user explicitly asks to revert or adjust ("go back", "apply this instead
-  of the previous one"), proceed.
+- Before any change, present a plan with scope, affected files, and steps. Do not proceed until the developer approves it.
+- Do not invent APIs, conventions, or behaviors. Verify against official documentation, cite the URL and version, or ask the developer. Memory and "probably" are not evidence.
+- Do not modify files outside the agreed scope without reporting the reason.
+- If the user questions a technical claim, verify it before accepting or rejecting it.
+
+## User Changes
+
+- Treat any difference between generated code and the repository's current state as intentional.
+- Do not revert, rewrite, or correct those changes without explicit confirmation.
+- If you identify a potential issue, provide verifiable evidence - URL, line, or diff - and request confirmation before changing it.
+- If the user explicitly requests reverting or adjusting a change, proceed within the stated scope.
