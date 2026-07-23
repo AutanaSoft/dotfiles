@@ -52,6 +52,7 @@ REQUEST_HELP=0
 # package manager (pacman). Comments next to each package note the
 # command the package provides when the names diverge.
 OMARCHY_PACKAGES=(
+    systemd-resolvconf
     lsof
     hunspell
     hunspell-en_us      # command: hunspell
