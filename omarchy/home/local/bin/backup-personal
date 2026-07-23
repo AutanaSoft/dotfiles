@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Syncs personal folders to the Backup NTFS disk.
+# Repo: omarchy/home/local/bin/backup-personal
+# Live: ~/.local/bin/backup-personal (symlinked by setup --dots)
+
+set -euo pipefail
+
+MOUNT_POINT="/mnt/backup"
+CONFIG_DIR="${HOME}/.config/backup"
+EXCLUDES="${CONFIG_DIR}/ignore.txt"
+FOLDERS_FILE="${CONFIG_DIR}/folders.txt"
+SOURCE_BASE="${HOME}"
+
+for f in "${EXCLUDES}" "${FOLDERS_FILE}"; do
+  if [[ ! -f "${f}" ]]; then
+    echo "ERROR: config file not found at ${f}" >&2
+    exit 1
+  fi
+done
+
+# Load folders list (skip blanks and comments)
+mapfile -t FOLDERS < <(grep -vE '^\s*(#|$)' "${FOLDERS_FILE}")
+
+if [[ ${#FOLDERS[@]} -eq 0 ]]; then
+  echo "ERROR: no folders listed in ${FOLDERS_FILE}" >&2
+  exit 1
+fi
+
+if ! mountpoint -q "${MOUNT_POINT}"; then
+  echo "Mounting ${MOUNT_POINT}..."
+  sudo mount "${MOUNT_POINT}"
+fi
+
+for folder in "${FOLDERS[@]}"; do
+  src="${SOURCE_BASE}/${folder}/"
+  dst="${MOUNT_POINT}/${folder}/"
+  if [[ ! -d "${src}" ]]; then
+    echo "[skip] ${src} does not exist locally"
+    continue
+  fi
+  echo "=== ${folder} ==="
+  rsync -rt \
+    --no-perms --no-owner --no-group --no-xattrs --no-links \
+    --info=progress2,name,nonreg0 --delete \
+    --exclude-from="${EXCLUDES}" \
+    "${src}" "${dst}"
+done
+
+echo
+echo "Unmounting ${MOUNT_POINT}..."
+sudo umount "${MOUNT_POINT}"
+echo "Done."

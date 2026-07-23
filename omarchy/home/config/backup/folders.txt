@@ -1,0 +1,10 @@
+# Personal folders to sync to the Backup NTFS disk.
+# Lines starting with # are ignored. Folder names are relative to $HOME.
+
+Documents
+Downloads
+Music
+Pictures
+Videos
+Work
+Projects
