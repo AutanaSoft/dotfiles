@@ -2,10 +2,8 @@
 # Mise Config
 # ------------------------------------------------------------------------------
 [tools]
-starship = "latest"
+go = "latest"
 node = "latest"
 pnpm = "latest"
 prettier = "latest"
 python = "latest"
-go = "latest"
-gh = "latest"

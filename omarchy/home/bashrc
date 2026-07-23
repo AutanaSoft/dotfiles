@@ -11,3 +11,5 @@ source ~/.local/share/omarchy/default/bash/rc
 # alias p='python'
 source ~/.config/bash/rc
 
+
+. "$HOME/.local/share/../bin/env"
