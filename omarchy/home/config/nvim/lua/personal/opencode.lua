@@ -1,6 +1,6 @@
-------------------------------------------------------------------------------
--- Opencode
-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-- OpenCode: Assistant Keymaps And Snacks Integration
+-------------------------------------------------------------------------------
 return {
   {
     'nickjvandyke/opencode.nvim',
@@ -29,10 +29,11 @@ return {
       },
     },
     config = function()
+      -- OpenCode reads this global during its setup.
       vim.g.opencode_opts = {}
-
       vim.o.autoread = true
 
+      -- Keep all interactive OpenCode actions under the <leader>o namespace.
       vim.keymap.set({ 'n', 'x' }, '<leader>oa', function()
         require('opencode').ask('@this: ')
       end, { desc = 'Ask opencode' })

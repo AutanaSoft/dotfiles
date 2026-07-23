@@ -16,7 +16,8 @@
 
 # --- Directory symlinks ---
 dir	omarchy/home/config/bash	.config/bash
-dir	omarchy/home/config/nvim	.config/nvim
+dir	omarchy/home/config/nvim/lua/personal	.config/nvim/lua/personal
+dir	omarchy/home/config/nvim/spell	.config/nvim/spell
 dir	omarchy/home/config/omarchy/themes/tokyo-night-autana	.config/omarchy/themes/tokyo-night-autana
 dir	omarchy/home/config/mise	.config/mise
 dir	omarchy/home/config/tmux	.config/tmux
@@ -25,6 +26,8 @@ dir	omarchy/home/config/tmux	.config/tmux
 file	omarchy/home/config/waybar/config.jsonc	.config/waybar/config.jsonc
 file	omarchy/home/config/alacritty/alacritty.toml	.config/alacritty/alacritty.toml
 file	omarchy/home/config/starship.toml	.config/starship.toml
+file	omarchy/home/config/nvim/lazyvim.json	.config/nvim/lazyvim.json
+file	omarchy/home/config/nvim/lua/plugins/personal.lua	.config/nvim/lua/plugins/personal.lua
 file	omarchy/home/bashrc	.bashrc
 
 # --- Wildcard symlinks (expand pattern) ---
