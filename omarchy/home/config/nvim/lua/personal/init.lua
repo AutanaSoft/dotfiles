@@ -3,7 +3,6 @@
 local specs = {}
 
 for _, module in ipairs({
-  'personal.spell',
   'personal.editorconfig',
   'personal.render-markdown',
   'personal.snacks',
