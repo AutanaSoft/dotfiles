@@ -2,7 +2,6 @@
 @define-color background #1a1b26;
 
 window#waybar * {
-  font-family: 'Monaspace Krypton NF';
   font-size: 12px;
 }
 
@@ -19,6 +18,5 @@ window#waybar #custom-screenrecording-indicator,
 window#waybar #custom-idle-indicator,
 window#waybar #custom-notification-silencing-indicator,
 window#waybar #custom-voxtype {
-  font-family: 'JetBrainsMono Nerd Font';
   font-size: 14px;
 }

@@ -357,6 +357,23 @@ copy_file() {
     cp "$src" "$target"
 }
 
+# Remove the obsolete Waybar config symlink only when it still points to the
+# source formerly managed by this repository. Local files and unrelated links
+# are intentionally preserved.
+cleanup_obsolete_waybar_config() {
+    local source="$REPO_ROOT/omarchy/home/config/waybar/config.jsonc"
+    local target="$HOME/.config/waybar/config.jsonc"
+
+    if [[ ! -L "$target" || "$(readlink -- "$target")" != "$source" ]]; then
+        return 0
+    fi
+
+    log "Removing obsolete managed symlink: $target"
+    if [[ "$DRY_RUN" -eq 0 ]]; then
+        rm -- "$target"
+    fi
+}
+
 # ---------------------------------------------------------------------------
 # Apply symlink map (reads from dotfiles-manifest)
 # ---------------------------------------------------------------------------
@@ -546,8 +563,9 @@ main() {
         fi
     fi
 
-    # Step 3/5: apply the symlink map.
+    # Step 3/5: remove obsolete managed links, then apply the current symlink map.
     step "Apply symlinks"
+    cleanup_obsolete_waybar_config
     apply_symlinks "$stamp"
 
     # Step 4/5: install keyd config and enable input-device services.

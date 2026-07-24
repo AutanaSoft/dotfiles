@@ -47,11 +47,8 @@ file	omarchy/home/config/starship.toml	.config/starship.toml
 # --- Tmux ---
 dir	omarchy/home/config/tmux	.config/tmux
 
-# --- Waybar ---
-file	omarchy/home/config/waybar/config.jsonc	.config/waybar/config.jsonc
-
 # --- SSH ---
 copy	omarchy/home/ssh/config	.ssh/config
 
 # --- Explicit exclusions ---
-skip	omarchy/home/local/bin/monitor	-
+file	omarchy/home/local/bin/monitor	.local/bin/monitor

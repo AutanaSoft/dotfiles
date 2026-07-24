@@ -19,6 +19,5 @@ window .elephant-hint,
 window .elephant-hint *,
 window .current,
 window .current * {
-  font-family: 'Monaspace Krypton NF';
   font-size: 14px;
 }
