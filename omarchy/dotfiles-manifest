@@ -14,6 +14,15 @@
 #   - Empty lines are ignored
 #   - Tab-separated fields
 
+# --- Omarchy ---
+dir	omarchy/home/config/omarchy/themes/tokyo-night-autana	.config/omarchy/themes/tokyo-night-autana
+
+# --- Hyprland ---
+glob	omarchy/home/config/hypr/*.conf	.config/hypr/
+
+# -- Waybar ---
+file	omarchy/home/config/waybar/config.jsonc	.config/waybar/config.jsonc
+
 # --- Neovim ---
 file	omarchy/home/config/nvim/lazyvim.json	.config/nvim/lazyvim.json
 file	omarchy/home/config/nvim/lua/config/autocmds.lua	.config/nvim/lua/config/autocmds.lua
@@ -29,20 +38,14 @@ dir	omarchy/home/config/nvim/spell	.config/nvim/spell
 dir	omarchy/home/config/bash	.config/bash
 file	omarchy/home/bashrc	.bashrc
 
-# --- Alacritty ---
-file	omarchy/home/config/alacritty/alacritty.toml	.config/alacritty/alacritty.toml
-
-# --- Hyprland ---
-glob	omarchy/home/config/hypr/*.conf	.config/hypr/
+# --- Starship ---
+file	omarchy/home/config/starship.toml	.config/starship.toml
 
 # --- Mise ---
 dir	omarchy/home/config/mise	.config/mise
 
-# --- Omarchy ---
-dir	omarchy/home/config/omarchy/themes/tokyo-night-autana	.config/omarchy/themes/tokyo-night-autana
-
-# --- Starship ---
-file	omarchy/home/config/starship.toml	.config/starship.toml
+# --- Alacritty ---
+file	omarchy/home/config/alacritty/alacritty.toml	.config/alacritty/alacritty.toml
 
 # --- Tmux ---
 dir	omarchy/home/config/tmux	.config/tmux
