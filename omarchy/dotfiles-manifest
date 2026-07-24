@@ -14,29 +14,44 @@
 #   - Empty lines are ignored
 #   - Tab-separated fields
 
-# --- Directory symlinks ---
-dir	omarchy/home/config/bash	.config/bash
-dir	omarchy/home/config/nvim/lua/personal	.config/nvim/lua/personal
-dir	omarchy/home/config/nvim/spell	.config/nvim/spell
-dir	omarchy/home/config/omarchy/themes/tokyo-night-autana	.config/omarchy/themes/tokyo-night-autana
-dir	omarchy/home/config/mise	.config/mise
-dir	omarchy/home/config/tmux	.config/tmux
-
-# --- File symlinks ---
-file	omarchy/home/config/waybar/config.jsonc	.config/waybar/config.jsonc
-file	omarchy/home/config/alacritty/alacritty.toml	.config/alacritty/alacritty.toml
-file	omarchy/home/config/starship.toml	.config/starship.toml
+# --- Neovim ---
 file	omarchy/home/config/nvim/lazyvim.json	.config/nvim/lazyvim.json
-file	omarchy/home/config/nvim/lua/plugins/personal.lua	.config/nvim/lua/plugins/personal.lua
+file	omarchy/home/config/nvim/lua/config/autocmds.lua	.config/nvim/lua/config/autocmds.lua
+file	omarchy/home/config/nvim/lua/config/keymaps.lua	.config/nvim/lua/config/keymaps.lua
+file	omarchy/home/config/nvim/lua/config/options.lua	.config/nvim/lua/config/options.lua
+file	omarchy/home/config/nvim/lua/plugins/editorconfig.lua	.config/nvim/lua/plugins/editorconfig.lua
+file	omarchy/home/config/nvim/lua/plugins/opencode.lua	.config/nvim/lua/plugins/opencode.lua
+file	omarchy/home/config/nvim/lua/plugins/render-markdown.lua	.config/nvim/lua/plugins/render-markdown.lua
+file	omarchy/home/config/nvim/lua/plugins/snacks-paths.lua	.config/nvim/lua/plugins/snacks-paths.lua
+dir	omarchy/home/config/nvim/spell	.config/nvim/spell
+
+# --- Bash ---
+dir	omarchy/home/config/bash	.config/bash
 file	omarchy/home/bashrc	.bashrc
 
-# --- Wildcard symlinks (expand pattern) ---
+# --- Alacritty ---
+file	omarchy/home/config/alacritty/alacritty.toml	.config/alacritty/alacritty.toml
+
+# --- Hyprland ---
 glob	omarchy/home/config/hypr/*.conf	.config/hypr/
 
-# --- Copy instead of symlink (local file has priority) ---
+# --- Mise ---
+dir	omarchy/home/config/mise	.config/mise
+
+# --- Omarchy ---
+dir	omarchy/home/config/omarchy/themes/tokyo-night-autana	.config/omarchy/themes/tokyo-night-autana
+
+# --- Starship ---
+file	omarchy/home/config/starship.toml	.config/starship.toml
+
+# --- Tmux ---
+dir	omarchy/home/config/tmux	.config/tmux
+
+# --- Waybar ---
+file	omarchy/home/config/waybar/config.jsonc	.config/waybar/config.jsonc
+
+# --- SSH ---
 copy	omarchy/home/ssh/config	.ssh/config
 
 # --- Explicit exclusions ---
 skip	omarchy/home/local/bin/monitor	-
-skip	omarchy/home/config/mako/	-
-skip	omarchy/home/config/omarchy/hooks/	-
