@@ -19,6 +19,9 @@ vim.opt.scrolloff = 20
 ------------------------------------------------------------------------------
 -- Spell: Bilingual Es En
 ------------------------------------------------------------------------------
+-- Enables spell checking for the current window.
 vim.opt.spell = true
+-- Accepts words from Spanish and US English in the same buffer.
 vim.opt.spelllang = 'es,en_us'
+-- Stores personal accepted or rejected words added with `zg` and `zw`.
 vim.opt.spellfile = vim.fn.stdpath('config') .. '/spell/custom.utf-8.add'
