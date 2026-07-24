@@ -20,5 +20,5 @@ vim.opt.scrolloff = 20
 -- Spell: Bilingual Es En
 ------------------------------------------------------------------------------
 vim.opt.spell = true
-vim.opt.spelllang = 'es,en'
+vim.opt.spelllang = 'es,en_us'
 vim.opt.spellfile = vim.fn.stdpath('config') .. '/spell/custom.utf-8.add'
