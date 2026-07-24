@@ -35,7 +35,7 @@
 # at `omarchy/home/ssh/config` to `~/.ssh/config` (mode 600) only when
 # the source exists and the local target does not. The local file
 # always wins. The repo template must contain no secrets or real
-# production values — see docs/ssh.md.
+# production values.
 #
 # Fonts are installed by the env flow itself (Step 2/5). When this
 # script is run directly without going through root, the fonts dir
@@ -453,8 +453,7 @@ apply_symlinks() {
 #
 # No ~/.config/keyd/ symlink is created here: keyd runs as root and
 # reads only from /etc/keyd/default.conf. The user-level path is
-# unused; see docs/shared-layer.md and docs/inputs/keyboard-remap.md
-# for the full reasoning.
+# unused because keyd reads the system configuration directly.
 install_input_devices() {
     local src="$REPO_ROOT/omarchy/etc/keyd/default.conf"
     local target="/etc/keyd/default.conf"

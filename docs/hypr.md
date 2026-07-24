@@ -29,9 +29,7 @@ The reload must report no errors before continuing.
 | `hypridle.conf`     | Idle and lock behavior.                          |
 
 Default-identical files (`autostart.conf`, `envs.conf`, `input.conf`,
-`hyprlock.conf`, `hyprsunset.conf`, `xdph.conf`) are not tracked. See
-[`docs/shared-layer.md`](shared-layer.md#tracking-policy) for the inclusion
-policy.
+`hyprlock.conf`, `hyprsunset.conf`, `xdph.conf`) are not tracked.
 
 ## The `p-` prefix convention
 
@@ -89,5 +87,4 @@ it for the full list. Notable reassignments:
 
 ## See also
 
-- [`omarchy/README.md`](../omarchy/README.md) — managed paths and setup.
 - [`AGENTS.md`](../AGENTS.md) — repo conventions.

@@ -12,7 +12,7 @@
 # the target is missing; if `~/.ssh/config` already exists, setup leaves it
 # alone (local file has priority).
 #
-# See docs/ssh.md for the full workflow.
+# See docs/post-setup.md for the full workflow.
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
