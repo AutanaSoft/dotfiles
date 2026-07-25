@@ -79,17 +79,17 @@ after="$(find "$tmp_home" -mindepth 1 -print | sort)"
 
 manifest_root="$(mktemp -d)"
 mkdir -p "$manifest_root/omarchy"
-printf '# comment\n\npackage\talpha\npackage\tbeta\n' > "$manifest_root/omarchy/dependencies-manifest"
+printf '# comment\n\npackage\talpha\npackage\tbeta\n' > "$manifest_root/omarchy/deps-manifest"
 dependency_output="$(DOTFILES_ROOT="$manifest_root" "$DEP_SETUP" --omarchy --dry-run)"
 [[ "$dependency_output" == *'[missing] alpha'* ]] || fail 'manifest package alpha was not parsed'
 [[ "$dependency_output" == *'[missing] beta'* ]] || fail 'manifest package beta was not parsed'
 [[ "$dependency_output" == *'yay -S --needed alpha beta'* ]] || fail 'manifest packages were not batched'
 
-printf 'wrong\talpha\n' > "$manifest_root/omarchy/dependencies-manifest"
+printf 'wrong\talpha\n' > "$manifest_root/omarchy/deps-manifest"
 assert_dependency_status 1
-printf 'package\talpha\textra\n' > "$manifest_root/omarchy/dependencies-manifest"
+printf 'package\talpha\textra\n' > "$manifest_root/omarchy/deps-manifest"
 assert_dependency_status 1
-printf 'package\talpha\npackage\talpha\n' > "$manifest_root/omarchy/dependencies-manifest"
+printf 'package\talpha\npackage\talpha\n' > "$manifest_root/omarchy/deps-manifest"
 assert_dependency_status 1
 rm -rf "$manifest_root"
 

@@ -85,7 +85,7 @@ copy_file() {
 }
 
 apply_manifest() {
-    local manifest="$REPO_ROOT/omarchy/dotfiles-manifest" action source target expanded
+    local manifest="$REPO_ROOT/omarchy/dots-manifest" action source target expanded
     [[ -f "$manifest" ]] || fail "manifest not found: $manifest"
     while IFS=$'\t' read -r action source target; do
         [[ -z "$action" || "$action" =~ ^[[:space:]]*# ]] && continue

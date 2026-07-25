@@ -6,7 +6,7 @@ SCRIPT_PATH="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="${DOTFILES_ROOT:-$(cd -- "$SCRIPT_PATH/../../.." && pwd)}"
 DRY_RUN="${DOTFILES_DRY_RUN:-0}"
 OMARCHY=0
-MANIFEST="$REPO_ROOT/omarchy/dependencies-manifest"
+MANIFEST="$REPO_ROOT/omarchy/deps-manifest"
 
 usage() {
     cat <<EOF

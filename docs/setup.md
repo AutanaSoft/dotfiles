@@ -23,7 +23,7 @@ optional phases to run. Empty or negative answers leave a phase disabled.
 | `--profile omarchy` | Select the implemented profile. Interactive runs offer `omarchy` when omitted. |
 | `--dots` | Apply dotfiles, ask interactively about optional phases, then validate unless `--no-validate` is used. |
 | `--dots-only` | Apply only the manifest and permitted user copies. It cannot combine with optional phases and skips validation. |
-| `--deps` | Validate and install the packages in `omarchy/dependencies-manifest` in one batch. |
+| `--deps` | Validate and install the packages in `omarchy/deps-manifest` in one batch. |
 | `--fonts` | Install user-local fonts under `$HOME/.local/share/fonts/<family>/`. |
 | `--services` | Install keyd configuration and enable keyd/ratbagd. |
 | `--locale` | Opt in to the locale declared by `omarchy/etc/locale.conf`. |
@@ -52,7 +52,7 @@ dependency phase; it does not apply dotfiles or validation.
 - `setup` — public dispatcher.
 - `omarchy/utils/bash/setup-omarchy` — Omarchy phase orchestrator.
 - `omarchy/utils/bash/setup-dots` — user dotfiles and manifest executor.
-- `omarchy/dependencies-manifest` — the package manifest consumed by the dependency phase.
+- `omarchy/deps-manifest` — the package manifest consumed by the dependency phase.
 - `omarchy/utils/bash/setup-deps` — dependency manifest parser and installer.
 - `omarchy/utils/bash/setup-fonts` — user-local Nerd Font installer.
 - `omarchy/utils/bash/setup-services` — keyd and ratbagd configuration.

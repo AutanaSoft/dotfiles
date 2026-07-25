@@ -31,7 +31,7 @@ The implemented `omarchy` profile currently:
 - expects an existing Omarchy installation, or Arch/CachyOS with Omarchy
   installed;
 - uses the Arch package toolchain (`yay` and `pacman`) for dependencies;
-- reads dependency names from `omarchy/dependencies-manifest`;
+- reads dependency names from `omarchy/deps-manifest`;
 - requires the `omarchy` command and `hyprctl` from a running Hyprland session;
 - applies user dotfiles by default when `--dots` is selected; and
 - can explicitly run dependencies, fonts, services, locale, and final graphical

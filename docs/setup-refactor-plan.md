@@ -13,7 +13,7 @@ solicitud y despacha las fases elegidas:
 | --- | --- |
 | `--dots-only` | Manifiesto y configuración de usuario; no ejecuta otras fases. |
 | `--dots` | Configuración de usuario y, en modo interactivo, selección de fases opcionales. |
-| `--deps` | Paquetes declarados en `omarchy/dependencies-manifest`. |
+| `--deps` | Paquetes declarados en `omarchy/deps-manifest`. |
 | `--fonts` | Fuentes de usuario bajo `$HOME/.local/share/fonts/<familia>/`. |
 | `--services` | Configuración de keyd y servicios de entrada aprobados. |
 | `--locale` | Instalación explícita de `omarchy/etc/locale.conf`. |
@@ -48,8 +48,8 @@ Ejemplos:
 | --- | --- |
 | `setup` | Parsear CLI, validar opciones, preparar contexto y despachar. |
 | `setup-omarchy` | Coordinar las fases del perfil `omarchy`. |
-| `setup-dots` | Aplicar `omarchy/dotfiles-manifest`, backups y operaciones de usuario. |
-| `setup-deps` | Leer, validar y procesar `omarchy/dependencies-manifest`. |
+| `setup-dots` | Aplicar `omarchy/dots-manifest`, backups y operaciones de usuario. |
+| `setup-deps` | Leer, validar y procesar `omarchy/deps-manifest`. |
 | `setup-fonts` | Descargar, extraer e instalar las familias de fuentes de usuario. |
 | `setup-services` | Instalar keyd y habilitar/recargar keyd y ratbagd. |
 | `setup-locale` | Compilar e instalar el locale declarado por el perfil. |
@@ -60,7 +60,7 @@ otro helper.
 
 ## Manifiesto de dependencias
 
-`omarchy/dependencies-manifest` usa dos campos separados por tabulador:
+`omarchy/deps-manifest` usa dos campos separados por tabulador:
 
 ```text
 package<TAB>name
@@ -93,8 +93,8 @@ usa `--dry-run`.
 ## Archivos relevantes
 
 - `setup`
-- `omarchy/dependencies-manifest`
-- `omarchy/dotfiles-manifest`
+- `omarchy/deps-manifest`
+- `omarchy/dots-manifest`
 - `omarchy/utils/bash/setup-{omarchy,dots,deps,fonts,services,locale,validate}`
 - `README.md`
 - `docs/setup.md`
