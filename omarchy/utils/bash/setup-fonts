@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# omarchy/utils/bash/setup-fonts — install Nerd Fonts used by the Autanasoft dotfiles.
+# omarchy/utils/bash/setup-fonts — install the Nerd Fonts used by this profile.
 #
 # This script is the fonts executor. It is normally invoked by the root
-# `./setup --dots --fonts` orchestrator, but it can also be run directly:
+# `./setup --profile omarchy --fonts` orchestrator, but it can also be run directly:
 #
 #     omarchy/utils/bash/setup-fonts [--dry-run] [--help]
 #
@@ -12,11 +12,11 @@
 #   - FiraCode Nerd Font
 #   - FiraMono Nerd Font
 #
-# Default install location: $HOME/.local/share/fonts/autanasoft/<family>/
+# Install location: $HOME/.local/share/fonts/<family>/
 # fontconfig picks this up automatically on standard XDG setups, so no
 # system-wide installation (/usr/share/fonts) is required.
 #
-# Idempotent: re-running overwrites existing files and refreshes the cache.
+# Idempotent: re-running overwrites managed font files and refreshes the cache.
 
 set -euo pipefail
 
@@ -36,17 +36,7 @@ fi
 # Defaults
 # ---------------------------------------------------------------------------
 DRY_RUN=0
-# FONT_BASE is centralized in the root ./setup dispatcher: it exports
-# DOTFILES_FONTS_DIR="$HOME/.local/share/fonts/autanasoft" so the
-# literal appears once. When the env var is set (root-driven or
-# override), honor it. When unset (direct invocation without root),
-# fall back to the same default so this script is self-sufficient.
-if [[ -n "${DOTFILES_FONTS_DIR:-}" ]]; then
-    FONT_BASE="$DOTFILES_FONTS_DIR"
-else
-    FONT_BASE="${HOME}/.local/share/fonts/autanasoft"
-fi
-
+FONT_BASE="${HOME}/.local/share/fonts"
 # Monaspace: pinned to the exact URL requested.
 MONASPACE_URL="https://github.com/githubnext/monaspace/releases/download/v1.400/monaspace-nerdfonts-v1.400.zip"
 
@@ -64,11 +54,11 @@ usage() {
     cat <<EOF
 Usage: $0 [--dry-run] [--help]
 
-Installs Nerd Fonts used by the Autanasoft dotfiles into
-\$HOME/.local/share/fonts/autanasoft/ and refreshes the fontconfig cache.
+Installs Nerd Fonts used by the profile into
+\$HOME/.local/share/fonts/<family>/ and refreshes the fontconfig cache.
 
 This script is the fonts executor. Prefer invoking it via the root
-entrypoint: \`./setup --<env> --fonts [--dry-run]\`.
+entrypoint: \`./setup --profile omarchy --fonts\`.
 
 Fonts installed:
   - Monaspace Nerd Fonts (Monaspace Krypton NF, Neon NF, Radon NF, Xenon NF)
@@ -80,7 +70,7 @@ Options:
                extract, copy, or run 'fc-cache'.
   --help, -h   Show this help and exit.
 
-Install location: $FONT_BASE
+Install location: $FONT_BASE/<family>
 EOF
 }
 
@@ -205,12 +195,15 @@ refresh_cache() {
 # Main
 # ---------------------------------------------------------------------------
 main() {
-    # Always create a tempdir so dry-run output can show real, copy-pasteable
-    # paths. The trap cleans it up on exit regardless of mode.
     local workdir
-    workdir="$(mktemp -d)"
-    # shellcheck disable=SC2064
-    trap "rm -rf '$workdir'" EXIT
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        # Keep preview paths deterministic without creating or removing anything.
+        workdir="${TMPDIR:-/tmp}/dotfiles-fonts-preview"
+    else
+        workdir="$(mktemp -d)"
+        # shellcheck disable=SC2064
+        trap "rm -rf '$workdir'" EXIT
+    fi
 
     log "Repo root:  $REPO_ROOT"
     log "Install base: $FONT_BASE"

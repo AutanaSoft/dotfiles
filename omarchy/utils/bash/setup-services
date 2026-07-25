@@ -1,0 +1,169 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+REPO_ROOT="${DOTFILES_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)}"
+DRY_RUN="${DOTFILES_DRY_RUN:-0}"
+
+usage() {
+    cat <<EOF
+Usage: $0 [--dry-run] [--help]
+
+Install the tracked keyd configuration and enable keyd and ratbagd.
+EOF
+}
+log() { echo "[setup-services] $*"; }
+fail() { echo "[setup-services] ERROR: $*" >&2; exit 1; }
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dry-run) DRY_RUN=1; shift ;;
+        --help|-h) usage; exit 0 ;;
+        *) fail "unknown option: $1" ;;
+    esac
+done
+
+source="$REPO_ROOT/omarchy/etc/keyd/default.conf"
+target=/etc/keyd/default.conf
+[[ -f "$source" ]] || fail "keyd source not found: $source"
+backup="${target}.backup.$(date -u +%Y%m%dT%H%M%SZ)"
+target_existed=0
+[[ -e "$target" || -L "$target" ]] && target_existed=1
+
+if (( DRY_RUN )); then
+    if (( target_existed )); then
+        log "[dry-run] would back up $target -> $backup"
+    else
+        log "[dry-run] no existing keyd configuration to back up"
+    fi
+    log "[dry-run] would install -m 644 $source $target before changing services"
+    log "[dry-run] would run: systemctl enable --now keyd ratbagd"
+    log "[dry-run] would run: keyd reload"
+    log "[dry-run] on failure, would restore $backup or remove the new config"
+    exit 0
+fi
+
+command -v sudo >/dev/null 2>&1 || fail "required command 'sudo' is not on PATH"
+command -v systemctl >/dev/null 2>&1 || fail "required command 'systemctl' is not on PATH"
+
+unit_was_enabled() {
+    local unit="$1"
+    sudo systemctl is-enabled --quiet "$unit"
+}
+
+unit_was_active() {
+    local unit="$1"
+    sudo systemctl is-active --quiet "$unit"
+}
+
+keyd_enabled_before=0
+ratbagd_enabled_before=0
+keyd_active_before=0
+ratbagd_active_before=0
+
+unit_was_enabled keyd && keyd_enabled_before=1
+unit_was_enabled ratbagd && ratbagd_enabled_before=1
+unit_was_active keyd && keyd_active_before=1
+unit_was_active ratbagd && ratbagd_active_before=1
+
+log "Recorded service state: keyd enabled=$keyd_enabled_before active=$keyd_active_before; ratbagd enabled=$ratbagd_enabled_before active=$ratbagd_active_before"
+
+restore_unit_state() {
+    local unit="$1"
+    local enabled_before="$2"
+    local active_before="$3"
+    local enabled_now=0
+    local active_now=0
+
+    unit_was_enabled "$unit" && enabled_now=1
+    unit_was_active "$unit" && active_now=1
+
+    if (( active_before )); then
+        if (( ! active_now )); then
+            if sudo systemctl start "$unit"; then
+                log "Recovery: restarted previously active $unit"
+            else
+                log "Recovery ERROR: could not restart previously active $unit; manual recovery is required"
+            fi
+        fi
+    elif (( active_now )); then
+        if sudo systemctl stop "$unit"; then
+            log "Recovery: stopped newly active $unit"
+        else
+            log "Recovery ERROR: could not stop newly active $unit; manual recovery is required"
+        fi
+    fi
+
+    if (( enabled_before )); then
+        if (( ! enabled_now )); then
+            if sudo systemctl enable "$unit"; then
+                log "Recovery: re-enabled previously enabled $unit"
+            else
+                log "Recovery ERROR: could not re-enable previously enabled $unit; manual recovery is required"
+            fi
+        fi
+    elif (( enabled_now )); then
+        if sudo systemctl disable "$unit"; then
+            log "Recovery: disabled newly enabled $unit"
+        else
+            log "Recovery ERROR: could not disable newly enabled $unit; manual recovery is required"
+        fi
+    fi
+}
+
+rollback() {
+    if (( target_existed )); then
+        if sudo cp -a -- "$backup" "$target"; then
+            log "Recovery: restored the previous keyd configuration from $backup"
+        else
+            log "Recovery ERROR: could not restore $backup to $target; manual recovery is required"
+        fi
+    elif sudo rm -f -- "$target"; then
+        log "Recovery: removed the newly installed keyd configuration"
+    else
+        log "Recovery ERROR: could not remove the newly installed keyd configuration; manual recovery is required"
+    fi
+
+    restore_unit_state keyd "$keyd_enabled_before" "$keyd_active_before"
+    restore_unit_state ratbagd "$ratbagd_enabled_before" "$ratbagd_active_before"
+
+    if (( keyd_active_before )); then
+        if sudo keyd reload; then
+            log "Recovery: reloaded the restored keyd configuration"
+        else
+            log "Recovery ERROR: could not reload the restored keyd configuration; manual recovery is required"
+        fi
+    fi
+}
+
+if (( target_existed )); then
+    log "Backing up existing keyd configuration: $target -> $backup"
+    sudo cp -a -- "$target" "$backup" || fail "could not create a safe backup at $backup"
+fi
+
+log "Installing keyd configuration before changing services"
+if ! sudo install -m 644 "$source" "$target"; then
+    log "Installation failed; starting recovery"
+    rollback
+    fail "could not install keyd configuration"
+fi
+
+log "Enabling keyd and ratbagd"
+if ! sudo systemctl enable --now keyd ratbagd; then
+    log "Service enablement failed; starting recovery"
+    rollback
+    fail "could not enable or start keyd and ratbagd; configuration recovery was attempted"
+fi
+
+log "Reloading keyd configuration"
+if ! sudo keyd reload; then
+    log "keyd reload failed; starting recovery"
+    rollback
+    fail "could not reload keyd; configuration recovery was attempted"
+fi
+
+if (( target_existed )); then
+    log "Services configured successfully; backup retained at $backup"
+else
+    log "Services configured successfully; no previous keyd configuration required a backup"
+fi

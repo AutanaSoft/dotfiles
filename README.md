@@ -15,8 +15,8 @@ On an existing Omarchy-family installation with a running Hyprland session:
 ```bash
 git clone git@github.com:AutanaSoft/dotfiles.git dotfiles
 cd dotfiles
-./setup --dots --dry-run
-./setup --dots
+./setup --profile omarchy --dots-only --dry-run
+./setup --profile omarchy --dots-only
 ```
 
 Use [`docs/setup.md`](docs/setup.md) for available flags and
@@ -25,24 +25,27 @@ Use [`docs/setup.md`](docs/setup.md) for available flags and
 ## Current limits
 
 The `./setup` entrypoint is a dispatcher, not a distribution-neutral installer.
-The implemented `--dots` flow currently:
+The implemented `omarchy` profile currently:
 
 - selects the `omarchy/` profile;
 - expects an existing Omarchy installation, or Arch/CachyOS with Omarchy
   installed;
 - uses the Arch package toolchain (`yay` and `pacman`) for dependencies;
+- reads dependency names from `omarchy/dependencies-manifest`;
 - requires the `omarchy` command and `hyprctl` from a running Hyprland session;
-- installs packages, user-local fonts, symlinks, the keyd configuration, and
-  input-device services; and
-- applies the tracked Omarchy theme and validates Hyprland configuration.
+- applies user dotfiles by default when `--dots` is selected; and
+- can explicitly run dependencies, fonts, services, locale, and final graphical
+  validation as separate phases.
 
-It does not install Omarchy, support Ubuntu/Fedora/WSL2, or provide a headless
-or non-graphical setup path. `--dry-run` previews actions, but it still expects
-the relevant profile tools to be discoverable where the selected helper checks
-them.
+It does not install Omarchy or support Ubuntu/Fedora/WSL2. `--dots-only` is the
+non-graphical user configuration path. `--dry-run` previews actions without
+mutating the host.
 
-The standalone `--deps`, `--fonts`, and `--locale` flags are helpers for the
-same current profile; they do not add support for another platform.
+The `--deps`, `--fonts`, `--services`, and `--locale` flags are explicit phases
+for the same current profile; they do not add support for another platform.
+The dependency phase installs the packages declared in the TSV manifest, and
+the font phase installs each family directly under
+`$HOME/.local/share/fonts/<family>/`.
 
 ## Configuration boundaries
 
@@ -60,15 +63,14 @@ second profile requires that boundary.
 
 ## Safety rules
 
-- Review scripts and use `./setup --dots --dry-run` before a real run.
+- Review scripts and use `./setup --profile omarchy --dots-only --dry-run` before a real run.
 - Never commit secrets, private keys, passwords, or real SSH host values.
   `omarchy/home/ssh/config` is a safe template and is copied only when the
   local SSH config does not already exist.
 - Existing targets are moved to a timestamped `backup/` path before symlinks
   replace them. Inspect those backups before deleting anything.
-- Treat `omarchy/etc/` as privileged, host-specific configuration. The setup
-  flow installs keyd configuration; locale installation is opt-in through
-  `./setup --locale`.
+- Treat `omarchy/etc/` as privileged, host-specific configuration. Keyd and
+  locale installation are opt-in through `--services` and `--locale`.
 - Never edit `~/.local/share/omarchy/`; Omarchy owns that tree and updates can
   overwrite it. Put personal Hyprland changes in the tracked user files.
 - Do not apply `omarchy/etc/fstab` automatically. Review and install host mount

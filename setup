@@ -1,279 +1,155 @@
 #!/usr/bin/env bash
-# setup — root thin dispatcher for this dotfiles repo.
-#
-# This is the single entrypoint for new-machine setup. It is intentionally
-# minimal: parse flags, validate them, define and export the DOTFILES_*
-# path variables that child scripts need, register a trap to clean those
-# variables on every exit path, and dispatch to exactly ONE env or helper
-# script.
-#
-# Boundary:
-#   - Env scripts (omarchy/utils/bash/setup-dots) own their own full env flow.
-#     They call setup-deps and setup-fonts from inside their own main()
-#     and pre-flight their own pre-requisites.
-#   - omarchy/utils/bash/setup-deps auto-detects the host environment by probing
-#     the available package managers (yay/pacman → omarchy). --dots remains
-#     valid as an explicit override.
-#   - Root MUST NOT run a multi-step deps → fonts → env pipeline. It MUST
-#     NOT define run_deps / run_fonts / run_env helpers. It MUST NOT
-#     maintain a TOTAL_STEPS counter.
-#
-# Flags:
-#   --dots       — dispatch to omarchy/utils/bash/setup-dots
-#   --fonts      — dispatch to omarchy/utils/bash/setup-fonts (or absorbed by --dots)
-#   --deps       — dispatch to omarchy/utils/bash/setup-deps   (or absorbed by --dots)
-#   --locale     — dispatch to omarchy/utils/bash/setup-locale (standalone only;
-#                  NOT absorbed by --dots because locale is user-specific and
-#                  must stay opt-in)
-#   --dry-run    — set DOTFILES_DRY_RUN=1; env scripts honor it
-#   --help / -h  — show usage and exit 0
-#
-# Precedence:
-#   - --dots absorbs --fonts and --deps. The env script handles them.
-#   - --locale is a standalone helper, never absorbed by --dots.
-#   - With no env flag, --fonts, --deps, and --locale are direct
-#     dispatches. Only one standalone helper may be passed at a time.
-#
-# On any exit path (success, child-script failure, parse error, --help,
-# interrupt) the EXIT trap unsets the five DOTFILES_* variables so they
-# never leak into the calling shell.
-#
-# Examples:
-#   ./setup --dots                        # dispatch to setup-dots
-#   ./setup --dots --fonts                # absorbed; env script handles fonts
-#   ./setup --dots --deps                 # absorbed; env script handles deps
-#   ./setup --fonts                       # dispatch to setup-fonts
-#   ./setup --deps                        # dispatch to setup-deps (auto-detect)
-#   ./setup --locale                      # dispatch to setup-locale (opt-in)
-#   ./setup --dry-run --dots              # dry-run the env flow
-#   ./setup --unknown                     # unknown flag, non-zero exit
 
 set -euo pipefail
 
-# ---------------------------------------------------------------------------
-# Resolve repo root from this script's path (CWD-independent).
-# ---------------------------------------------------------------------------
-SCRIPT_PATH="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-DOTFILES_ROOT="$SCRIPT_PATH"
-SCRIPTS_DIR="$DOTFILES_ROOT/omarchy/utils/bash"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPTS_DIR="$SCRIPT_DIR/omarchy/utils/bash"
+BACKUP_DIR="$SCRIPT_DIR/backup/$(date -u +%Y%m%dT%H%M%SZ)"
 
-# ---------------------------------------------------------------------------
-# Per-run paths (computed once, exported, cleaned by trap).
-#   DOTFILES_BACKUP_DIR  : $DOTFILES_ROOT/backup/<utc-ts>/ (per-run)
-#   DOTFILES_FONTS_DIR   : centralized so the literal appears once.
-#                          Child scripts (setup-fonts and setup-dots)
-#                          read it; do not re-derive in those scripts.
-# ---------------------------------------------------------------------------
-DOTFILES_BACKUP_DIR="$DOTFILES_ROOT/backup/$(date -u +%Y%m%dT%H%M%SZ)"
-DOTFILES_FONTS_DIR="$HOME/.local/share/fonts/autanasoft"
+PROFILE=""
+DOTS=0
+DOTS_ONLY=0
+DEPS=0
+FONTS=0
+SERVICES=0
+LOCALE=0
+NO_VALIDATE=0
+NON_INTERACTIVE=0
+DRY_RUN=0
 
-# ---------------------------------------------------------------------------
-# Parse state
-# ---------------------------------------------------------------------------
-DOTFILES_ENV=""
-PARSED_DRY_RUN=0
-REQUEST_HELP=0
-REQUEST_FONTS=0
-REQUEST_DEPS=0
-REQUEST_LOCALE=0
-
-# ---------------------------------------------------------------------------
-# Usage
-# ---------------------------------------------------------------------------
 usage() {
     cat <<EOF
-Usage: $0 [--dots] [--fonts] [--deps] [--locale] [--dry-run] [--help]
+Usage: $0 [--profile omarchy] [--dots | --dots-only] [phases] [options]
 
-Thin dispatcher: parse flags, export the DOTFILES_* path variables,
-register a cleanup trap, and invoke exactly one env or helper script.
-Env scripts own their own full flow; omarchy/utils/bash/setup-deps
-auto-detects the host by probing package managers.
+Configure the selected dotfiles profile. The only supported profile is omarchy.
 
-Precedence:
-  --dots absorbs --fonts and --deps (the env script handles them).
-  --locale is a standalone helper, never absorbed by --dots: the
-  locale is user-specific and must stay opt-in for forks/siblings.
-  Without an env flag, --fonts, --deps, and --locale are direct
-  dispatches. Only one standalone helper may be passed at a time.
+Actions:
+  --dots             Apply user dotfiles and, interactively, select optional phases.
+  --dots-only        Apply only the manifest and permitted user copies.
+  --deps             Run the Omarchy dependency phase.
+  --fonts            Run the user-local font phase.
+  --services         Configure keyd and enable keyd/ratbagd.
+  --locale           Install the locale declared by the profile.
 
-Environment (one of, or none):
-  --dots          Dispatch to omarchy/utils/bash/setup-dots
-
-Options (optional):
-  --fonts         Dispatch to omarchy/utils/bash/setup-fonts (absorbed by --dots)
-  --deps          Dispatch to omarchy/utils/bash/setup-deps   (absorbed by --dots)
-  --locale        Dispatch to omarchy/utils/bash/setup-locale (standalone only;
-                  generates the LANG declared in omarchy/etc/locale.conf and
-                  installs it to /etc/locale.conf)
-  --dry-run       Set DOTFILES_DRY_RUN=1; env scripts honor it
-  --help, -h      Show this help and exit
-
-Exported variables (unset on every exit path via EXIT trap):
-  DOTFILES_ROOT        Absolute path to the repo root
-  DOTFILES_ENV         "omarchy" when --dots is set; unset otherwise
-  DOTFILES_DRY_RUN     "1" when --dry-run is set; unset otherwise
-  DOTFILES_BACKUP_DIR  Per-run backup dir under \$DOTFILES_ROOT/backup
-  DOTFILES_FONTS_DIR   \$HOME/.local/share/fonts/autanasoft (centralized)
+Options:
+  --profile NAME     Select a profile. Without it, interactive mode offers omarchy.
+  --no-validate      Skip final validation for --dots.
+  --non-interactive  Disable profile and phase prompts.
+  --dry-run          Print actions without mutating the host.
+  --help, -h         Show this help.
 
 Examples:
   $0 --dots
-  $0 --dots --fonts             # absorbed; env script handles fonts
-  $0 --dots --deps              # absorbed; env script handles deps
-  $0 --fonts
-  $0 --deps                     # setup-deps auto-detects the host
-  $0 --locale                   # opt-in locale install (es_VE.UTF-8 by default)
-  $0 --dry-run --dots
+  $0 --profile omarchy --dots-only --dry-run
+  $0 --profile omarchy --dots --deps --fonts --services --locale
 EOF
 }
 
-# ---------------------------------------------------------------------------
-# Argument parsing
-# ---------------------------------------------------------------------------
+fail() {
+    echo "[setup] ERROR: $*" >&2
+    exit 2
+}
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --dots)
-            DOTFILES_ENV="omarchy"
-            shift
+        --profile)
+            [[ $# -ge 2 ]] || fail "--profile requires a value."
+            PROFILE="$2"
+            shift 2
             ;;
-        --fonts | --font)
-            REQUEST_FONTS=1
-            shift
-            ;;
-        --deps)
-            REQUEST_DEPS=1
-            shift
-            ;;
-        --locale)
-            REQUEST_LOCALE=1
-            shift
-            ;;
-        --dry-run)
-            PARSED_DRY_RUN=1
-            shift
-            ;;
-        --help | -h)
-            REQUEST_HELP=1
-            shift
-            ;;
-        *)
-            echo "Unknown argument: $1" >&2
-            usage >&2
-            exit 2
-            ;;
+        --dots) DOTS=1; shift ;;
+        --dots-only) DOTS_ONLY=1; shift ;;
+        --deps) DEPS=1; shift ;;
+        --fonts) FONTS=1; shift ;;
+        --services) SERVICES=1; shift ;;
+        --locale) LOCALE=1; shift ;;
+        --no-validate) NO_VALIDATE=1; shift ;;
+        --non-interactive) NON_INTERACTIVE=1; shift ;;
+        --dry-run) DRY_RUN=1; shift ;;
+        --help|-h) usage; exit 0 ;;
+        *) fail "unknown option: $1" ;;
     esac
 done
 
-if [[ "$REQUEST_HELP" -eq 1 ]]; then
-    usage
-    exit 0
+if (( DOTS && DOTS_ONLY )); then
+    fail "--dots and --dots-only cannot be combined."
+fi
+if (( DOTS_ONLY && (DEPS || FONTS || SERVICES || LOCALE || NO_VALIDATE) )); then
+    fail "--dots-only cannot be combined with phases or --no-validate."
+fi
+if (( NO_VALIDATE && !DOTS )); then
+    fail "--no-validate requires --dots."
+fi
+if (( NON_INTERACTIVE )) && [[ -z "$PROFILE" ]]; then
+    fail "--non-interactive requires --profile omarchy."
 fi
 
-# ---------------------------------------------------------------------------
-# Validation
-# ---------------------------------------------------------------------------
-# Count active standalone helper flags (mutually exclusive).
-standalone_count=$((REQUEST_FONTS + REQUEST_DEPS + REQUEST_LOCALE))
+if [[ -z "$PROFILE" ]]; then
+    if (( NON_INTERACTIVE )); then
+        fail "a profile is required in non-interactive mode."
+    fi
+    printf 'Select a profile:\n  1) omarchy\nChoice [1]: '
+    if ! read -r choice; then
+        fail "profile selection cancelled."
+    fi
+    [[ -z "$choice" || "$choice" == 1 || "$choice" == omarchy ]] || fail "invalid profile selection."
+    PROFILE=omarchy
+fi
+[[ "$PROFILE" == omarchy ]] || fail "unsupported profile: $PROFILE"
 
-# At least one target must be selected.
-if [[ -z "$DOTFILES_ENV" && "$standalone_count" -eq 0 ]]; then
-    echo "ERROR: choose --dots, --fonts, --deps, --locale, or any combination." >&2
-    usage >&2
-    exit 2
+if (( !DOTS && !DOTS_ONLY && !DEPS && !FONTS && !SERVICES && !LOCALE )); then
+    fail "choose --dots, --dots-only, or at least one phase."
 fi
 
-# Only one standalone helper may be passed at a time.
-if [[ "$standalone_count" -gt 1 ]]; then
-    echo "ERROR: choose only one standalone helper: --fonts, --deps, or --locale." >&2
-    usage >&2
-    exit 2
+if (( DOTS )); then
+    if (( !NON_INTERACTIVE )); then
+        for phase in deps fonts services locale; do
+            case "$phase" in
+                deps) selected=$DEPS ;;
+                fonts) selected=$FONTS ;;
+                services) selected=$SERVICES ;;
+                locale) selected=$LOCALE ;;
+            esac
+            if (( !selected )); then
+                case "$phase" in
+                    deps) prompt="Run dependencies? This may use the package manager, network, and install packages. [y/N] " ;;
+                    fonts) prompt="Run fonts? This uses the network and downloads font archives. [y/N] " ;;
+                    services) prompt="Run services? This uses sudo, overwrites/backups keyd configuration, and enables/reloads keyd/ratbagd. [y/N] " ;;
+                    locale) prompt="Run locale? This writes /etc/locale.conf and may require sudo. [y/N] " ;;
+                esac
+                read -r -p "$prompt" answer || answer=""
+                case "$answer" in
+                    y|Y|yes|YES) case "$phase" in
+                        deps) DEPS=1 ;; fonts) FONTS=1 ;; services) SERVICES=1 ;; locale) LOCALE=1 ;;
+                    esac ;;
+                esac
+            fi
+        done
+    fi
 fi
 
-# ---------------------------------------------------------------------------
-# Export the variable contract. Child scripts read these and MUST NOT
-# re-derive the repo root or the fonts directory when the env vars are
-# set.
-# ---------------------------------------------------------------------------
-export DOTFILES_ROOT
-export DOTFILES_ENV
-export DOTFILES_FONTS_DIR
-export DOTFILES_BACKUP_DIR
+export DOTFILES_ROOT="$SCRIPT_DIR"
+export DOTFILES_BACKUP_DIR="$BACKUP_DIR"
+export DOTFILES_PROFILE="$PROFILE"
+export DOTFILES_DRY_RUN=0
+(( DRY_RUN )) && export DOTFILES_DRY_RUN=1
 
-# DOTFILES_DRY_RUN is exported only when --dry-run was passed, so
-# sub-scripts (which check the env var) see a clean state. Use the
-# separate parse-time flag (PARSED_DRY_RUN) for all internal logic so
-# `set -u` never trips on an unset name.
-unset DOTFILES_DRY_RUN
-if [[ "$PARSED_DRY_RUN" -eq 1 ]]; then
-    export DOTFILES_DRY_RUN=1
-fi
+cleanup() {
+    unset DOTFILES_ROOT DOTFILES_BACKUP_DIR DOTFILES_PROFILE DOTFILES_DRY_RUN
+}
+trap cleanup EXIT
 
-# ---------------------------------------------------------------------------
-# Cleanup trap
-# ---------------------------------------------------------------------------
-# Fires on every exit path: success, fail, parse error, child-script
-# non-zero, interrupt. The dispatcher unsets exactly the five variables
-# it exported, so they never leak into the calling shell.
-trap 'unset DOTFILES_ROOT DOTFILES_ENV DOTFILES_DRY_RUN DOTFILES_BACKUP_DIR DOTFILES_FONTS_DIR' EXIT
+args=(--profile "$PROFILE")
+(( DOTS )) && args+=(--dots)
+(( DOTS_ONLY )) && args+=(--dots-only)
+(( DEPS )) && args+=(--deps)
+(( FONTS )) && args+=(--fonts)
+(( SERVICES )) && args+=(--services)
+(( LOCALE )) && args+=(--locale)
+(( DOTS && !NO_VALIDATE )) && args+=(--final-validation)
+(( DRY_RUN )) && args+=(--dry-run)
+(( NON_INTERACTIVE )) && args+=(--non-interactive)
 
-# ---------------------------------------------------------------------------
-# Dispatch
-# ---------------------------------------------------------------------------
-# --locale is a standalone helper and is intentionally NOT absorbed by
-# --dots (locale is user-specific and must stay opt-in). If the user
-# passes both, surface a one-line note so the dropped flag is not
-# silent; the dispatch still proceeds to setup-dots.
-if [[ -n "$DOTFILES_ENV" && "$REQUEST_LOCALE" -eq 1 ]]; then
-    echo "[setup] Note: --locale is standalone-only and is not run by --dots. Run './setup --locale' separately."
-fi
-
-# Exactly one target script. Order:
-#   1. --dots dispatches to omarchy/utils/bash/setup-dots. --fonts and
-#      --deps are absorbed — the env script owns the full flow.
-#      --locale is NOT absorbed: it stays opt-in.
-#   2. --fonts   dispatches to omarchy/utils/bash/setup-fonts.
-#   3. --deps    dispatches to omarchy/utils/bash/setup-deps   (auto-detects).
-#   4. --locale  dispatches to omarchy/utils/bash/setup-locale.
-target_script=""
-case "$DOTFILES_ENV:$REQUEST_FONTS:$REQUEST_DEPS:$REQUEST_LOCALE" in
-    omarchy:*:*:*)
-        target_script="$SCRIPTS_DIR/setup-dots"
-        ;;
-    :1:0:0)
-        target_script="$SCRIPTS_DIR/setup-fonts"
-        ;;
-    :0:1:0)
-        target_script="$SCRIPTS_DIR/setup-deps"
-        ;;
-    :0:0:1)
-        target_script="$SCRIPTS_DIR/setup-locale"
-        ;;
-    *)
-        # Should be unreachable: validation above already rejected every
-        # other combination. Fail loud if a future flag change breaks
-        # the table.
-        echo "ERROR: internal dispatch table has no entry for '$DOTFILES_ENV:$REQUEST_FONTS:$REQUEST_DEPS:$REQUEST_LOCALE'." >&2
-        exit 2
-        ;;
-esac
-
-if [[ ! -e "$target_script" ]]; then
-    echo "ERROR: target script not found: $target_script" >&2
-    exit 1
-fi
-if [[ ! -x "$target_script" ]]; then
-    echo "ERROR: target script is not executable: $target_script (run: chmod +x $target_script)" >&2
-    exit 1
-fi
-
-# Subprocess args: forward --dry-run. Child scripts (setup-deps,
-# setup-fonts, setup-dots, setup-locale) all accept it.
-declare -a child_args=()
-if [[ "$PARSED_DRY_RUN" -eq 1 ]]; then
-    child_args=(--dry-run)
-fi
-
-echo "[setup] Dispatching to: $(basename -- "$target_script")"
-
-# Invoke; let the child's exit propagate. The EXIT trap fires on the
-# way out and cleans the five DOTFILES_* vars.
-"$target_script" "${child_args[@]}"
+target="$SCRIPTS_DIR/setup-omarchy"
+[[ -x "$target" ]] || fail "profile helper is missing or not executable: $target"
+"$target" "${args[@]}"

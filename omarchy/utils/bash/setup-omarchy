@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+REPO_ROOT="${DOTFILES_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)}"
+DRY_RUN="${DOTFILES_DRY_RUN:-0}"
+DOTS=0
+DOTS_ONLY=0
+DEPS=0
+FONTS=0
+SERVICES=0
+LOCALE=0
+VALIDATE=0
+
+usage() {
+    cat <<EOF
+Usage: $0 --profile omarchy [--dots | --dots-only] [phases] [--dry-run]
+
+Orchestrates the Omarchy profile helpers. This internal helper expects the root
+dispatcher to validate the public CLI.
+EOF
+}
+fail() { echo "[setup-omarchy] ERROR: $*" >&2; exit 1; }
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --profile) [[ $# -ge 2 ]] || fail "--profile requires a value"; [[ "$2" == omarchy ]] || fail "unsupported profile: $2"; shift 2 ;;
+        --dots) DOTS=1; shift ;;
+        --dots-only) DOTS_ONLY=1; shift ;;
+        --deps) DEPS=1; shift ;;
+        --fonts) FONTS=1; shift ;;
+        --services) SERVICES=1; shift ;;
+        --locale) LOCALE=1; shift ;;
+        --final-validation) VALIDATE=1; shift ;;
+        --dry-run) DRY_RUN=1; shift ;;
+        --non-interactive) shift ;;
+        --help|-h) usage; exit 0 ;;
+        *) fail "unknown option: $1" ;;
+    esac
+done
+
+(( DOTS_ONLY && (DEPS || FONTS || SERVICES || LOCALE || VALIDATE) )) && fail "dots-only cannot include other phases"
+(( !DOTS && !DOTS_ONLY && !DEPS && !FONTS && !SERVICES && !LOCALE )) && fail "no phase selected"
+
+run_helper() {
+    local name="$1"; shift
+    local helper="$REPO_ROOT/omarchy/utils/bash/$name"
+    [[ -x "$helper" ]] || fail "helper is missing or not executable: $helper"
+    "$helper" "$@"
+}
+
+helper_args=()
+(( DRY_RUN )) && helper_args+=(--dry-run)
+if (( DEPS )); then run_helper setup-deps --omarchy "${helper_args[@]}"; fi
+if (( FONTS )); then run_helper setup-fonts "${helper_args[@]}"; fi
+if (( DOTS || DOTS_ONLY )); then run_helper setup-dots "${helper_args[@]}"; fi
+if (( SERVICES )); then run_helper setup-services "${helper_args[@]}"; fi
+if (( LOCALE )); then run_helper setup-locale "${helper_args[@]}"; fi
+if (( VALIDATE )); then run_helper setup-validate "${helper_args[@]}"; fi

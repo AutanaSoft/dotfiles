@@ -18,8 +18,8 @@
 #      the system picks up the LANG on the next session/login.
 #
 # Why a separate script:
-#   The locale is user-specific (the Autanasoft repo ships es_VE.UTF-8,
-#   but a fork or sibling install may want something else). It is
+#   The locale is user-specific (this profile ships es_VE.UTF-8, but a
+#   sibling install may want something else). It is
 #   therefore OPT-IN via the root `./setup --locale` flag, not part of
 #   the default `./setup --dots` flow.
 #

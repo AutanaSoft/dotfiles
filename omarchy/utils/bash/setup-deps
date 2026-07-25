@@ -1,336 +1,78 @@
 #!/usr/bin/env bash
-# omarchy/utils/bash/setup-deps — install OS packages required by the selected env.
-#
-# root `./setup --dots` orchestrator, but it can also be run directly:
-#
-#     omarchy/utils/bash/setup-deps [--omarchy] [--dry-run] [--help]
-#
-# When the root `./setup` orchestrator invokes it, the selected environment
-# is passed through the `DOTFILES_ENV` environment variable and the dry-run
-# mode through `DOTFILES_DRY_RUN=1`. Either an explicit flag or the env
-# variable works.
-#
-# For each env, the script verifies whether each package is already
-# installed (via the package manager) and installs the missing ones
-# in a single batch per env. Re-running is a no-op when every
-# package is already present.
-#
-# Omarchy (Arch + Hyprland, CachyOS + Omarchy, Arch + Omarchy):
-#   - Package manager: yay (AUR helper, wraps pacman)
-#   - Install command: yay -S --needed <pkgs...>   (single batch)
-#   - Verify installed: pacman -Q <pkg>
-#
-# Notes:
-#   - Package names do not always match the command they provide, so this
-#     script checks by package name, not by `command -v`.
-#   - In --dry-run mode the script reports what it would do but never
-#     runs the install command. A missing package manager is only fatal
-#     when an actual install is required.
 
 set -euo pipefail
 
-# ---------------------------------------------------------------------------
-# Resolve repo root (informational; this script does not depend on repo
-# contents). When DOTFILES_ROOT is exported by the root `./setup`
-# orchestrator, prefer it.
-# ---------------------------------------------------------------------------
 SCRIPT_PATH="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-if [[ -n "${DOTFILES_ROOT:-}" ]]; then
-    REPO_ROOT="$DOTFILES_ROOT"
-else
-    REPO_ROOT="$(cd -- "$SCRIPT_PATH/.." && pwd)"
-fi
+REPO_ROOT="${DOTFILES_ROOT:-$(cd -- "$SCRIPT_PATH/../../.." && pwd)}"
+DRY_RUN="${DOTFILES_DRY_RUN:-0}"
+OMARCHY=0
+MANIFEST="$REPO_ROOT/omarchy/dependencies-manifest"
 
-# ---------------------------------------------------------------------------
-# Defaults
-# ---------------------------------------------------------------------------
-DOTFILES_ENV_LOCAL="${DOTFILES_ENV:-}"
-DRY_RUN=0
-REQUEST_HELP=0
-
-# Package list for the Omarchy-family host. Names match the native Arch
-# package manager (pacman). Comments next to each package note the
-# command the package provides when the names diverge.
-OMARCHY_PACKAGES=(
-    systemd-resolvconf
-    lsof
-    hunspell
-    hunspell-en_us      # command: hunspell
-    hunspell-es_any     # command: hunspell
-    # zellij              # command: zellij
-    trash-cli           # command: trash (snacks.nvim explorer delete)
-    keyd                # command: keyd (keyboard remapping daemon)
-    piper               # command: piper (Logitech mouse GUI; ratbagd-backed)
-    libratbag           # provides: ratbagd (DBus service for Piper / mouse profiles)
-    postgresql          # server + psql + libpq (local backend DB)
-    valkey              # provides: redis (in-memory store; BSD-licensed fork of Redis)
-)
-
-# ---------------------------------------------------------------------------
-# Usage
-# ---------------------------------------------------------------------------
 usage() {
     cat <<EOF
-Usage: $0 [--omarchy] [--dry-run] [--help]
+Usage: $0 --omarchy [--dry-run] [--help]
 
-Installs the OS packages required by the selected environment.
-
-This script is the dependencies executor. Prefer invoking it via the root
-entrypoint: \`./setup --dots [--fonts] [--dry-run]\`.
-
-When the root \`./setup\` orchestrator calls this script, it passes the
-selected environment through \`DOTFILES_ENV\` and the dry-run mode
-through \`DOTFILES_DRY_RUN=1\`. Either works as input.
-
-Environment selection (in order of precedence):
-  1. Explicit flag: --omarchy on the command line
-     (overrides auto-detection; useful for chroots, toolboxes, and
-     deterministic test fixtures).
-  2. DOTFILES_ENV: 'omarchy' (set by the root orchestrator).
-  3. Auto-detection: probe the host PATH in this fixed order:
-       yay    → omarchy   (AUR helper is the documented Omarchy entry)
-       pacman → omarchy   (with WARN: install yay for AUR access)
-     If neither of these is on PATH, this script exits non-zero with
-     "Could not detect a supported package manager".
-
-Options:
-  --dry-run    Print what would be installed without running the
-               package manager. Re-running the actual install is a
-               no-op when every package is already present.
-  --help, -h   Show this help and exit.
-
-Packages (verified with the package manager, not 'command -v'):
-
-  Omarchy: ${OMARCHY_PACKAGES[*]}
+Install the packages declared in the Omarchy dependency manifest in one yay
+batch. The profile must be selected by the dispatcher or with --omarchy; this
+helper never autodetects it.
 EOF
 }
 
-# ---------------------------------------------------------------------------
-# Argument parsing
-# ---------------------------------------------------------------------------
+log() { echo "[setup-deps] $*"; }
+fail() { echo "[setup-deps] ERROR: $*" >&2; exit 1; }
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --omarchy)
-            DOTFILES_ENV_LOCAL="omarchy"
-            shift
-            ;;
-        --dry-run)
-            DRY_RUN=1
-            shift
-            ;;
-        --help | -h)
-            REQUEST_HELP=1
-            shift
-            ;;
-        *)
-            echo "Unknown argument: $1" >&2
-            usage >&2
-            exit 2
-            ;;
+        --omarchy) OMARCHY=1; shift ;;
+        --dry-run) DRY_RUN=1; shift ;;
+        --help|-h) usage; exit 0 ;;
+        *) fail "unknown option: $1" ;;
     esac
 done
+(( OMARCHY )) || fail "--omarchy is required; select a profile explicitly"
+[[ -f "$MANIFEST" ]] || fail "dependency manifest not found: $MANIFEST"
 
-if [[ "$REQUEST_HELP" -eq 1 ]]; then
-    usage
+packages=()
+declare -A seen=()
+while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ "$line" =~ ^[[:space:]]*$ || "$line" =~ ^[[:space:]]*# ]] && continue
+
+    case "$line" in
+        *$'\t'*$'\t'*) fail "malformed manifest line: $line" ;;
+        *$'\t'*) ;;
+        *) fail "malformed manifest line: $line" ;;
+    esac
+
+    IFS=$'\t' read -r action package <<< "$line"
+    [[ "$action" == package ]] || fail "unknown manifest action: $action"
+    [[ "$package" =~ ^[[:alnum:]@._+:-]+$ ]] || fail "malformed package name: $package"
+    [[ -z "${seen[$package]+x}" ]] || fail "duplicate package in manifest: $package"
+    seen["$package"]=1
+    packages+=("$package")
+done < "$MANIFEST"
+
+((${#packages[@]} > 0)) || fail "dependency manifest contains no packages"
+
+missing=()
+for package in "${packages[@]}"; do
+    if command -v pacman >/dev/null 2>&1 && pacman -Q "$package" >/dev/null 2>&1; then
+        log "[installed] $package"
+    else
+        log "[missing] $package"
+        missing+=("$package")
+    fi
+done
+
+if ((${#missing[@]} == 0)); then
+    log "All manifest packages are installed."
     exit 0
 fi
 
-# Promote DOTFILES_DRY_RUN=1 to DRY_RUN=1 when invoked by the orchestrator
-# without an explicit --dry-run flag. The root setup exports it explicitly
-# when --dry-run is set; both signals agree in that case.
-if [[ -n "${DOTFILES_DRY_RUN:-}" && "$DOTFILES_DRY_RUN" == "1" ]]; then
-    DRY_RUN=1
+if (( DRY_RUN )); then
+    log "[dry-run] would run: yay -S --needed ${missing[*]}"
+    exit 0
 fi
 
-# ---------------------------------------------------------------------------
-# Logging helpers
-# ---------------------------------------------------------------------------
-log() {
-    echo "[setup-deps] $*"
-}
-
-warn() {
-    echo "[setup-deps] WARN: $*" >&2
-}
-
-fail() {
-    echo "[setup-deps] ERROR: $*" >&2
-    exit 1
-}
-
-# ---------------------------------------------------------------------------
-# Environment detection
-# ---------------------------------------------------------------------------
-# Probe package managers in the documented order. Echoes the detected
-# env ("omarchy") on stdout. Returns 0 on success, 1 when no supported
-# package manager is on PATH. Detection is purely a probe: the script
-# never calls `command -v` on a tool it then needs to install.
-detect_env() {
-    if command -v yay >/dev/null 2>&1; then
-        printf 'omarchy\n'
-        return 0
-    fi
-    if command -v pacman >/dev/null 2>&1; then
-        warn "yay is not on PATH; install it for AUR access. Detecting as omarchy via pacman."
-        printf 'omarchy\n'
-        return 0
-    fi
-    return 1
-}
-
-# ---------------------------------------------------------------------------
-# Validation
-# ---------------------------------------------------------------------------
-# When neither an explicit flag nor DOTFILES_ENV is set, auto-detect
-# the host by probing package managers. When detection fails, exit
-# with a clear, actionable message.
-if [[ -z "$DOTFILES_ENV_LOCAL" ]]; then
-    if detected_env="$(detect_env)"; then
-        DOTFILES_ENV_LOCAL="$detected_env"
-        log "Detected env: $DOTFILES_ENV_LOCAL (no --omarchy passed)"
-    else
-        cat >&2 <<EOF
-ERROR: Could not detect a supported package manager (yay, pacman). Install one and re-run.
-EOF
-        usage >&2
-        exit 2
-    fi
-fi
-
-# ---------------------------------------------------------------------------
-# Package manager helpers
-# ---------------------------------------------------------------------------
-# Reason: replaced by install_batch in change setup-deps-batch-install
-# pm_install_cmd() {
-#     local pkg="$1"
-#     case "$DOTFILES_ENV_LOCAL" in
-#         omarchy)
-#             printf 'yay -S --needed %s\n' "$pkg"
-#             ;;
-#     esac
-# }
-
-# Verify a package is installed using the native package manager.
-# Returns 0 if installed, non-zero otherwise. In dry-run mode, missing
-# verification tooling does not fail; the package is conservatively
-# treated as missing so the dry-run report still shows the would-be
-# install command.
-pkg_installed() {
-    local pkg="$1"
-    if ! command -v pacman >/dev/null 2>&1; then
-        if [[ "$DRY_RUN" -eq 1 ]]; then
-            warn "pacman not on PATH; cannot verify '$pkg' in dry-run. Assuming missing."
-            return 1
-        fi
-        fail "pacman is not on PATH; cannot verify packages on Omarchy."
-    fi
-    pacman -Q "$pkg" >/dev/null 2>&1
-}
-
-# Reason: replaced by install_batch in change setup-deps-batch-install
-# install_package() {
-#     local pkg="$1"
-#     local cmd
-#     cmd="$(pm_install_cmd "$pkg")"
-#
-#     if [[ "$DRY_RUN" -eq 1 ]]; then
-#         log "[dry-run] would run: $cmd"
-#         return 0
-#     fi
-#
-#     # Real install path: require the package manager.
-#     if ! command -v yay >/dev/null 2>&1; then
-#         fail "yay is not on PATH; install it before running setup-deps for Omarchy."
-#     fi
-#
-#     log "Installing missing package '$pkg'..."
-#     yay -S --needed "$pkg"
-# }
-
-# ---------------------------------------------------------------------------
-# Batch install (single-pass per env)
-# ---------------------------------------------------------------------------
-# Iterate the env package list, log a per-pkg [ok]/[miss] line, and
-# append every missing package to the MISSING=() array. Bumps the
-# present / missing counters. Does NOT invoke the package manager.
-collect_missing() {
-    local pkg
-    for pkg in "$@"; do
-        if pkg_installed "$pkg"; then
-            log "  [ok]   $pkg"
-            present=$((present + 1))
-        else
-            log "  [miss] $pkg"
-            MISSING+=("$pkg")
-            missing=$((missing + 1))
-        fi
-    done
-}
-
-# Invoke the env's package manager exactly once with every package in
-# MISSING=() as a positional argument. In dry-run mode, log the would-be
-# command and return 0. In real mode, require the PM on PATH up front
-# and exec the command. set -e propagates a non-zero exit; a single
-# failure aborts the run.
-install_batch() {
-    local cmd=(yay -S --needed "${MISSING[@]}")
-
-    if [[ "$DRY_RUN" -eq 1 ]]; then
-        log "[dry-run] would run: ${cmd[*]}"
-        return 0
-    fi
-
-    if ! command -v yay >/dev/null 2>&1; then
-        fail "yay is not on PATH; install it before running setup-deps for Omarchy."
-    fi
-
-    log "Running: ${cmd[*]}"
-    "${cmd[@]}"
-}
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
-main() {
-    local packages=("${OMARCHY_PACKAGES[@]}")
-
-    log "Repo root: $REPO_ROOT"
-    log "Env:       $DOTFILES_ENV_LOCAL"
-    if [[ "$DRY_RUN" -eq 1 ]]; then
-        log "Mode:      DRY-RUN (no package manager actions)"
-    fi
-
-    log "Checking ${#packages[@]} package(s)..."
-
-    # Batch install state. Counters are script-scoped (not local) so
-    # collect_missing can mutate them.
-    MISSING=()
-    installed=0
-    present=0
-    missing=0
-
-    collect_missing "${packages[@]}"
-
-    # All-present early-exit: log and exit BEFORE the install call.
-    # The final Summary: line is intentionally NOT emitted in this
-    # path (nothing was installed; reporting counts is noise).
-    if [[ "${#MISSING[@]}" -eq 0 ]]; then
-        log "All ${#packages[@]} packages present; nothing to install."
-        exit 0
-    fi
-
-    log "Installing ${#MISSING[@]} missing: ${MISSING[*]}"
-    install_batch
-
-    # Reaching here means install_batch exited 0: every package in
-    # MISSING=() was installed successfully. Roll the missing count
-    # into installed and clear missing.
-    installed=${#MISSING[@]}
-    missing=0
-
-    log "Summary: $installed installed, $present present, $missing missing."
-
-    log "Setup complete."
-}
-
-main "$@"
+command -v yay >/dev/null 2>&1 || fail "yay is not on PATH"
+log "Installing missing packages in one batch"
+yay -S --needed "${missing[@]}"

@@ -1,6 +1,6 @@
 # Post-Setup
 
-Run-once manual steps that `./setup --dots` cannot finish for you — sudo
+Run-once manual steps that `./setup --profile omarchy --dots` cannot finish for you — sudo
 tweaks, partition mounts, secrets, and service auth. Each section is
 independent; rerun any single one without touching the rest.
 
@@ -61,7 +61,7 @@ chmod 644 ~/.ssh/id_ed25519_*.pub
 
 ## GitHub CLI Auth
 
-`./setup --dots` does not authenticate against GitHub. Run:
+`./setup --profile omarchy --dots` does not authenticate against GitHub. Run:
 
 ```bash
 gh auth login

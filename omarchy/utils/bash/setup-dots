@@ -1,583 +1,111 @@
 #!/usr/bin/env bash
-# omarchy/utils/bash/setup-dots — apply this repo's dotfiles to a local Omarchy install.
-#
-# This script is the Omarchy-specific executor. It is normally invoked by the
-# root `./setup --dots` orchestrator, but it can also be run directly:
-#
-#     omarchy/utils/bash/setup-dots [--dry-run] [--help]
-#
-# Supports installs created from the Omarchy ISO, Arch + Omarchy layer, and
-# CachyOS minimal + Omarchy layer. This script does NOT install Omarchy; it
-# only connects an existing install to the dotfiles in this repository.
-#
-# Env-script ownership (the new contract):
-#   This script owns the full Omarchy env flow: install OS dependencies
-#   (via omarchy/utils/bash/setup-deps), install Nerd Fonts (via
-#   omarchy/utils/bash/setup-fonts), pre-flight the fonts directory, apply the
-#   symlink map, and validate the system. The root `./setup` is a thin
-#   dispatcher; it does not coordinate this flow.
-#
-# Symlink manifest:
-#   The symlink map is defined in dotfiles-manifest at the distro root
-#   (i.e. omarchy/dotfiles-manifest, sibling of this script's parent
-#   directory). To add, remove, or change symlinks, edit that file —
-#   not this script. See the manifest header for the format specification.
-#
-# Pre-requisites (not installed by this script):
-#   - `omarchy` command on PATH
-#   - `hyprctl` available (a running Hyprland session)
-#
-# Existing files at symlink targets are moved to
-#   <repo>/backup/<timestamp>/<home-relative-path>
-# before being replaced by symlinks pointing into the repo.
-#
-# SSH config is NOT symlinked. Setup copies the tracked safe template
-# at `omarchy/home/ssh/config` to `~/.ssh/config` (mode 600) only when
-# the source exists and the local target does not. The local file
-# always wins. The repo template must contain no secrets or real
-# production values.
-#
-# Fonts are installed by the env flow itself (Step 2/5). When this
-# script is run directly without going through root, the fonts dir
-# location is read from $DOTFILES_FONTS_DIR (set by root to
-# $HOME/.local/share/fonts/autanasoft) or, when unset, defaults to
-# the same path.
 
 set -euo pipefail
 
-# ---------------------------------------------------------------------------
-# Resolve repo root from this script's path (CWD-independent).
-# When invoked by the root `./setup` orchestrator, DOTFILES_ROOT is exported
-# and used as the source of truth; otherwise we derive it from this file's
-# location (omarchy/utils/bash/../../..).
-# ---------------------------------------------------------------------------
-if [[ -n "${DOTFILES_ROOT:-}" ]]; then
-    REPO_ROOT="$DOTFILES_ROOT"
-else
-    SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-    REPO_ROOT="$(cd -- "$SCRIPT_DIR/../../.." && pwd)"
-fi
-
-# ---------------------------------------------------------------------------
-# Mode parsing
-# ---------------------------------------------------------------------------
-DRY_RUN=0
-if [[ -n "${DOTFILES_DRY_RUN:-}" && "$DOTFILES_DRY_RUN" == "1" ]]; then
-    DRY_RUN=1
-fi
+REPO_ROOT="${DOTFILES_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)}"
+DRY_RUN="${DOTFILES_DRY_RUN:-0}"
+BACKUP_DIR="${DOTFILES_BACKUP_DIR:-$REPO_ROOT/backup/$(date -u +%Y%m%dT%H%M%SZ)}"
 
 usage() {
     cat <<EOF
 Usage: $0 [--dry-run] [--help]
 
-Applies the dotfiles in this repo to the local Omarchy install.
-
-This script is the Omarchy executor. Prefer invoking it via the root
-entrypoint: \`./setup --dots [--fonts] [--dry-run]\`.
-
-Options:
-  --dry-run    Print actions without modifying the system. Skips
-               symlink moves, SSH config copy, 'omarchy theme',
-               'hyprctl', and font downloads.
-  --help, -h   Show this help and exit.
-
-Pre-requisites:
-  - 'omarchy' command on PATH
-  - 'hyprctl' available (a running Hyprland session)
-  - System packages and Nerd Fonts are handled by this script through
-    omarchy/utils/bash/setup-deps and omarchy/utils/bash/setup-fonts.
-
-Existing targets are moved to:
-  $REPO_ROOT/backup/<timestamp>/<home-relative-path>
-
-Fonts are installed by this script as part of the Omarchy setup flow.
-For fonts-only setup, use:
-  ./setup --fonts
-  omarchy/utils/bash/setup-fonts --help
+Apply the Omarchy user dotfiles manifest, preserving local targets in backups.
+This helper does not install packages, fonts, services, locale, or session changes.
 EOF
 }
+log() { echo "[setup-dots] $*"; }
+fail() { echo "[setup-dots] ERROR: $*" >&2; exit 1; }
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --dry-run)
-            DRY_RUN=1
-            shift
-            ;;
-        --help | -h)
-            usage
-            exit 0
-            ;;
-        *)
-            echo "Unknown argument: $1" >&2
-            usage >&2
-            exit 2
-            ;;
+        --dry-run) DRY_RUN=1; shift ;;
+        --help|-h) usage; exit 0 ;;
+        *) fail "unknown option: $1" ;;
     esac
 done
 
-# ---------------------------------------------------------------------------
-# Logging helpers
-# ---------------------------------------------------------------------------
-log() {
-    echo "[setup-dots] $*"
-}
-
-warn() {
-    echo "[setup-dots] WARN: $*" >&2
-}
-
-fail() {
-    echo "[setup-dots] ERROR: $*" >&2
-    exit 1
-}
-
-# ---------------------------------------------------------------------------
-# Pre-flight checks
-# ---------------------------------------------------------------------------
-require_command() {
-    local cmd="$1"
-    if ! command -v "$cmd" >/dev/null 2>&1; then
-        fail "Required command '$cmd' is not on PATH. Install it before running this script."
-    fi
-}
-
-# ---------------------------------------------------------------------------
-# Subprocess invocation helpers (env-script owns the full flow)
-# ---------------------------------------------------------------------------
-# Invoke omarchy/utils/bash/setup-deps as a subprocess, passing the dry-run flag
-# through. setup-deps accepts an explicit --omarchy override for the rare
-# case where auto-detection is wrong; this script is always the omarchy
-# executor, so we pass the flag. Errors propagate (the env script's
-# `set -e` trips on a non-zero child exit).
-invoke_setup_deps() {
-    local script_dir
-    script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-    local deps_script="$script_dir/setup-deps"
-    if [[ ! -x "$deps_script" ]]; then
-        fail "Required helper script missing or not executable: $deps_script"
-    fi
-    local -a args=(--omarchy)
-    if [[ "$DRY_RUN" -eq 1 ]]; then
-        args+=(--dry-run)
-    fi
-    log "Invoking $deps_script ${args[*]}"
-    "$deps_script" "${args[@]}"
-}
-
-# Invoke omarchy/utils/bash/setup-fonts as a subprocess, passing the dry-run flag
-# through. The fonts script reads $DOTFILES_FONTS_DIR (set by root or
-# by direct callers) so the override path crosses the process boundary
-# automatically.
-invoke_setup_fonts() {
-    local script_dir
-    script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-    local fonts_script="$script_dir/setup-fonts"
-    if [[ ! -x "$fonts_script" ]]; then
-        fail "Required helper script missing or not executable: $fonts_script"
-    fi
-    local -a args=()
-    if [[ "$DRY_RUN" -eq 1 ]]; then
-        args+=(--dry-run)
-    fi
-    log "Invoking $fonts_script ${args[*]}"
-    "$fonts_script" "${args[@]}"
-}
-
-# ---------------------------------------------------------------------------
-# Backup helper
-# ---------------------------------------------------------------------------
-# Compute a backup path for an existing target under
-#   $REPO_ROOT/backup/<timestamp>/<home-relative-path>
-# If that path already exists, append a numeric suffix to avoid overwriting
-# a previous backup. Echoes the final backup path.
 backup_target() {
-    local target="$1"  # absolute target path
-    local stamp="$2"
-    local rel
-
-    if [[ "$target" == "$HOME" ]]; then
-        rel=""
-    elif [[ "$target" == "$HOME"/* ]]; then
+    local target="$1" rel backup_path suffix=1
+    if [[ "$target" == "$HOME"/* ]]; then
         rel="${target#"$HOME"/}"
     else
-        # Target is outside $HOME; preserve the absolute path under backup/
-        # by replacing the leading slash with an underscore.
         rel="${target//\//_}"
         rel="${rel#_}"
     fi
-
-    local backup_path="$REPO_ROOT/backup/$stamp/$rel"
-    local parent
-    parent="$(dirname -- "$backup_path")"
-
-    if [[ -z "$rel" ]]; then
-        # Backing up $HOME itself isn't something we do, but guard anyway.
-        fail "Refusing to back up \$HOME: $target"
-    fi
-
-    if [[ -e "$backup_path" || -L "$backup_path" ]]; then
-        local i=1
-        while [[ -e "$backup_path.$i" || -L "$backup_path.$i" ]]; do
-            i=$((i + 1))
-        done
-        backup_path="$backup_path.$i"
-    fi
-
+    backup_path="$BACKUP_DIR/$rel"
+    while [[ -e "$backup_path" || -L "$backup_path" ]]; do
+        backup_path="$BACKUP_DIR/$rel.$suffix"
+        suffix=$((suffix + 1))
+    done
     printf '%s\n' "$backup_path"
 }
 
-# ---------------------------------------------------------------------------
-# Symlink helpers
-# ---------------------------------------------------------------------------
-# Prepare the parent directory of a symlink target before the target itself
-# is examined. This protects `mkdir -p` (used below to create the parent)
-# against a stale or broken symlink left over from a previous repo layout
-# (e.g. when `src/` was renamed to `omarchy/` and a previous run created
-# `~/.config/alacritty` as a link to a path that no longer exists).
-#
-# Behavior:
-#   - parent missing                  : nothing to do
-#   - parent is a regular directory   : nothing to do
-#   - parent is a broken symlink      : remove and log (mkdir -p will recreate)
-#   - parent is a valid symlink       : fail closed. Traversing it would let
-#                                       later writes mutate the repo source
-#                                       tree; the user must back it up and
-#                                       remove it manually before re-running.
-#   - parent is anything else         : fail closed with a clear message.
-prepare_symlink_parent() {
+prepare_parent() {
     local parent="$1"
-    [[ -z "$parent" || "$parent" == "/" ]] && return 0
-
-    if [[ ! -e "$parent" && ! -L "$parent" ]]; then
-        return 0
-    fi
-
-    if [[ -d "$parent" && ! -L "$parent" ]]; then
-        return 0
-    fi
-
+    [[ -z "$parent" || "$parent" == / || ! -e "$parent" && ! -L "$parent" ]] && return 0
+    [[ -d "$parent" && ! -L "$parent" ]] && return 0
     if [[ -L "$parent" && ! -e "$parent" ]]; then
         log "Removing stale parent symlink: $parent"
-        if [[ "$DRY_RUN" -eq 0 ]]; then
-            rm -- "$parent"
-        fi
+        (( DRY_RUN )) || rm -- "$parent"
         return 0
     fi
-
-    fail "Parent path is not a regular directory: $parent. Back it up and remove it before re-running setup."
+    fail "parent path is not a regular directory: $parent"
 }
 
-# Idempotently ensure $target is a symlink pointing to $source.
-#   - If $target already points (after resolving) to the same real path as
-#     $source, do nothing.
-#   - Otherwise, back up $target to the timestamped backup dir and create a
-#     fresh symlink.
 ensure_symlink() {
-    local source="$1"  # absolute source path in the repo
-    local target="$2"  # absolute target path under $HOME
-    local stamp="$3"
-
-    if [[ ! -e "$source" && ! -L "$source" ]]; then
-        fail "Source does not exist: $source"
+    local source="$1" target="$2" stamp="$3" backup
+    [[ -e "$source" || -L "$source" ]] || fail "source does not exist: $source"
+    if [[ -L "$target" && "$(readlink -f -- "$target" 2>/dev/null || true)" == "$(readlink -f -- "$source" 2>/dev/null || true)" ]]; then
+        log "Already linked: $target"
+        return 0
     fi
-
-    # Already linked to the right thing? Leave it alone.
-    if [[ -L "$target" && -e "$target" ]]; then
-        local resolved_target resolved_source
-        resolved_target="$(readlink -f -- "$target" 2>/dev/null || true)"
-        resolved_source="$(readlink -f -- "$source" 2>/dev/null || true)"
-        if [[ -n "$resolved_target" && "$resolved_target" == "$resolved_source" ]]; then
-            log "Already linked: $target"
-            return 0
-        fi
-    fi
-
-    # Validate the parent before moving or replacing the target. A valid
-    # symlink parent can redirect these operations into a different tree.
-    prepare_symlink_parent "$(dirname -- "$target")"
-
-    # Target is a broken or wrong symlink: remove it. Symlinks carry no file
-    # data, so backing one up would only preserve an obsolete destination.
+    prepare_parent "$(dirname -- "$target")"
     if [[ -L "$target" ]]; then
         log "Removing stale target symlink: $target"
-        if [[ "$DRY_RUN" -eq 0 ]]; then
-            rm -- "$target"
-        fi
-    # A real target may contain user data, so preserve it before replacement.
+        (( DRY_RUN )) || rm -- "$target"
     elif [[ -e "$target" ]]; then
-        local backup_path
-        backup_path="$(backup_target "$target" "$stamp")"
-        log "Backing up existing target: $target -> $backup_path"
-        if [[ "$DRY_RUN" -eq 0 ]]; then
-            mkdir -p "$(dirname -- "$backup_path")"
-            mv "$target" "$backup_path"
-        fi
+        backup="$(backup_target "$target")"
+        log "Backing up existing target: $target -> $backup"
+        if (( !DRY_RUN )); then mkdir -p "$(dirname -- "$backup")"; mv -- "$target" "$backup"; fi
     fi
-
     log "Creating symlink: $target -> $source"
-    if [[ "$DRY_RUN" -eq 0 ]]; then
-        mkdir -p "$(dirname -- "$target")"
-        # -f forces overwrite (handles external watchers like
-        # omarchy-hyprland-monitor-watch recreating the file as a stub
-        # between backup and symlink). -n prevents following a symlink
-        # to a directory target.
-        ln -sfn "$source" "$target"
-    fi
+    if (( !DRY_RUN )); then mkdir -p "$(dirname -- "$target")"; ln -sfn -- "$source" "$target"; fi
 }
 
-# ---------------------------------------------------------------------------
-# File copy helper (for configs that shouldn't be live-tracked)
-# ---------------------------------------------------------------------------
-# Copy a file from the repo to $HOME when the source exists. The local
-# file at the target has priority: if it already exists, the copy is
-# skipped and a message is logged. Directory and file modes are enforced
-# by the caller.
 copy_file() {
-    local src="$1"
-    local target="$2"
-
-    if [[ ! -e "$src" && ! -L "$src" ]]; then
-        log "No source file at $src; skipping."
-        return 0
-    fi
-
-    # Local target has priority: never overwrite.
+    local source="$1" target="$2"
+    [[ -e "$source" || -L "$source" ]] || { log "Skipping missing source: $source"; return; }
     if [[ -e "$target" || -L "$target" ]]; then
-        log "Skipping copy: $target already exists (local file has priority)."
-        return 0
+        log "Skipping copy: $target already exists"
+        return
     fi
-
-    log "Copying: $src -> $target"
-    if [[ "$DRY_RUN" -eq 1 ]]; then
-        log "[dry-run] would copy: $src -> $target"
-        return 0
-    fi
-
-    mkdir -p "$(dirname -- "$target")"
-    cp "$src" "$target"
+    log "Copying: $source -> $target"
+    if (( !DRY_RUN )); then mkdir -p "$(dirname -- "$target")"; cp -- "$source" "$target"; fi
 }
 
-# Remove the obsolete Waybar config symlink only when it still points to the
-# source formerly managed by this repository. Local files and unrelated links
-# are intentionally preserved.
-cleanup_obsolete_waybar_config() {
-    local source="$REPO_ROOT/omarchy/home/config/waybar/config.jsonc"
-    local target="$HOME/.config/waybar/config.jsonc"
-
-    if [[ ! -L "$target" || "$(readlink -- "$target")" != "$source" ]]; then
-        return 0
-    fi
-
-    log "Removing obsolete managed symlink: $target"
-    if [[ "$DRY_RUN" -eq 0 ]]; then
-        rm -- "$target"
-    fi
-}
-
-# ---------------------------------------------------------------------------
-# Apply symlink map (reads from dotfiles-manifest)
-# ---------------------------------------------------------------------------
-# The manifest file lists all symlinks and file operations. This function
-# reads it line by line and dispatches to the appropriate helper.
-#
-# Manifest format (tab-separated):
-#   <action> <source-relative-to-repo> <target-relative-to-home>
-#
-# Actions:
-#   dir   - symlink entire directory
-#   file  - symlink single file
-#   glob  - expand wildcard pattern
-#   copy  - copy file instead of symlink
-#   skip  - explicit exclusion (logged, no action)
-apply_symlinks() {
-    local stamp="$1"
-    local manifest="$(dirname -- "${BASH_SOURCE[0]}")/../../dotfiles-manifest"
-
-    if [[ ! -f "$manifest" ]]; then
-        fail "Manifest not found: $manifest"
-    fi
-
+apply_manifest() {
+    local manifest="$REPO_ROOT/omarchy/dotfiles-manifest" action source target expanded
+    [[ -f "$manifest" ]] || fail "manifest not found: $manifest"
     while IFS=$'\t' read -r action source target; do
-        # Skip comments and empty lines
         [[ -z "$action" || "$action" =~ ^[[:space:]]*# ]] && continue
-
-        # Trim whitespace
-        action="$(echo "$action" | xargs)"
-        source="$(echo "$source" | xargs)"
-        target="$(echo "$target" | xargs)"
-
-        local src_path="$REPO_ROOT/$source"
-        local tgt_path="$HOME/$target"
-
+        action="$(xargs <<<"$action")"; source="$(xargs <<<"$source")"; target="$(xargs <<<"$target")"
         case "$action" in
-            dir|file)
-                ensure_symlink "$src_path" "$tgt_path" "$stamp"
-                ;;
+            dir|file) ensure_symlink "$REPO_ROOT/$source" "$HOME/$target" "" ;;
             glob)
-                local expanded
-                # Remove trailing slash from target if present
-                tgt_path="${tgt_path%/}"
-                for expanded in $src_path; do
-                    [[ -e "$expanded" ]] || continue
-                    ensure_symlink "$expanded" "$tgt_path/$(basename -- "$expanded")" "$stamp"
+                target="${target%/}"
+                for expanded in $REPO_ROOT/$source; do
+                    [[ -e "$expanded" ]] && ensure_symlink "$expanded" "$HOME/$target/$(basename -- "$expanded")" ""
                 done
                 ;;
-            copy)
-                copy_file "$src_path" "$tgt_path"
-                ;;
-            skip)
-                log "Skipping (explicit exclusion): $source"
-                ;;
-            *)
-                warn "Unknown action '$action' in manifest; skipping line"
-                ;;
+            copy) copy_file "$REPO_ROOT/$source" "$HOME/$target" ;;
+            skip) log "Skipping explicit exclusion: $source" ;;
+            *) fail "unknown manifest action: $action" ;;
         esac
     done < "$manifest"
 }
 
-# ---------------------------------------------------------------------------
-# Install keyd config + enable input-device services
-# ---------------------------------------------------------------------------
-# Precedent: this is the FIRST sudo service-enable touchpoint in the
-# Omarchy env flow. Future env executors that need a privileged
-# service-enable can use the same pattern (rely on sudo's default
-# timestamp cache, 5 min — do NOT add an explicit `sudo -v` upfront).
-# The three sudo calls below (`install`, `systemctl`, `keyd reload`)
-# coalesce into a single password prompt because they run back-to-back
-# inside the timestamp window.
-#
-# Order within the step: install the config FIRST, then start the
-# daemon. Reversing the order would risk a daemon restart loop on a
-# fresh host that has no /etc/keyd/default.conf yet (the keyd unit
-# would start, fail to find its config, and keep retrying).
-#
-# No ~/.config/keyd/ symlink is created here: keyd runs as root and
-# reads only from /etc/keyd/default.conf. The user-level path is
-# unused because keyd reads the system configuration directly.
-install_input_devices() {
-    local src="$REPO_ROOT/omarchy/etc/keyd/default.conf"
-    local target="/etc/keyd/default.conf"
-
-    if [[ "$DRY_RUN" -eq 1 ]]; then
-        log "[dry-run] would run: install -m 644 $src $target"
-        log "[dry-run] would run: systemctl enable --now keyd ratbagd"
-        log "[dry-run] would run: keyd reload"
-        return 0
-    fi
-
-    require_command install
-    require_command systemctl
-    log "Installing keyd config: $src -> $target (mode 644)"
-    sudo install -m 644 "$src" "$target"
-    log "Enabling and starting keyd + ratbagd services"
-    sudo systemctl enable --now keyd ratbagd
-    # Reload the running daemon so it picks up the new config. Without
-    # this, `systemctl enable --now` is a no-op when keyd is already
-    # active (the common case after the first setup run), and the new
-    # bindings never reach the running daemon.
-    sudo keyd reload
-}
-
-# ---------------------------------------------------------------------------
-# System validation: theme + reload
-# ---------------------------------------------------------------------------
-validate_system() {
-    if [[ "$DRY_RUN" -eq 1 ]]; then
-        log "[dry-run] would run: omarchy theme set tokyo-night-autana"
-        log "[dry-run] would run: hyprctl reload"
-        log "[dry-run] would run: hyprctl configerrors"
-        return 0
-    fi
-
-    log "Applying Omarchy theme: tokyo-night-autana"
-    omarchy theme set tokyo-night-autana
-
-    log "Reloading Hyprland config"
-    hyprctl reload
-
-    log "Validating Hyprland config (any errors below are fatal)"
-    hyprctl configerrors
-}
-
-# ---------------------------------------------------------------------------
-# Step counter
-# ---------------------------------------------------------------------------
-# The env script owns its own step counter. The 5 main steps are:
-#   1. Install OS dependencies
-#   2. Install Nerd Fonts
-#   3. Apply symlinks
-#   4. Install keyd config and enable input-device services
-#   5. Validate system
-# The pre-flight between steps 2 and 3 is non-mutating and is not
-# counted as a step on its own.
-TOTAL_STEPS=5
-current_step=0
-
-step() {
-    current_step=$((current_step + 1))
-    log "Step $current_step/$TOTAL_STEPS: $*"
-}
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
-main() {
-    local stamp
-    stamp="$(date -u +%Y%m%dT%H%M%SZ)"
-
-    log "Repo root:  $REPO_ROOT"
-    log "Home:       $HOME"
-    log "Timestamp:  $stamp"
-    if [[ "$DRY_RUN" -eq 1 ]]; then
-        log "Mode:       DRY-RUN (no system changes)"
-    fi
-
-    require_command omarchy
-    require_command hyprctl
-
-    # Step 1/5: install OS dependencies via the deps helper. In dry-run
-    # the helper previews every missing package's install command.
-    step "Install OS dependencies (via omarchy/utils/bash/setup-deps)"
-    invoke_setup_deps
-
-    # Step 2/5: install Nerd Fonts via the fonts helper. Idempotent;
-    # safe to re-run. In dry-run the helper previews the downloads.
-    step "Install Nerd Fonts (via omarchy/utils/bash/setup-fonts)"
-    invoke_setup_fonts
-
-    # Pre-flight: defense-in-depth for direct invocation without
-    # going through root. The font install is idempotent but a missing
-    # fonts dir at this point means Step 2/5 was bypassed (e.g. someone
-    # ran this script directly without setup-fonts). Non-mutating:
-    # we only check the directory, we never install fonts. In dry-run,
-    # warn and keep previewing so a clean machine can inspect the full
-    # setup flow before any downloads or symlinks happen.
-    local font_dir="${DOTFILES_FONTS_DIR:-$HOME/.local/share/fonts/autanasoft}"
-    log "Pre-flight fonts dir: $font_dir"
-    if [[ ! -d "$font_dir" ]] || [[ -z "$(ls -A -- "$font_dir" 2>/dev/null)" ]]; then
-        if [[ "$DRY_RUN" -eq 1 ]]; then
-            warn "Nerd Fonts not installed under $font_dir. Continuing because this is dry-run."
-        else
-        fail "Nerd Fonts not installed under $font_dir. Run './setup --dots --fonts' first."
-        fi
-    fi
-
-    # Step 3/5: remove obsolete managed links, then apply the current symlink map.
-    step "Apply symlinks"
-    cleanup_obsolete_waybar_config
-    apply_symlinks "$stamp"
-
-    # Step 4/5: install keyd config and enable input-device services.
-    # First sudo service-enable touchpoint in the env flow; both sudo
-    # calls (install + systemctl) coalesce under the timestamp cache.
-    step "Install keyd config and enable input-device services"
-    install_input_devices
-
-    # Step 5/5: validate the system (theme, hyprctl reload, etc.).
-    step "Validate system"
-    validate_system
-
-    log "Setup complete."
-}
-
-main "$@"
+log "Repo root: $REPO_ROOT"
+(( DRY_RUN )) && log "Mode: DRY-RUN (no user changes)"
+apply_manifest
+log "User dotfiles complete."

@@ -1,0 +1,15 @@
+# Omarchy dependency manifest
+# Format: package<TAB>name
+# Comments start with # and empty lines are ignored.
+
+package	systemd-resolvconf
+package	lsof
+package	hunspell
+package	hunspell-en_us
+package	hunspell-es_any
+package	trash-cli
+package	keyd
+package	piper
+package	libratbag
+package	postgresql
+package	valkey

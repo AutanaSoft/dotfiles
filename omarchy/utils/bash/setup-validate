@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+DRY_RUN="${DOTFILES_DRY_RUN:-0}"
+
+usage() {
+    cat <<EOF
+Usage: $0 [--dry-run] [--help]
+
+Apply the tracked Omarchy theme, reload Hyprland, and fail on config errors.
+EOF
+}
+log() { echo "[setup-validate] $*"; }
+fail() { echo "[setup-validate] ERROR: $*" >&2; exit 1; }
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dry-run) DRY_RUN=1; shift ;;
+        --help|-h) usage; exit 0 ;;
+        *) fail "unknown option: $1" ;;
+    esac
+done
+
+if (( DRY_RUN )); then
+    log "[dry-run] would run: omarchy theme set tokyo-night-autana"
+    log "[dry-run] would run: hyprctl reload"
+    log "[dry-run] would run: hyprctl configerrors"
+    exit 0
+fi
+
+command -v omarchy >/dev/null 2>&1 || fail "required command 'omarchy' is not on PATH"
+command -v hyprctl >/dev/null 2>&1 || fail "required command 'hyprctl' is not on PATH"
+log "Applying Omarchy theme"
+omarchy theme set tokyo-night-autana
+log "Reloading Hyprland"
+hyprctl reload
+log "Checking Hyprland configuration"
+hyprctl configerrors
