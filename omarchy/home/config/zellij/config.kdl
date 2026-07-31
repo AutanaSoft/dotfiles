@@ -284,7 +284,7 @@ web_client {
 // ------------------------------------------------------------------------------
 
 default_layout "autanasoft"
-theme "tokyo-night-storm"
+// theme "tokyo-night-storm"
 default_mode "locked"
 pane_frames false
 scrollback_editor "nvim"
