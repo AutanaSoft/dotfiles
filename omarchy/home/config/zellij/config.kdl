@@ -197,42 +197,52 @@ keybinds {
             LaunchOrFocusPlugin "file:~/.config/zellij/plugins/zellij_forgot.wasm" {
                 "LOAD_ZELLIJ_BINDINGS" "false"
                 "lock / unlock"    "Ctrl + g"
+                "show keybindings" "Alt + y"
                 "toggle floating"  "Alt + f"
+                "split right"      "Alt + Enter"
+                "split down"       "Alt + Shift + Enter"
                 "new pane"         "Alt + n"
-                "close pane"       "Alt + x"
+                "close pane"       "Alt + x / Alt + Esc"
                 "new tab"          "Alt + t"
+                "rename tab"       "Alt + r"
                 "focus pane"       "Alt + arrows"
-                "move pane"        "Alt + Shift + arrows"
-                "resize pane"      "Alt + + / Alt + -"
+                "resize pane"      "Alt + Shift + arrows"
                 "focus tab"        "Alt + Ctrl + Left/Right"
-                "swap layout"      "Alt + [ / Alt + ]"
-                "group pane"       "Alt + Shift + g"
-                "mark pane group"  "Alt + Shift + m"
+                "select tab"       "Alt + 1 ... Alt + 9"
+                "move tab"         "Alt + Ctrl + Shift + Left/Right"
                 floating true
                 move_to_focused_tab true
             }
         }
         bind "Alt f" { ToggleFloatingPanes; }
+        bind "Alt Enter" { NewPane "Right"; }
+        bind "Alt Shift Enter" { NewPane "Down"; }
+        bind "Alt Esc" { CloseFocus; }
         bind "Alt n" { NewPane; }
         bind "Alt x" { CloseFocus; }
         bind "Alt t" { NewTab; }
         bind "Alt r" { SwitchToMode "RenameTab"; TabNameInput 0; }
         bind "Alt Ctrl Left" { GoToPreviousTab; }
         bind "Alt Ctrl Right" { GoToNextTab; }
+        bind "Alt Ctrl Shift Left" { MoveTab "Left"; }
+        bind "Alt Ctrl Shift Right" { MoveTab "Right"; }
+        bind "Alt 1" { GoToTab 1; }
+        bind "Alt 2" { GoToTab 2; }
+        bind "Alt 3" { GoToTab 3; }
+        bind "Alt 4" { GoToTab 4; }
+        bind "Alt 5" { GoToTab 5; }
+        bind "Alt 6" { GoToTab 6; }
+        bind "Alt 7" { GoToTab 7; }
+        bind "Alt 8" { GoToTab 8; }
+        bind "Alt 9" { GoToTab 9; }
         bind "Alt Left" { MoveFocus "Left"; }
         bind "Alt Right" { MoveFocus "Right"; }
         bind "Alt Down" { MoveFocus "Down"; }
         bind "Alt Up" { MoveFocus "Up"; }
-        bind "Alt Shift Left" { MovePane "Left"; }
-        bind "Alt Shift Right" { MovePane "Right"; }
-        bind "Alt Shift Down" { MovePane "Down"; }
-        bind "Alt Shift Up" { MovePane "Up"; }
-        bind "Alt =" "Alt +" { Resize "Increase Left"; }
-        bind "Alt -" { Resize "Increase Right"; }
-        bind "Alt [" { PreviousSwapLayout; }
-        bind "Alt ]" { NextSwapLayout; }
-        bind "Alt Shift g" { TogglePaneInGroup; }
-        bind "Alt Shift m" { ToggleGroupMarking; }
+        bind "Alt Shift Left" { Resize "Increase Left"; }
+        bind "Alt Shift Right" { Resize "Increase Right"; }
+        bind "Alt Shift Down" { Resize "Increase Down"; }
+        bind "Alt Shift Up" { Resize "Increase Up"; }
     }
     shared_except "normal" "locked" {
         bind "Enter" "Esc" { SwitchToMode "Locked"; }
@@ -283,7 +293,7 @@ web_client {
 // Runtime
 // ------------------------------------------------------------------------------
 
-default_layout "autanasoft"
+// default_layout "autanasoft"
 // theme "tokyo-night-storm"
 default_mode "locked"
 pane_frames false
