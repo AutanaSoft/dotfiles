@@ -50,6 +50,9 @@ file	omarchy/home/config/alacritty/alacritty.toml	.config/alacritty/alacritty.to
 # --- Tmux ---
 dir	omarchy/home/config/tmux	.config/tmux
 
+# --- Zellij ---
+dir	omarchy/home/config/zellij	.config/zellij
+
 # --- SSH ---
 copy	omarchy/home/ssh/config	.ssh/config
 
