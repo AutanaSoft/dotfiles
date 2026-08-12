@@ -1,0 +1,22 @@
+# Shell behavior and interactive defaults.
+
+shopt -s histappend
+HISTCONTROL=ignoreboth
+HISTSIZE=32768
+HISTFILESIZE="${HISTSIZE}"
+
+# Disable command hashing so Mise shim resolution stays current.
+set +h
+
+if [[ ! -v BASH_COMPLETION_VERSINFO && -f /usr/share/bash-completion/bash_completion ]]; then
+  source /usr/share/bash-completion/bash_completion
+fi
+
+PS1='[\u@\h \W]\$ '
+
+# Publish cwd so WezTerm can inherit it into new panes. Avoid duplicate hooks
+# when the configuration is sourced more than once.
+case ";${PROMPT_COMMAND:-};" in
+  *';__wezterm_osc7;'*) ;;
+  *) PROMPT_COMMAND="__wezterm_osc7${PROMPT_COMMAND:+;${PROMPT_COMMAND}}" ;;
+esac

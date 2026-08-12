@@ -1,0 +1,13 @@
+# Environment variables for Fedora WSL2.
+
+export EDITOR=nvim
+export SUDO_EDITOR=nvim
+
+export BAT_THEME=ansi
+export MANROFFOPT="-c"
+export MANPAGER="sh -c 'col -bx | bat -l man -p'"
+
+case ":${PATH}:" in
+  *":${HOME}/.opencode/bin:"*) ;;
+  *) export PATH="${HOME}/.opencode/bin:${PATH}" ;;
+esac

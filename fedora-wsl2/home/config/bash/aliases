@@ -1,0 +1,28 @@
+# Interactive aliases.
+
+if command -v eza >/dev/null 2>&1; then
+  alias ls='eza -lh --group-directories-first --icons=auto'
+  alias lsa='ls -a'
+  alias lt='eza --tree --level=2 --long --icons --git'
+  alias lta='lt -a'
+fi
+alias grep='grep --color=auto'
+
+if command -v fzf >/dev/null 2>&1 && command -v bat >/dev/null 2>&1; then
+  alias ff="fzf --preview 'bat --style=numbers --color=always {}'"
+  alias eff='${EDITOR:-nvim} "$(ff)"'
+fi
+
+if command -v zoxide >/dev/null 2>&1; then
+  alias cd='zd'
+fi
+
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+
+alias c='opencode --port'
+alias g='git'
+alias gcm='git commit -m'
+alias gcam='git commit -a -m'
+alias gcad='git commit -a --amend'

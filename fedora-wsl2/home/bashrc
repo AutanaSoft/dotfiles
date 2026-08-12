@@ -1,0 +1,3 @@
+[[ $- != *i* ]] && return
+
+source "${HOME}/.config/bash/rc"

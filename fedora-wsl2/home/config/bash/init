@@ -1,0 +1,17 @@
+# Optional interactive tool initialization.
+
+if [[ -x "${HOME}/.local/bin/mise" ]]; then
+  eval "$("${HOME}/.local/bin/mise" activate bash)"
+fi
+
+if [[ ${TERM:-} != "dumb" ]] && command -v starship >/dev/null 2>&1; then
+  eval "$(starship init bash)"
+fi
+
+if command -v zoxide >/dev/null 2>&1; then
+  eval "$(zoxide init bash)"
+fi
+
+if command -v fzf >/dev/null 2>&1 && [[ -f /usr/share/fzf/shell/key-bindings.bash ]]; then
+  source /usr/share/fzf/shell/key-bindings.bash
+fi

@@ -1,0 +1,15 @@
+# ------------------------------------------------------------------------------
+# Mise Config
+# ------------------------------------------------------------------------------
+[tools]
+starship = "latest"
+zellij = "latest"
+tmux = "latest"
+neovim = "latest"
+lazygit = "latest"
+node = "latest"
+pnpm = "latest"
+prettier = "latest"
+python = "3.14.7"
+go = "latest"
+gh = "latest"
