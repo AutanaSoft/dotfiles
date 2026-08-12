@@ -6,14 +6,10 @@ tdl() {
   local ai="${1:-}"
   local ai2="${2:-}"
   local current_dir="${PWD}"
-  local editor_pane ai_pane ai2_pane
+  local editor_pane ai_pane ai2_pane launch_command session
 
   if [[ -z "$ai" ]]; then
     printf 'Usage: tdl <ai> [second_ai]\n' >&2
-    return 1
-  fi
-  if [[ -z "${TMUX:-}" || -z "${TMUX_PANE:-}" ]]; then
-    printf 'You must start tmux to use tdl.\n' >&2
     return 1
   fi
   if ! command -v "$ai" >/dev/null 2>&1; then
@@ -23,6 +19,20 @@ tdl() {
   if [[ -n "$ai2" ]] && ! command -v "$ai2" >/dev/null 2>&1; then
     printf 'tdl: command not found: %s\n' "$ai2" >&2
     return 1
+  fi
+  if ! command -v tmux >/dev/null 2>&1; then
+    printf 'tdl: command not found: tmux\n' >&2
+    return 1
+  fi
+  if [[ -z "${TMUX:-}" || -z "${TMUX_PANE:-}" ]]; then
+    printf -v launch_command 'tdl %q' "$ai"
+    if [[ -n "$ai2" ]]; then
+      printf -v launch_command '%s %q' "$launch_command" "$ai2"
+    fi
+    session=$(tmux new-session -d -P -F '#{session_name}' -c "$current_dir") || return
+    tmux send-keys -t "$session" "$launch_command" C-m || return
+    tmux attach-session -t "$session"
+    return $?
   fi
 
   editor_pane="$TMUX_PANE"
