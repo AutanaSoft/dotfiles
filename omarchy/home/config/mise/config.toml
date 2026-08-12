@@ -4,6 +4,7 @@
 [tools]
 go = "latest"
 node = "latest"
+"npm:markdownlint-cli2" = "latest"
 pnpm = "latest"
 prettier = "latest"
 python = "latest"
