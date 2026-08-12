@@ -199,10 +199,10 @@ keybinds {
                 "lock / unlock"    "Ctrl + g"
                 "show keybindings" "Alt + y"
                 "toggle floating"  "Alt + f"
-                "split right"      "Alt + Enter"
-                "split down"       "Alt + Shift + Enter"
+                "split right"      "Alt + v"
+                "split down"       "Alt + d"
                 "new pane"         "Alt + n"
-                "close pane"       "Alt + x / Alt + Esc"
+                "close pane"       "Alt + x"
                 "new tab"          "Alt + t"
                 "rename tab"       "Alt + r"
                 "focus pane"       "Alt + arrows"
@@ -215,9 +215,8 @@ keybinds {
             }
         }
         bind "Alt f" { ToggleFloatingPanes; }
-        bind "Alt Enter" { NewPane "Right"; }
-        bind "Alt Shift Enter" { NewPane "Down"; }
-        bind "Alt Esc" { CloseFocus; }
+        bind "Alt v" { NewPane "Right"; }
+        bind "Alt d" { NewPane "Down"; }
         bind "Alt n" { NewPane; }
         bind "Alt x" { CloseFocus; }
         bind "Alt t" { NewTab; }
