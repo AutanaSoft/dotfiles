@@ -158,7 +158,9 @@ args=(--profile "$PROFILE")
 (( FONTS )) && args+=(--fonts)
 (( SERVICES )) && args+=(--services)
 (( LOCALE )) && args+=(--locale)
-(( DOTS && !NO_VALIDATE )) && args+=(--final-validation)
+if [[ "$PROFILE" == omarchy ]] && (( DOTS && !NO_VALIDATE )); then
+    args+=(--final-validation)
+fi
 (( DRY_RUN )) && args+=(--dry-run)
 (( NON_INTERACTIVE )) && args+=(--non-interactive)
 

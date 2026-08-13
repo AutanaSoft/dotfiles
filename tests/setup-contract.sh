@@ -75,6 +75,9 @@ fedora_dots_output="$($SETUP --profile fedora-wsl2 --dots-only --non-interactive
 [[ "$fedora_dots_output" == *"[setup-dots]"* ]] || fail "Fedora --dots-only did not dispatch to setup-dots"
 [[ "$fedora_dots_output" != *"[setup-deps]"* ]] || fail "Fedora --dots-only unexpectedly dispatched deps"
 
+fedora_full_output="$($SETUP --profile fedora-wsl2 --dots --deps --non-interactive --dry-run)"
+[[ "$fedora_full_output" != *"unknown option: --final-validation"* ]] || fail "Fedora --dots forwarded Omarchy validation"
+
 before="$(find "$tmp_home" -mindepth 1 -print | sort)"
 "$FONT_SETUP" --dry-run >/tmp/setup-contract.stdout
 font_output="$(< /tmp/setup-contract.stdout)"
