@@ -51,9 +51,17 @@ if ((${#missing[@]})); then
     (( DRY_RUN )) || { command -v dnf >/dev/null 2>&1 || fail "dnf is required"; sudo dnf install "${missing[@]}"; }
 fi
 
-if [[ ! -f "$POSTGRES_DATA_DIR/PG_VERSION" ]]; then
-    log "Initializing PostgreSQL cluster"
-    (( DRY_RUN )) || sudo postgresql-setup --initdb
+if [[ -f "$POSTGRES_DATA_DIR/PG_VERSION" ]]; then
+    log "PostgreSQL cluster is initialized"
+else
+    if (( DRY_RUN )); then
+        log "Initializing PostgreSQL cluster"
+    elif [[ -d "$POSTGRES_DATA_DIR" ]] && [[ -n "$(sudo find "$POSTGRES_DATA_DIR" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+        fail "PostgreSQL data directory is not empty and is missing PG_VERSION: $POSTGRES_DATA_DIR"
+    else
+        log "Initializing PostgreSQL cluster"
+        sudo postgresql-setup --initdb
+    fi
 fi
 
 log "Enabling PostgreSQL and Valkey"
