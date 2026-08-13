@@ -155,6 +155,11 @@ rm -rf "$manifest_root"
 
 assert_status 1 "$FEDORA_SERVICES_SETUP" --unknown
 
+[[ "$(< "$ROOT_DIR/fedora-wsl2/home/config/mise/config.toml")" == *'python = "3.14.7"'* ]] || fail "Fedora Mise configuration does not pin Python 3.14.7"
+[[ "$(< "$ROOT_DIR/fedora-wsl2/home/config/mise/config.toml")" == *'"npm:markdownlint-cli2" = "latest"'* ]] || fail "Fedora Mise configuration does not install markdownlint-cli2"
+[[ "$(< "$FEDORA_SERVICES_SETUP")" == *'log "PostgreSQL is ready"'* ]] || fail "Fedora services do not confirm PostgreSQL readiness"
+[[ "$(< "$FEDORA_SERVICES_SETUP")" == *'log "Valkey socket is ready"'* ]] || fail "Fedora services do not confirm Valkey readiness"
+
 [[ "$(< "$ROOT_DIR/fedora-wsl2/home/bashrc")" == *"/etc/bashrc"* ]] || fail "Fedora bashrc does not source /etc/bashrc"
 
 bash_home="$(mktemp -d)"
