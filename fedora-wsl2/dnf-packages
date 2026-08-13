@@ -1,0 +1,13 @@
+# Fedora WSL2 packages managed by DNF.
+# One package name per line.
+
+git
+zip
+unzip
+lsof
+hunspell
+hunspell-en-US
+hunspell-es
+trash-cli
+postgresql-server
+valkey

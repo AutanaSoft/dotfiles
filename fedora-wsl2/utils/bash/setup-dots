@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+REPO_ROOT="${DOTFILES_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)}"
+BACKUP_DIR="${DOTFILES_BACKUP_DIR:-$REPO_ROOT/backup/$(date -u +%Y%m%dT%H%M%SZ)}"
+DRY_RUN="${DOTFILES_DRY_RUN:-0}"
+MANIFEST="$REPO_ROOT/fedora-wsl2/dots-paths"
+SOURCE_ROOT="$REPO_ROOT/fedora-wsl2/home"
+MISE_BIN="$HOME/.local/bin/mise"
+
+log() { echo "[setup-dots] $*"; }
+fail() { echo "[setup-dots] ERROR: $*" >&2; exit 1; }
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dry-run) DRY_RUN=1; shift ;;
+        --non-interactive) shift ;;
+        *) fail "unknown option: $1" ;;
+    esac
+done
+
+trim() {
+    local value="$1"
+    value="${value#"${value%%[![:space:]]*}"}"
+    printf '%s' "${value%"${value##*[![:space:]]}"}"
+}
+
+valid_relative_path() {
+    [[ -n "$1" && "$1" != . && "$1" != /* && "$1" != .. && "$1" != ../* && "$1" != */.. && "$1" != */../* ]]
+}
+
+backup_target() {
+    local target="$1" rel
+    rel="${target#"$HOME"/}"
+    printf '%s/%s\n' "$BACKUP_DIR" "$rel"
+}
+
+ensure_symlink() {
+    local source="$1" target="$2" backup
+    if [[ -L "$target" && "$(readlink -f -- "$target" 2>/dev/null || true)" == "$(readlink -f -- "$source")" ]]; then
+        log "Already linked: $target"
+        return
+    fi
+    if [[ -e "$target" || -L "$target" ]]; then
+        backup="$(backup_target "$target")"
+        log "Backing up: $target -> $backup"
+        (( DRY_RUN )) || { mkdir -p "$(dirname -- "$backup")"; mv -- "$target" "$backup"; }
+    fi
+    log "Creating symlink: $target -> $source"
+    (( DRY_RUN )) || { mkdir -p "$(dirname -- "$target")"; ln -s -- "$source" "$target"; }
+}
+
+install_mise() {
+    if [[ -x "$MISE_BIN" ]]; then
+        log "Mise is installed: $MISE_BIN"
+        return
+    fi
+    log "Installing Mise at $MISE_BIN"
+    (( DRY_RUN )) && return
+    command -v curl >/dev/null 2>&1 || fail "curl is required to install Mise"
+    curl https://mise.run | sh
+}
+
+apply_manifest() {
+    local line source target extra
+    [[ -f "$MANIFEST" ]] || fail "manifest not found: $MANIFEST"
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        [[ "$line" =~ ^[[:space:]]*$ || "$line" =~ ^[[:space:]]*# ]] && continue
+        [[ "$line" != *'|'*'|'* ]] || fail "malformed manifest line: $line"
+        IFS='|' read -r source target extra <<< "$line"
+        source="$(trim "${source:-}")"
+        target="$(trim "${target:-}")"
+        [[ -z "${extra:-}" && "$line" == *'|'* ]] || fail "malformed manifest line: $line"
+        valid_relative_path "$source" && valid_relative_path "$target" || fail "unsafe manifest path: $line"
+        [[ -e "$SOURCE_ROOT/$source" || -L "$SOURCE_ROOT/$source" ]] || fail "source does not exist: $source"
+        ensure_symlink "$SOURCE_ROOT/$source" "$HOME/$target"
+    done < "$MANIFEST"
+}
+
+install_mise
+apply_manifest
+log "Installing tools declared by Mise"
+if (( !DRY_RUN )); then
+    [[ -x "$MISE_BIN" ]] || fail "Mise installation did not create $MISE_BIN"
+    "$MISE_BIN" install
+fi

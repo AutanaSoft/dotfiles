@@ -3,7 +3,6 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-SCRIPTS_DIR="$SCRIPT_DIR/omarchy/utils/bash"
 BACKUP_DIR="$SCRIPT_DIR/backup/$(date -u +%Y%m%dT%H%M%SZ)"
 
 PROFILE=""
@@ -19,20 +18,20 @@ DRY_RUN=0
 
 usage() {
     cat <<EOF
-Usage: $0 [--profile omarchy] [--dots | --dots-only] [phases] [options]
+Usage: $0 [--profile omarchy|fedora-wsl2] [--dots | --dots-only] [phases] [options]
 
-Configure the selected dotfiles profile. The only supported profile is omarchy.
+Configure the selected dotfiles profile.
 
 Actions:
   --dots             Apply user dotfiles and, interactively, select optional phases.
   --dots-only        Apply only the manifest and permitted user copies.
-  --deps             Run the Omarchy dependency phase.
-  --fonts            Run the user-local font phase.
-  --services         Configure keyd and enable keyd/ratbagd.
-  --locale           Install the locale declared by the profile.
+  --deps             Run the selected profile dependency phase.
+  --fonts            Install Omarchy user-local fonts.
+  --services         Configure Omarchy keyd and ratbagd services.
+  --locale           Install the Omarchy locale.
 
 Options:
-  --profile NAME     Select a profile. Without it, interactive mode offers omarchy.
+  --profile NAME     Select omarchy or fedora-wsl2.
   --no-validate      Skip final validation for --dots.
   --non-interactive  Disable profile and phase prompts.
   --dry-run          Print actions without mutating the host.
@@ -42,6 +41,7 @@ Examples:
   $0 --dots
   $0 --profile omarchy --dots-only --dry-run
   $0 --profile omarchy --dots --deps --fonts --services --locale
+  $0 --profile fedora-wsl2 --dots --deps
 EOF
 }
 
@@ -81,21 +81,31 @@ if (( NO_VALIDATE && !DOTS )); then
     fail "--no-validate requires --dots."
 fi
 if (( NON_INTERACTIVE )) && [[ -z "$PROFILE" ]]; then
-    fail "--non-interactive requires --profile omarchy."
+    fail "--non-interactive requires an explicit --profile."
 fi
 
 if [[ -z "$PROFILE" ]]; then
     if (( NON_INTERACTIVE )); then
         fail "a profile is required in non-interactive mode."
     fi
-    printf 'Select a profile:\n  1) omarchy\nChoice [1]: '
+    printf 'Select a profile:\n  1) omarchy\n  2) fedora-wsl2\nChoice [1]: '
     if ! read -r choice; then
         fail "profile selection cancelled."
     fi
-    [[ -z "$choice" || "$choice" == 1 || "$choice" == omarchy ]] || fail "invalid profile selection."
-    PROFILE=omarchy
+    case "$choice" in
+        ""|1|omarchy) PROFILE=omarchy ;;
+        2|fedora-wsl2) PROFILE=fedora-wsl2 ;;
+        *) fail "invalid profile selection." ;;
+    esac
 fi
-[[ "$PROFILE" == omarchy ]] || fail "unsupported profile: $PROFILE"
+case "$PROFILE" in
+    omarchy|fedora-wsl2) ;;
+    *) fail "unsupported profile: $PROFILE" ;;
+esac
+
+if [[ "$PROFILE" == fedora-wsl2 ]] && (( FONTS || SERVICES || LOCALE || NO_VALIDATE )); then
+    fail "--fonts, --services, --locale, and --no-validate are unsupported for fedora-wsl2."
+fi
 
 if (( !DOTS && !DOTS_ONLY && !DEPS && !FONTS && !SERVICES && !LOCALE )); then
     fail "choose --dots, --dots-only, or at least one phase."
@@ -103,7 +113,9 @@ fi
 
 if (( DOTS )); then
     if (( !NON_INTERACTIVE )); then
-        for phase in deps fonts services locale; do
+        phases=(deps fonts services locale)
+        [[ "$PROFILE" == fedora-wsl2 ]] && phases=(deps)
+        for phase in "${phases[@]}"; do
             case "$phase" in
                 deps) selected=$DEPS ;;
                 fonts) selected=$FONTS ;;
@@ -150,6 +162,9 @@ args=(--profile "$PROFILE")
 (( DRY_RUN )) && args+=(--dry-run)
 (( NON_INTERACTIVE )) && args+=(--non-interactive)
 
-target="$SCRIPTS_DIR/setup-omarchy"
+case "$PROFILE" in
+    omarchy) target="$SCRIPT_DIR/omarchy/utils/bash/setup-omarchy" ;;
+    fedora-wsl2) target="$SCRIPT_DIR/fedora-wsl2/utils/bash/setup-fedora-wsl2" ;;
+esac
 [[ -x "$target" ]] || fail "profile helper is missing or not executable: $target"
 "$target" "${args[@]}"

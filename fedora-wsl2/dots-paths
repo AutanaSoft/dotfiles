@@ -1,0 +1,33 @@
+# source-relative-to-fedora-wsl2/home | target-relative-to-$HOME
+# Directories and files are symlinked. Comments and blank lines are ignored.
+
+# --- Bash ---
+bashrc | .bashrc
+config/bash | .config/bash
+
+# --- Starship ---
+config/starship.toml | .config/starship.toml
+
+# --- Mise ---
+config/mise | .config/mise
+
+# --- Neovim ---
+config/nvim/lazyvim.json | .config/nvim/lazyvim.json
+config/nvim/lua/config/autocmds.lua | .config/nvim/lua/config/autocmds.lua
+config/nvim/lua/config/keymaps.lua | .config/nvim/lua/config/keymaps.lua
+config/nvim/lua/config/options.lua | .config/nvim/lua/config/options.lua
+config/nvim/lua/config/remote_clipboard.lua | .config/nvim/lua/config/remote_clipboard.lua
+config/nvim/lua/plugins/editorconfig.lua | .config/nvim/lua/plugins/editorconfig.lua
+config/nvim/lua/plugins/opencode.lua | .config/nvim/lua/plugins/opencode.lua
+config/nvim/lua/plugins/render-markdown.lua | .config/nvim/lua/plugins/render-markdown.lua
+config/nvim/lua/plugins/snacks-paths.lua | .config/nvim/lua/plugins/snacks-paths.lua
+config/nvim/spell | .config/nvim/spell
+
+# --- Tmux ---
+config/tmux | .config/tmux
+
+# --- WezTerm ---
+config/wezterm | .config/wezterm
+
+# --- Zellij ---
+config/zellij | .config/zellij

@@ -7,6 +7,7 @@ SETUP="$ROOT_DIR/setup"
 FONT_SETUP="$ROOT_DIR/omarchy/utils/bash/setup-fonts"
 SERVICES_SETUP="$ROOT_DIR/omarchy/utils/bash/setup-services"
 DEP_SETUP="$ROOT_DIR/omarchy/utils/bash/setup-deps"
+FEDORA_DEPS_SETUP="$ROOT_DIR/fedora-wsl2/utils/bash/setup-deps"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -52,6 +53,8 @@ mkdir -p "$TMPDIR"
 assert_status 2 "$SETUP" --profile omarchy --dots-only --services --dry-run
 assert_status 2 "$SETUP" --profile omarchy --dots --dots-only --dry-run
 assert_status 2 "$SETUP" --profile omarchy --no-validate --dry-run
+assert_status 2 "$SETUP" --profile fedora-wsl2 --fonts --dry-run
+assert_status 2 "$SETUP" --profile fedora-wsl2 --dots-only --deps --dry-run
 
 deps_output="$($SETUP --profile omarchy --deps --non-interactive --dry-run)"
 [[ "$deps_output" == *"[setup-deps]"* ]] || fail "--deps did not dispatch to setup-deps"
@@ -63,6 +66,14 @@ dots_output="$($SETUP --profile omarchy --dots-only --non-interactive --dry-run)
 for excluded in setup-deps setup-fonts setup-services setup-locale setup-validate; do
     [[ "$dots_output" != *"[$excluded]"* ]] || fail "--dots-only dispatched excluded phase $excluded"
 done
+
+fedora_deps_output="$($SETUP --profile fedora-wsl2 --deps --non-interactive --dry-run)"
+[[ "$fedora_deps_output" == *"[setup-deps]"* ]] || fail "Fedora --deps did not dispatch to setup-deps"
+[[ "$fedora_deps_output" != *"[setup-dots]"* ]] || fail "Fedora --deps unexpectedly dispatched dots"
+
+fedora_dots_output="$($SETUP --profile fedora-wsl2 --dots-only --non-interactive --dry-run)"
+[[ "$fedora_dots_output" == *"[setup-dots]"* ]] || fail "Fedora --dots-only did not dispatch to setup-dots"
+[[ "$fedora_dots_output" != *"[setup-deps]"* ]] || fail "Fedora --dots-only unexpectedly dispatched deps"
 
 before="$(find "$tmp_home" -mindepth 1 -print | sort)"
 "$FONT_SETUP" --dry-run >/tmp/setup-contract.stdout
@@ -93,4 +104,19 @@ printf 'package\talpha\npackage\talpha\n' > "$manifest_root/omarchy/deps-manifes
 assert_dependency_status 1
 rm -rf "$manifest_root"
 
-printf 'PASS: setup parser, dispatch, exclusions, dependency manifest, and dry-run contracts\n'
+manifest_root="$(mktemp -d)"
+mkdir -p "$manifest_root/fedora-wsl2/etc/postgresql" "$manifest_root/fedora-wsl2/etc/valkey"
+touch "$manifest_root/fedora-wsl2/etc/postgresql/pg_hba.conf" "$manifest_root/fedora-wsl2/etc/valkey/valkey.conf"
+printf '# comment\n\nalpha\nbeta\n' > "$manifest_root/fedora-wsl2/dnf-packages"
+fedora_dependency_output="$(DOTFILES_ROOT="$manifest_root" "$FEDORA_DEPS_SETUP" --dry-run)"
+[[ "$fedora_dependency_output" == *"[missing] alpha"* ]] || fail "Fedora manifest package alpha was not parsed"
+[[ "$fedora_dependency_output" == *"[missing] beta"* ]] || fail "Fedora manifest package beta was not parsed"
+printf 'alpha\nalpha\n' > "$manifest_root/fedora-wsl2/dnf-packages"
+set +e
+DOTFILES_ROOT="$manifest_root" "$FEDORA_DEPS_SETUP" --dry-run >/tmp/setup-contract.stdout 2>/tmp/setup-contract.stderr
+fedora_dependency_status=$?
+set -e
+[[ "$fedora_dependency_status" -eq 1 ]] || fail "Fedora dependency manifest accepted a duplicate package"
+rm -rf "$manifest_root"
+
+printf 'PASS: setup parser, profile dispatch, manifest validation, and dry-run contracts\n'

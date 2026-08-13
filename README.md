@@ -1,12 +1,8 @@
 # dotfiles
 
-This repository is the source of truth for one implemented profile:
-`omarchy/`. It targets Omarchy, Arch with Omarchy installed, and CachyOS with
-Omarchy installed. Managed files are linked into `$HOME` and `~/.config/`;
-generated backups are stored under `backup/` and are ignored by Git.
-
-Ubuntu, Fedora, and WSL2 profiles are future work. They are not supported by
-the current installer or configuration set.
+This repository provides profiles for Omarchy and Fedora WSL2. Managed files
+are linked into `$HOME` and `~/.config/`; generated backups are stored under
+`backup/` and are ignored by Git.
 
 ## Quick path
 
@@ -21,6 +17,13 @@ cd dotfiles
 
 Use [`docs/setup.md`](docs/setup.md) for available flags and
 [`docs/post-setup.md`](docs/post-setup.md) for manual host setup.
+
+For Fedora WSL2:
+
+```bash
+./setup --profile fedora-wsl2 --dots-only
+./setup --profile fedora-wsl2 --deps
+```
 
 ## Current limits
 
@@ -37,9 +40,15 @@ The implemented `omarchy` profile currently:
 - can explicitly run dependencies, fonts, services, locale, and final graphical
   validation as separate phases.
 
-It does not install Omarchy or support Ubuntu/Fedora/WSL2. `--dots-only` is the
+It does not install Omarchy. Ubuntu is not supported. `--dots-only` is the
 non-graphical user configuration path. `--dry-run` previews actions without
 mutating the host.
+
+The `fedora-wsl2` profile supports `--dots`, `--dots-only`, and `--deps`.
+Its dotfiles phase installs Mise in the user home, applies `dots-paths`, and
+installs the tools declared in the linked Mise configuration. Its dependency
+phase installs `dnf-packages`, initializes PostgreSQL, applies PostgreSQL and
+Valkey configuration, and enables both services.
 
 The `--deps`, `--fonts`, `--services`, and `--locale` flags are explicit phases
 for the same current profile; they do not add support for another platform.
@@ -51,11 +60,11 @@ the font phase installs each family directly under
 
 Keep these boundaries explicit when adding files or changing setup behavior:
 
-| Boundary | Examples | Rule |
-| --- | --- | --- |
-| Portable | Shell, editor, and terminal settings | Prefer reuse by future profiles. |
+| Boundary         | Examples                                      | Rule                                  |
+| ---------------- | --------------------------------------------- | ------------------------------------- |
+| Portable         | Shell, editor, and terminal settings          | Prefer reuse by future profiles.      |
 | Omarchy-specific | Hyprland, Waybar, theme, and keyd integration | Depend on Omarchy only when required. |
-| Host-specific | Monitors, locale, SSH, services, and mounts | Keep values local or opt-in. |
+| Host-specific    | Monitors, locale, SSH, services, and mounts   | Keep values local or opt-in.          |
 
 The repository currently stores all implemented content under `omarchy/`. This
 table defines intent; it is not a reason to split the repository before a
@@ -78,7 +87,8 @@ second profile requires that boundary.
 
 ## Repository layout
 
-- `omarchy/` — the only implemented profile.
+- `omarchy/` — Omarchy profile.
+- `fedora-wsl2/` — Fedora WSL2 development profile.
 - `omarchy/home/` — files linked or copied into the user's home directory.
 - `omarchy/etc/` — privileged or host-specific files requiring explicit care.
 - `omarchy/utils/bash/` — profile helpers dispatched by `setup`.
@@ -94,7 +104,6 @@ Source files omit the leading dot used by hidden destinations: for example,
 1. Keep `omarchy/` stable while documenting the current contracts and limits.
 2. Extract only genuinely reusable configuration when a second profile is
    ready; do not create an abstract shared layer in advance.
-3. Add platform adapters and verification for Ubuntu, Fedora, and WSL2 one at a
-   time, with explicit support boundaries and tests for each installer path.
+3. Add the Ubuntu platform adapter with explicit support boundaries and tests.
 4. Revisit the layout only when real cross-profile duplication or behavior
    differences justify it.

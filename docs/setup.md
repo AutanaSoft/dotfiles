@@ -1,7 +1,7 @@
 # Setup
 
-`./setup` is the profile dispatcher. The only implemented profile is `omarchy`.
-It resolves the repository root independently of the current directory and
+`./setup` is the profile dispatcher. It supports `omarchy` and `fedora-wsl2`,
+resolves the repository root independently of the current directory, and
 validates the complete request before invoking a profile helper.
 
 ## Quick path
@@ -18,24 +18,44 @@ optional phases to run. Empty or negative answers leave a phase disabled.
 
 ## CLI contract
 
-| Flag | Meaning |
-| --- | --- |
-| `--profile omarchy` | Select the implemented profile. Interactive runs offer `omarchy` when omitted. |
-| `--dots` | Apply dotfiles, ask interactively about optional phases, then validate unless `--no-validate` is used. |
-| `--dots-only` | Apply only the manifest and permitted user copies. It cannot combine with optional phases and skips validation. |
-| `--deps` | Validate and install the packages in `omarchy/deps-manifest` in one batch. |
-| `--fonts` | Install user-local fonts under `$HOME/.local/share/fonts/<family>/`. |
-| `--services` | Install keyd configuration and enable keyd/ratbagd. |
-| `--locale` | Opt in to the locale declared by `omarchy/etc/locale.conf`. |
-| `--no-validate` | Skip the final validation of a `--dots` run. |
-| `--non-interactive` | Require `--profile` and run only phases explicitly declared by flags. |
-| `--dry-run` | Show actions without downloads, writes, sudo, service changes, or graphical changes. |
-| `--help`, `-h` | Show usage. |
+| Flag                | Meaning                                                                                                         |
+| ------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `--profile omarchy` | Select the implemented profile. Interactive runs offer `omarchy` when omitted.                                  |
+| `--dots`            | Apply dotfiles, ask interactively about optional phases, then validate unless `--no-validate` is used.          |
+| `--dots-only`       | Apply only the manifest and permitted user copies. It cannot combine with optional phases and skips validation. |
+| `--deps`            | Validate and install the packages in `omarchy/deps-manifest` in one batch.                                      |
+| `--fonts`           | Install user-local fonts under `$HOME/.local/share/fonts/<family>/`.                                            |
+| `--services`        | Install keyd configuration and enable keyd/ratbagd.                                                             |
+| `--locale`          | Opt in to the locale declared by `omarchy/etc/locale.conf`.                                                     |
+| `--no-validate`     | Skip the final validation of a `--dots` run.                                                                    |
+| `--non-interactive` | Require `--profile` and run only phases explicitly declared by flags.                                           |
+| `--dry-run`         | Show actions without downloads, writes, sudo, service changes, or graphical changes.                            |
+| `--help`, `-h`      | Show usage.                                                                                                     |
 
 Without `--non-interactive`, `--dots` asks separately about `deps`, `fonts`,
 `services`, and `locale`. In non-interactive mode, no optional phase is
 inferred. A request such as `--profile omarchy --deps --dry-run` runs only the
 dependency phase; it does not apply dotfiles or validation.
+
+## Fedora WSL2
+
+```bash
+./setup --profile fedora-wsl2 --dots-only
+./setup --profile fedora-wsl2 --deps
+./setup --profile fedora-wsl2 --dots --deps
+```
+
+| Flag          | Meaning                                                                                                                         |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `--dots-only` | Install Mise if necessary, apply `fedora-wsl2/dots-paths`, and run `mise install`. It does not use `sudo`.                      |
+| `--dots`      | Apply the user configuration and, interactively, offer the dependency phase.                                                    |
+| `--deps`      | Install `fedora-wsl2/dnf-packages`, initialize PostgreSQL, apply PostgreSQL and Valkey configuration, and enable both services. |
+
+`--fonts`, `--services`, `--locale`, and `--no-validate` are exclusive to
+Omarchy and are rejected for Fedora WSL2. Fedora's `--deps` can interactively
+set the PostgreSQL `postgres` role password; it never prompts in
+`--non-interactive` or `--dry-run` mode. Valkey accepts local socket connections
+through `/run/valkey/valkey.sock` for users in the `wheel` group.
 
 ## Safety boundaries
 
@@ -58,3 +78,6 @@ dependency phase; it does not apply dotfiles or validation.
 - `omarchy/utils/bash/setup-services` — keyd and ratbagd configuration.
 - `omarchy/utils/bash/setup-validate` — theme and Hyprland validation.
 - `omarchy/utils/bash/setup-locale` — opt-in locale installer.
+- `fedora-wsl2/utils/bash/setup-fedora-wsl2` — Fedora WSL2 phase orchestrator.
+- `fedora-wsl2/utils/bash/setup-dots` — Mise bootstrap, dotfiles, and tools.
+- `fedora-wsl2/utils/bash/setup-deps` — DNF, PostgreSQL, and Valkey setup.

@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+REPO_ROOT="${DOTFILES_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)}"
+DRY_RUN="${DOTFILES_DRY_RUN:-0}"
+DOTS=0
+DOTS_ONLY=0
+DEPS=0
+NON_INTERACTIVE=0
+
+fail() { echo "[setup-fedora-wsl2] ERROR: $*" >&2; exit 1; }
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --profile) [[ $# -ge 2 && "$2" == fedora-wsl2 ]] || fail "--profile fedora-wsl2 is required"; shift 2 ;;
+        --dots) DOTS=1; shift ;;
+        --dots-only) DOTS_ONLY=1; shift ;;
+        --deps) DEPS=1; shift ;;
+        --dry-run) DRY_RUN=1; shift ;;
+        --non-interactive) NON_INTERACTIVE=1; shift ;;
+        *) fail "unknown option: $1" ;;
+    esac
+done
+
+(( DOTS && DOTS_ONLY )) && fail "dots and dots-only cannot be combined"
+(( DOTS_ONLY && DEPS )) && fail "dots-only cannot include dependencies"
+(( DOTS || DOTS_ONLY || DEPS )) || fail "no phase selected"
+
+run_helper() {
+    local helper="$REPO_ROOT/fedora-wsl2/utils/bash/$1"
+    shift
+    [[ -x "$helper" ]] || fail "helper is missing or not executable: $helper"
+    "$helper" "$@"
+}
+
+helper_args=()
+(( DRY_RUN )) && helper_args+=(--dry-run)
+(( NON_INTERACTIVE )) && helper_args+=(--non-interactive)
+if (( DEPS )); then run_helper setup-deps "${helper_args[@]}"; fi
+if (( DOTS || DOTS_ONLY )); then run_helper setup-dots "${helper_args[@]}"; fi
