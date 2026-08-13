@@ -161,6 +161,8 @@ assert_status 1 "$FEDORA_SERVICES_SETUP" --unknown
 [[ "$(< "$FEDORA_SERVICES_SETUP")" == *'log "Valkey socket is ready"'* ]] || fail "Fedora services do not confirm Valkey readiness"
 
 tmux_functions="$(< "$ROOT_DIR/fedora-wsl2/home/config/bash/functions")"
+[[ "$tmux_functions" == *$'tmux() {\n  if (($# == 0)); then\n    command tmux new-session -A -s AutanaSoft'* ]] || fail "tmux does not create or attach AutanaSoft without arguments"
+[[ "$tmux_functions" == *'command tmux "$@"'* ]] || fail "tmux does not preserve subcommands"
 [[ "$tmux_functions" == *'session_name="AutanaSoft"'* ]] || fail "tdl does not name the Tmux session AutanaSoft"
 [[ "$tmux_functions" == *'tmux has-session -t "$session_name"'* ]] || fail "tdl does not reuse the AutanaSoft session"
 [[ "$tmux_functions" == *'tmux new-session -d -P -F '\''#{session_name}'\'' -s "$session_name"'* ]] || fail "tdl does not create a named Tmux session"

@@ -1,5 +1,14 @@
 # Custom Bash functions.
 
+# Create or attach the default development session when Tmux has no arguments.
+tmux() {
+  if (($# == 0)); then
+    command tmux new-session -A -s AutanaSoft
+  else
+    command tmux "$@"
+  fi
+}
+
 # Create a tmux development layout with editor, AI, and terminal panes.
 # Usage: tdl <ai> [second_ai]
 tdl() {
