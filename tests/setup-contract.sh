@@ -84,6 +84,12 @@ fedora_dots_output="$($SETUP --profile fedora-wsl2 --dots-only --non-interactive
 [[ "$fedora_dots_output" != *"Copying Neovim bootstrap"* ]] || fail "Fedora --dots-only retained the Neovim bootstrap copy"
 [[ "$fedora_dots_output" != *"[setup-services]"* ]] || fail "Fedora --dots-only dispatched services"
 
+mkdir -p "$tmp_home/.config/nvim"
+fedora_existing_nvim_output="$($SETUP --profile fedora-wsl2 --dots-only --non-interactive --dry-run)"
+[[ "$fedora_existing_nvim_output" == *"Keeping existing Neovim configuration"* ]] || fail "Fedora --dots-only did not keep existing Neovim configuration"
+[[ "$fedora_existing_nvim_output" == *"Installing tools declared by Mise"* ]] || fail "Fedora --dots-only did not continue after existing Neovim configuration"
+rm -rf "$tmp_home/.config/nvim"
+
 fedora_services_output="$($SETUP --profile fedora-wsl2 --services --non-interactive --dry-run)"
 [[ "$fedora_services_output" == *"[setup-services] [dry-run] would initialize PostgreSQL if the cluster is absent"* ]] || fail "Fedora --services did not preview PostgreSQL initialization"
 [[ "$fedora_services_output" == *"[setup-services] [dry-run] would install configuration: /var/lib/pgsql/data/pg_hba.conf"* ]] || fail "Fedora --services did not preview PostgreSQL configuration"

@@ -69,7 +69,10 @@ apply_manifest() {
 
 install_lazyvim() {
     local target="$HOME/.config/nvim"
-    [[ ! -e "$target" && ! -L "$target" ]] || fail "Neovim configuration already exists: $target"
+    if [[ -e "$target" || -L "$target" ]]; then
+        log "Keeping existing Neovim configuration: $target"
+        return
+    fi
     log "Installing LazyVim starter at $target"
     (( DRY_RUN )) && return
     command -v git >/dev/null 2>&1 || fail "git is required to install LazyVim"
