@@ -2,6 +2,14 @@
 
 source "${HOME}/.config/bash/shell"
 source "${HOME}/.config/bash/envs"
+
+if [[ -d "${HOME}/.bashrc.d" ]]; then
+  for rc in "${HOME}"/.bashrc.d/*; do
+    [[ -f "$rc" ]] && source "$rc"
+  done
+  unset rc
+fi
+
 source "${HOME}/.config/bash/functions"
 source "${HOME}/.config/bash/aliases"
 source "${HOME}/.config/bash/init"

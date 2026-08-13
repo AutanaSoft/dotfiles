@@ -149,4 +149,24 @@ rm -rf "$manifest_root"
 
 assert_status 1 "$FEDORA_SERVICES_SETUP" --unknown
 
+[[ "$(< "$ROOT_DIR/fedora-wsl2/home/bashrc")" == *"/etc/bashrc"* ]] || fail "Fedora bashrc does not source /etc/bashrc"
+
+bash_home="$(mktemp -d)"
+mkdir -p "${bash_home}/.bashrc.d" "${bash_home}/.config"
+ln -s "$ROOT_DIR/fedora-wsl2/home/config/bash" "${bash_home}/.config/bash"
+printf 'export DOTFILES_BASHRC_D_TEST=loaded\n' > "${bash_home}/.bashrc.d/test"
+bash_output="$(HOME="$bash_home" PATH=/usr/bin:/bin bash --noprofile --norc -c '
+  source "$HOME/.config/bash/rc"
+  source "$HOME/.config/bash/envs"
+  [[ ${DOTFILES_BASHRC_D_TEST:-} == loaded ]]
+  for path in "$HOME/.opencode/bin" "$HOME/.local/bin" "$HOME/bin"; do
+    case ":$PATH:" in *":$path:"*) ;; *) exit 1 ;; esac
+    path_without_current="${PATH//"$path:"/}"
+    [[ ":$path_without_current:" != *":$path:"* ]] || exit 1
+  done
+  printf "%s" "$PATH"
+')" || fail "Fedora Bash configuration did not load correctly"
+[[ "$bash_output" == "$bash_home/.opencode/bin:$bash_home/bin:$bash_home/.local/bin:/usr/bin:/bin" ]] || fail "Fedora Bash PATH order is incorrect"
+rm -rf "$bash_home"
+
 printf 'PASS: setup parser, profile dispatch, manifest validation, and dry-run contracts\n'
