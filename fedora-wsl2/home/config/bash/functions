@@ -6,7 +6,7 @@ tdl() {
   local ai="${1:-}"
   local ai2="${2:-}"
   local current_dir="${PWD}"
-  local editor_pane ai_pane ai2_pane launch_command session
+  local editor_pane ai_pane ai2_pane launch_command session session_name="AutanaSoft"
 
   if [[ -z "$ai" ]]; then
     printf 'Usage: tdl <ai> [second_ai]\n' >&2
@@ -25,15 +25,24 @@ tdl() {
     return 1
   fi
   if [[ -z "${TMUX:-}" || -z "${TMUX_PANE:-}" ]]; then
+    if tmux has-session -t "$session_name" 2>/dev/null; then
+      tmux attach-session -t "$session_name"
+      return $?
+    fi
     printf -v launch_command 'tdl %q' "$ai"
     if [[ -n "$ai2" ]]; then
       printf -v launch_command '%s %q' "$launch_command" "$ai2"
     fi
-    session=$(tmux new-session -d -P -F '#{session_name}' -c "$current_dir") || return
+    session=$(tmux new-session -d -P -F '#{session_name}' -s "$session_name" -c "$current_dir") || return
     tmux send-keys -t "$session" "$launch_command" C-m || return
     tmux attach-session -t "$session"
     return $?
   fi
+
+  [[ "$(tmux display-message -p '#S')" == "$session_name" ]] || {
+    printf 'tdl: run this command inside the %s tmux session\n' "$session_name" >&2
+    return 1
+  }
 
   editor_pane="$TMUX_PANE"
   tmux rename-window -t "$editor_pane" "$(basename "$current_dir")" || return
