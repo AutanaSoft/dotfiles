@@ -23,6 +23,7 @@ For Fedora WSL2:
 ```bash
 ./setup --profile fedora-wsl2 --dots-only
 ./setup --profile fedora-wsl2 --deps
+./setup --profile fedora-wsl2 --services
 ```
 
 ## Current limits
@@ -44,11 +45,12 @@ It does not install Omarchy. Ubuntu is not supported. `--dots-only` is the
 non-graphical user configuration path. `--dry-run` previews actions without
 mutating the host.
 
-The `fedora-wsl2` profile supports `--dots`, `--dots-only`, and `--deps`.
-Its dotfiles phase installs Mise in the user home, applies `dots-paths`, and
-installs the tools declared in the linked Mise configuration. `--dots` also
-applies the PostgreSQL and Valkey configuration. Its dependency phase installs
-`dnf-packages`, initializes PostgreSQL, and enables both services.
+The `fedora-wsl2` profile supports `--dots`, `--dots-only`, `--deps`, and
+`--services`. Its dotfiles phase installs a new LazyVim starter instance,
+applies `dots-paths`, installs Mise in the user home, and installs the tools
+declared in the linked Mise configuration. Its dependency phase installs the
+groups and packages in `dnf-packages`. Its services phase initializes,
+configures, and validates PostgreSQL and Valkey.
 
 The `--deps`, `--fonts`, `--services`, and `--locale` flags are explicit phases
 for the same current profile; they do not add support for another platform.

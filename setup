@@ -27,7 +27,7 @@ Actions:
   --dots-only        Apply only the manifest and permitted user copies.
   --deps             Run the selected profile dependency phase.
   --fonts            Install Omarchy user-local fonts.
-  --services         Configure Omarchy keyd and ratbagd services.
+  --services         Configure profile-specific services.
   --locale           Install the Omarchy locale.
 
 Options:
@@ -41,7 +41,7 @@ Examples:
   $0 --dots
   $0 --profile omarchy --dots-only --dry-run
   $0 --profile omarchy --dots --deps --fonts --services --locale
-  $0 --profile fedora-wsl2 --dots --deps
+  $0 --profile fedora-wsl2 --dots --deps --services
 EOF
 }
 
@@ -103,8 +103,8 @@ case "$PROFILE" in
     *) fail "unsupported profile: $PROFILE" ;;
 esac
 
-if [[ "$PROFILE" == fedora-wsl2 ]] && (( FONTS || SERVICES || LOCALE || NO_VALIDATE )); then
-    fail "--fonts, --services, --locale, and --no-validate are unsupported for fedora-wsl2."
+if [[ "$PROFILE" == fedora-wsl2 ]] && (( FONTS || LOCALE || NO_VALIDATE )); then
+    fail "--fonts, --locale, and --no-validate are unsupported for fedora-wsl2."
 fi
 
 if (( !DOTS && !DOTS_ONLY && !DEPS && !FONTS && !SERVICES && !LOCALE )); then
@@ -114,7 +114,7 @@ fi
 if (( DOTS )); then
     if (( !NON_INTERACTIVE )); then
         phases=(deps fonts services locale)
-        [[ "$PROFILE" == fedora-wsl2 ]] && phases=(deps)
+        [[ "$PROFILE" == fedora-wsl2 ]] && phases=(deps services)
         for phase in "${phases[@]}"; do
             case "$phase" in
                 deps) selected=$DEPS ;;
@@ -126,7 +126,13 @@ if (( DOTS )); then
                 case "$phase" in
                     deps) prompt="Run dependencies? This may use the package manager, network, and install packages. [y/N] " ;;
                     fonts) prompt="Run fonts? This uses the network and downloads font archives. [y/N] " ;;
-                    services) prompt="Run services? This uses sudo, overwrites/backups keyd configuration, and enables/reloads keyd/ratbagd. [y/N] " ;;
+                    services)
+                        if [[ "$PROFILE" == fedora-wsl2 ]]; then
+                            prompt="Run services? This uses sudo, configures PostgreSQL and Valkey, and enables/restarts both services. [y/N] "
+                        else
+                            prompt="Run services? This uses sudo, overwrites/backups keyd configuration, and enables/reloads keyd/ratbagd. [y/N] "
+                        fi
+                        ;;
                     locale) prompt="Run locale? This writes /etc/locale.conf and may require sudo. [y/N] " ;;
                 esac
                 read -r -p "$prompt" answer || answer=""

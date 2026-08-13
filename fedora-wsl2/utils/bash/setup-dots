@@ -5,13 +5,9 @@ set -euo pipefail
 REPO_ROOT="${DOTFILES_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)}"
 BACKUP_DIR="${DOTFILES_BACKUP_DIR:-$REPO_ROOT/backup/$(date -u +%Y%m%dT%H%M%SZ)}"
 DRY_RUN="${DOTFILES_DRY_RUN:-0}"
-NON_INTERACTIVE=0
-SYSTEM_CONFIG=0
 MANIFEST="$REPO_ROOT/fedora-wsl2/dots-paths"
 SOURCE_ROOT="$REPO_ROOT/fedora-wsl2/home"
 MISE_BIN="$HOME/.local/bin/mise"
-POSTGRES_DATA_DIR="/var/lib/pgsql/data"
-VALKEY_DROP_IN="/etc/systemd/system/valkey.service.d/socket-group.conf"
 
 log() { echo "[setup-dots] $*"; }
 fail() { echo "[setup-dots] ERROR: $*" >&2; exit 1; }
@@ -19,8 +15,7 @@ fail() { echo "[setup-dots] ERROR: $*" >&2; exit 1; }
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run) DRY_RUN=1; shift ;;
-        --non-interactive) NON_INTERACTIVE=1; shift ;;
-        --system-config) SYSTEM_CONFIG=1; shift ;;
+        --non-interactive) shift ;;
         *) fail "unknown option: $1" ;;
     esac
 done
@@ -56,17 +51,6 @@ ensure_symlink() {
     (( DRY_RUN )) || { mkdir -p "$(dirname -- "$target")"; ln -s -- "$source" "$target"; }
 }
 
-install_mise() {
-    if [[ -x "$MISE_BIN" ]]; then
-        log "Mise is installed: $MISE_BIN"
-        return
-    fi
-    log "Installing Mise at $MISE_BIN"
-    (( DRY_RUN )) && return
-    command -v curl >/dev/null 2>&1 || fail "curl is required to install Mise"
-    curl https://mise.run | sh
-}
-
 apply_manifest() {
     local line source target extra
     [[ -f "$MANIFEST" ]] || fail "manifest not found: $MANIFEST"
@@ -83,77 +67,33 @@ apply_manifest() {
     done < "$MANIFEST"
 }
 
-install_system_config() {
-    local source="$1" target="$2" owner="$3" mode="$4" backup
-    [[ -f "$source" ]] || fail "configuration source does not exist: $source"
-    if (( DRY_RUN )); then
-        log "[dry-run] would install configuration: $target"
-        return 1
-    fi
-    if sudo cmp -s -- "$source" "$target" 2>/dev/null; then
-        log "Unchanged: $target"
-        return 0
-    fi
-    backup="$BACKUP_DIR${target}"
-    log "Installing configuration: $target"
-    if sudo test -e "$target"; then
-        mkdir -p "$(dirname -- "$backup")"
-        sudo cat -- "$target" > "$backup"
-    fi
-    sudo install -D -o "$owner" -g "$owner" -m "$mode" -- "$source" "$target"
-    return 1
+install_lazyvim() {
+    local target="$HOME/.config/nvim"
+    [[ ! -e "$target" && ! -L "$target" ]] || fail "Neovim configuration already exists: $target"
+    log "Installing LazyVim starter at $target"
+    (( DRY_RUN )) && return
+    command -v git >/dev/null 2>&1 || fail "git is required to install LazyVim"
+    mkdir -p "$(dirname -- "$target")"
+    git clone https://github.com/LazyVim/starter "$target"
+    rm -rf -- "$target/.git"
 }
 
-configure_services() {
-    local postgres_changed=0 valkey_changed=0 drop_in_changed=0 answer password confirmation escaped_password
-    if (( DRY_RUN )); then
-        install_system_config "$REPO_ROOT/fedora-wsl2/etc/postgresql/pg_hba.conf" "$POSTGRES_DATA_DIR/pg_hba.conf" postgres 0600 || postgres_changed=1
-        install_system_config "$REPO_ROOT/fedora-wsl2/etc/valkey/valkey.conf" /etc/valkey/valkey.conf valkey 0640 || valkey_changed=1
-        install_system_config "$REPO_ROOT/fedora-wsl2/etc/systemd/system/valkey.service.d/socket-group.conf" "$VALKEY_DROP_IN" root 0644 || drop_in_changed=1
-        (( drop_in_changed )) && log "[dry-run] would run: systemctl daemon-reload"
-        (( postgres_changed )) && log "[dry-run] would restart postgresql"
-        (( valkey_changed || drop_in_changed )) && log "[dry-run] would restart valkey"
+install_mise() {
+    if [[ -x "$MISE_BIN" ]]; then
+        log "Mise is installed: $MISE_BIN"
         return
     fi
-
-    command -v pg_isready >/dev/null 2>&1 || fail "pg_isready is required; run --deps first"
-    command -v valkey-cli >/dev/null 2>&1 || fail "valkey-cli is required; run --deps first"
-    sudo test -f "$POSTGRES_DATA_DIR/PG_VERSION" || fail "PostgreSQL is not initialized; run --deps first"
-
-    [[ " $(id -nG "$USER") " == *" wheel "* ]] || fail "$USER must belong to the wheel group to use the Valkey socket"
-    install_system_config "$REPO_ROOT/fedora-wsl2/etc/postgresql/pg_hba.conf" "$POSTGRES_DATA_DIR/pg_hba.conf" postgres 0600 || postgres_changed=1
-    install_system_config "$REPO_ROOT/fedora-wsl2/etc/valkey/valkey.conf" /etc/valkey/valkey.conf valkey 0640 || valkey_changed=1
-    install_system_config "$REPO_ROOT/fedora-wsl2/etc/systemd/system/valkey.service.d/socket-group.conf" "$VALKEY_DROP_IN" root 0644 || drop_in_changed=1
-
-    (( drop_in_changed )) && sudo systemctl daemon-reload
-    (( postgres_changed )) && sudo systemctl restart postgresql
-    (( valkey_changed || drop_in_changed )) && sudo systemctl restart valkey
-    pg_isready -q || fail "PostgreSQL is not ready"
-    [[ "$(valkey-cli -s /run/valkey/valkey.sock ping)" == PONG ]] || fail "Valkey socket is not ready"
-
-    if (( !NON_INTERACTIVE )) && [[ -t 0 ]]; then
-        read -r -p "Set a password for the PostgreSQL superuser? [y/N] " answer
-        case "$answer" in
-            y|Y|yes|YES)
-                read -r -s -p "PostgreSQL password: " password; printf '\n'
-                read -r -s -p "Confirm PostgreSQL password: " confirmation; printf '\n'
-                [[ -n "$password" ]] || fail "password cannot be empty"
-                [[ "$password" == "$confirmation" ]] || fail "passwords do not match"
-                escaped_password="${password//\'/\'\'}"
-                printf "ALTER ROLE postgres WITH PASSWORD '%s';\n" "$escaped_password" | sudo -u postgres psql --set ON_ERROR_STOP=1
-                unset password confirmation escaped_password
-                ;;
-        esac
-    fi
+    log "Installing Mise at $MISE_BIN"
+    (( DRY_RUN )) && return
+    command -v curl >/dev/null 2>&1 || fail "curl is required to install Mise"
+    curl https://mise.run | sh
 }
 
-install_mise
+install_lazyvim
 apply_manifest
+install_mise
 log "Installing tools declared by Mise"
 if (( !DRY_RUN )); then
     [[ -x "$MISE_BIN" ]] || fail "Mise installation did not create $MISE_BIN"
     "$MISE_BIN" install
-fi
-if (( SYSTEM_CONFIG )); then
-    configure_services
 fi

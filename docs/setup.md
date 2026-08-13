@@ -42,18 +42,20 @@ dependency phase; it does not apply dotfiles or validation.
 ```bash
 ./setup --profile fedora-wsl2 --dots-only
 ./setup --profile fedora-wsl2 --deps
-./setup --profile fedora-wsl2 --dots --deps
+./setup --profile fedora-wsl2 --services
+./setup --profile fedora-wsl2 --dots --deps --services
 ```
 
 | Flag          | Meaning                                                                                                                         |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `--dots-only` | Install Mise if necessary, apply `fedora-wsl2/dots-paths`, and run `mise install`. It does not use `sudo`.                |
-| `--dots`      | Apply user configuration plus the PostgreSQL and Valkey configuration from the profile.                                  |
-| `--deps`      | Install `fedora-wsl2/dnf-packages`, initialize PostgreSQL, and enable PostgreSQL and Valkey with Fedora defaults.       |
+| `--dots-only` | Install a new LazyVim starter, apply `fedora-wsl2/dots-paths`, install Mise if necessary, and run `mise install`. It does not use `sudo`. |
+| `--dots`      | Apply the same user configuration as `--dots-only`.                                                                       |
+| `--deps`      | Install the groups and packages declared in `fedora-wsl2/dnf-packages`.                                                   |
+| `--services`  | Initialize, configure, enable, and validate PostgreSQL and Valkey.                                                        |
 
-`--fonts`, `--services`, `--locale`, and `--no-validate` are exclusive to
-Omarchy and are rejected for Fedora WSL2. Fedora's `--dots` can interactively
-set the PostgreSQL `postgres` role password; it never prompts in
+`--fonts`, `--locale`, and `--no-validate` are exclusive to Omarchy and are
+rejected for Fedora WSL2. Fedora's `--services` can interactively set the
+PostgreSQL `postgres` role password; it never prompts in
 `--non-interactive` or `--dry-run` mode. Valkey accepts local socket connections
 through `/run/valkey/valkey.sock` for users in the `wheel` group. The profile
 installs a Valkey systemd drop-in so the service can create that group-owned
@@ -61,7 +63,8 @@ socket with mode `770`.
 
 ## Safety boundaries
 
-- `setup-dots` owns only manifest operations, backups, symlinks, and allowed copies.
+- `setup-dots` owns only user configuration, including LazyVim, the manifest,
+  backups, symlinks, Mise, and Mise-managed tools.
 - `setup-deps`, `setup-fonts`, `setup-services`, `setup-locale`, and
   `setup-validate` each own one phase.
 - `--dry-run` never invokes `sudo`, package managers, downloads, `fc-cache`,
@@ -82,4 +85,5 @@ socket with mode `770`.
 - `omarchy/utils/bash/setup-locale` — opt-in locale installer.
 - `fedora-wsl2/utils/bash/setup-fedora-wsl2` — Fedora WSL2 phase orchestrator.
 - `fedora-wsl2/utils/bash/setup-dots` — Mise bootstrap, dotfiles, and tools.
-- `fedora-wsl2/utils/bash/setup-deps` — DNF, PostgreSQL, and Valkey setup.
+- `fedora-wsl2/utils/bash/setup-deps` — DNF group and package setup.
+- `fedora-wsl2/utils/bash/setup-services` — PostgreSQL and Valkey setup.

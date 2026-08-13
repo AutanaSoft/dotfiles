@@ -5,7 +5,6 @@ set -euo pipefail
 REPO_ROOT="${DOTFILES_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)}"
 DRY_RUN="${DOTFILES_DRY_RUN:-0}"
 MANIFEST="$REPO_ROOT/fedora-wsl2/dnf-packages"
-POSTGRES_DATA_DIR="/var/lib/pgsql/data"
 
 log() { echo "[setup-deps] $*"; }
 fail() { echo "[setup-deps] ERROR: $*" >&2; exit 1; }
@@ -18,66 +17,57 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-read_packages() {
-    local package
+read_dependencies() {
+    local dependency
     declare -gA seen=()
     packages=()
-    while IFS= read -r package || [[ -n "$package" ]]; do
-        [[ "$package" =~ ^[[:space:]]*$ || "$package" =~ ^[[:space:]]*# ]] && continue
-        [[ "$package" =~ ^[[:alnum:]@._+:-]+$ ]] || fail "malformed package name: $package"
-        [[ -z "${seen[$package]+x}" ]] || fail "duplicate package: $package"
-        seen["$package"]=1
-        packages+=("$package")
+    groups=()
+    while IFS= read -r dependency || [[ -n "$dependency" ]]; do
+        [[ "$dependency" =~ ^[[:space:]]*$ || "$dependency" =~ ^[[:space:]]*# ]] && continue
+        [[ "$dependency" =~ ^@[[:alnum:]._+:-]+$ || "$dependency" =~ ^[[:alnum:]._+:-]+$ ]] || fail "malformed dependency: $dependency"
+        [[ -z "${seen[$dependency]+x}" ]] || fail "duplicate dependency: $dependency"
+        seen["$dependency"]=1
+        if [[ "$dependency" == @* ]]; then
+            groups+=("${dependency#@}")
+        else
+            packages+=("$dependency")
+        fi
     done < "$MANIFEST"
-    ((${#packages[@]} > 0)) || fail "dependency manifest contains no packages"
-}
-
-ensure_service() {
-    local service="$1"
-    if systemctl is-enabled --quiet "$service"; then
-        log "$service is enabled"
-    else
-        log "Enabling $service"
-        (( DRY_RUN )) || sudo systemctl enable "$service"
-    fi
-
-    if systemctl is-active --quiet "$service"; then
-        log "$service is running"
-    else
-        log "Starting $service"
-        (( DRY_RUN )) || sudo systemctl start "$service"
-    fi
+    ((${#packages[@]} + ${#groups[@]} > 0)) || fail "dependency manifest contains no dependencies"
 }
 
 [[ -f "$MANIFEST" ]] || fail "manifest not found: $MANIFEST"
 command -v rpm >/dev/null 2>&1 || fail "rpm is required"
-read_packages
+command -v dnf >/dev/null 2>&1 || fail "dnf is required"
+read_dependencies
 
-missing=()
+missing_groups=()
+for group in "${groups[@]}"; do
+    group_info="$(dnf group info --installed "$group" 2>/dev/null || true)"
+    if [[ "$group_info" == *"Id                   : $group"* ]]; then
+        log "[installed] @$group"
+    else
+        log "[missing] @$group"
+        missing_groups+=("$group")
+    fi
+done
+
+if ((${#missing_groups[@]})); then
+    log "Installing missing groups: ${missing_groups[*]}"
+    (( DRY_RUN )) || sudo dnf group install "${missing_groups[@]}"
+fi
+
+missing_packages=()
 for package in "${packages[@]}"; do
     if rpm -q "$package" >/dev/null 2>&1; then
         log "[installed] $package"
     else
         log "[missing] $package"
-        missing+=("$package")
+        missing_packages+=("$package")
     fi
 done
 
-if ((${#missing[@]})); then
-    log "Installing missing packages: ${missing[*]}"
-    (( DRY_RUN )) || { command -v dnf >/dev/null 2>&1 || fail "dnf is required"; sudo dnf install "${missing[@]}"; }
+if ((${#missing_packages[@]})); then
+    log "Installing missing packages: ${missing_packages[*]}"
+    (( DRY_RUN )) || sudo dnf install "${missing_packages[@]}"
 fi
-
-if (( DRY_RUN )); then
-    log "[dry-run] would initialize PostgreSQL if the cluster is absent"
-elif sudo test -f "$POSTGRES_DATA_DIR/PG_VERSION"; then
-    log "PostgreSQL cluster is initialized"
-elif [[ -n "$(sudo find "$POSTGRES_DATA_DIR" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
-        fail "PostgreSQL data directory is not empty and is missing PG_VERSION: $POSTGRES_DATA_DIR"
-else
-    log "Initializing PostgreSQL cluster"
-    sudo postgresql-setup --initdb
-fi
-
-ensure_service postgresql
-ensure_service valkey

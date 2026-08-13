@@ -1,7 +1,33 @@
-# Fedora WSL2 packages managed by DNF.
-# One package name per line.
+# Fedora WSL2 packages and groups managed by DNF.
+# One package or group ID per line. Groups use the @ prefix.
 
-git
+# Development toolchain
+@c-development
+@development-tools
+
+# Bootstrap and shell
+curl
+bash-completion
+fzf
+bat
+eza
+zoxide
+xdg-utils
+openssh-clients
+ripgrep
+fd-find
+jq
+
+# Python builds managed by Mise
+openssl-devel
+libffi-devel
+readline-devel
+zlib-ng-compat-devel
+bzip2-devel
+xz-devel
+sqlite-devel
+
+# Utilities and editor support
 zip
 unzip
 libatomic
@@ -10,5 +36,9 @@ hunspell
 hunspell-en-US
 hunspell-es
 trash-cli
+
+# Local development services
+postgresql
 postgresql-server
+postgresql-contrib
 valkey

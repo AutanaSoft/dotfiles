@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+REPO_ROOT="${DOTFILES_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)}"
+BACKUP_DIR="${DOTFILES_BACKUP_DIR:-$REPO_ROOT/backup/$(date -u +%Y%m%dT%H%M%SZ)}"
+DRY_RUN="${DOTFILES_DRY_RUN:-0}"
+NON_INTERACTIVE=0
+POSTGRES_DATA_DIR="/var/lib/pgsql/data"
+VALKEY_DROP_IN="/etc/systemd/system/valkey.service.d/socket-group.conf"
+
+log() { echo "[setup-services] $*"; }
+fail() { echo "[setup-services] ERROR: $*" >&2; exit 1; }
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dry-run) DRY_RUN=1; shift ;;
+        --non-interactive) NON_INTERACTIVE=1; shift ;;
+        *) fail "unknown option: $1" ;;
+    esac
+done
+
+ensure_service() {
+    local service="$1"
+    if (( DRY_RUN )); then
+        log "[dry-run] would enable $service"
+        log "[dry-run] would start $service"
+        return
+    fi
+    systemctl is-enabled --quiet "$service" || sudo systemctl enable "$service"
+    systemctl is-active --quiet "$service" || sudo systemctl start "$service"
+}
+
+install_system_config() {
+    local source="$1" target="$2" owner="$3" mode="$4" backup
+    [[ -f "$source" ]] || fail "configuration source does not exist: $source"
+    if (( DRY_RUN )); then
+        log "[dry-run] would install configuration: $target"
+        return 1
+    fi
+    if sudo cmp -s -- "$source" "$target" 2>/dev/null; then
+        log "Unchanged: $target"
+        return 0
+    fi
+    backup="$BACKUP_DIR${target}"
+    log "Installing configuration: $target"
+    if sudo test -e "$target"; then
+        mkdir -p "$(dirname -- "$backup")"
+        sudo cat -- "$target" > "$backup"
+    fi
+    sudo install -D -o "$owner" -g "$owner" -m "$mode" -- "$source" "$target"
+    return 1
+}
+
+configure_postgresql() {
+    local changed=0 answer password confirmation escaped_password
+    command -v postgresql-setup >/dev/null 2>&1 || fail "postgresql-setup is required; run --deps first"
+    command -v pg_isready >/dev/null 2>&1 || fail "pg_isready is required; run --deps first"
+    command -v psql >/dev/null 2>&1 || fail "psql is required; run --deps first"
+
+    if (( DRY_RUN )); then
+        log "[dry-run] would initialize PostgreSQL if the cluster is absent"
+    elif sudo test -f "$POSTGRES_DATA_DIR/PG_VERSION"; then
+        log "PostgreSQL cluster is initialized"
+    elif [[ -n "$(sudo find "$POSTGRES_DATA_DIR" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+        fail "PostgreSQL data directory is not empty and is missing PG_VERSION: $POSTGRES_DATA_DIR"
+    else
+        log "Initializing PostgreSQL cluster"
+        sudo postgresql-setup --initdb
+    fi
+
+    ensure_service postgresql
+    install_system_config "$REPO_ROOT/fedora-wsl2/etc/postgresql/pg_hba.conf" "$POSTGRES_DATA_DIR/pg_hba.conf" postgres 0600 || changed=1
+    if (( DRY_RUN )); then
+        (( changed )) && log "[dry-run] would restart postgresql"
+        return
+    fi
+    (( changed )) && sudo systemctl restart postgresql
+    pg_isready -q || fail "PostgreSQL is not ready"
+
+    if (( !NON_INTERACTIVE )) && [[ -t 0 ]]; then
+        read -r -p "Set a password for the PostgreSQL superuser? [y/N] " answer
+        case "$answer" in
+            y|Y|yes|YES)
+                read -r -s -p "PostgreSQL password: " password; printf '\n'
+                read -r -s -p "Confirm PostgreSQL password: " confirmation; printf '\n'
+                [[ -n "$password" ]] || fail "password cannot be empty"
+                [[ "$password" == "$confirmation" ]] || fail "passwords do not match"
+                escaped_password="${password//\'/\'\'}"
+                printf "ALTER ROLE postgres WITH PASSWORD '%s';\n" "$escaped_password" | sudo -u postgres psql --set ON_ERROR_STOP=1
+                unset password confirmation escaped_password
+                ;;
+        esac
+    fi
+}
+
+configure_valkey() {
+    local changed=0 drop_in_changed=0
+    command -v valkey-cli >/dev/null 2>&1 || fail "valkey-cli is required; run --deps first"
+    [[ " $(id -nG "$USER") " == *" wheel "* ]] || fail "$USER must belong to the wheel group to use the Valkey socket"
+
+    ensure_service valkey
+    install_system_config "$REPO_ROOT/fedora-wsl2/etc/valkey/valkey.conf" /etc/valkey/valkey.conf valkey 0640 || changed=1
+    install_system_config "$REPO_ROOT/fedora-wsl2/etc/systemd/system/valkey.service.d/socket-group.conf" "$VALKEY_DROP_IN" root 0644 || drop_in_changed=1
+    if (( DRY_RUN )); then
+        (( drop_in_changed )) && log "[dry-run] would run: systemctl daemon-reload"
+        (( changed || drop_in_changed )) && log "[dry-run] would restart valkey"
+        return
+    fi
+    (( drop_in_changed )) && sudo systemctl daemon-reload
+    (( changed || drop_in_changed )) && sudo systemctl restart valkey
+    [[ "$(valkey-cli -s /run/valkey/valkey.sock ping)" == PONG ]] || fail "Valkey socket is not ready"
+}
+
+configure_postgresql
+configure_valkey
