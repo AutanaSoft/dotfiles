@@ -118,7 +118,7 @@ configure_services() {
 
     command -v pg_isready >/dev/null 2>&1 || fail "pg_isready is required; run --deps first"
     command -v valkey-cli >/dev/null 2>&1 || fail "valkey-cli is required; run --deps first"
-    [[ -f "$POSTGRES_DATA_DIR/PG_VERSION" ]] || fail "PostgreSQL is not initialized; run --deps first"
+    sudo test -f "$POSTGRES_DATA_DIR/PG_VERSION" || fail "PostgreSQL is not initialized; run --deps first"
 
     [[ " $(id -nG "$USER") " == *" wheel "* ]] || fail "$USER must belong to the wheel group to use the Valkey socket"
     install_system_config "$REPO_ROOT/fedora-wsl2/etc/postgresql/pg_hba.conf" "$POSTGRES_DATA_DIR/pg_hba.conf" postgres 0600 || postgres_changed=1
