@@ -84,6 +84,7 @@ fedora_full_output="$($SETUP --profile fedora-wsl2 --dots --deps --non-interacti
 
 fedora_deps_config_output="$($SETUP --profile fedora-wsl2 --deps --non-interactive --dry-run)"
 [[ "$fedora_deps_config_output" != *"would install configuration"* ]] || fail "Fedora --deps previewed custom configuration"
+[[ "$fedora_deps_config_output" == *"[setup-deps]"* ]] || fail "Fedora --deps did not preview service setup"
 
 before="$(find "$tmp_home" -mindepth 1 -print | sort)"
 "$FONT_SETUP" --dry-run >/tmp/setup-contract.stdout
