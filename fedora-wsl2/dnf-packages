@@ -4,6 +4,7 @@
 git
 zip
 unzip
+libatomic
 lsof
 hunspell
 hunspell-en-US
