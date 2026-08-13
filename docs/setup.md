@@ -43,7 +43,8 @@ dependency phase; it does not apply dotfiles or validation.
 ./setup --profile fedora-wsl2 --dots-only
 ./setup --profile fedora-wsl2 --deps
 ./setup --profile fedora-wsl2 --services
-./setup --profile fedora-wsl2 --dots --deps --services
+./setup --profile fedora-wsl2 --locale
+./setup --profile fedora-wsl2 --dots --deps --services --locale
 ```
 
 | Flag          | Meaning                                                                                                                         |
@@ -52,9 +53,12 @@ dependency phase; it does not apply dotfiles or validation.
 | `--dots`      | Apply the same user configuration as `--dots-only`.                                                                       |
 | `--deps`      | Install the groups and packages declared in `fedora-wsl2/dnf-packages`.                                                   |
 | `--services`  | Initialize, configure, enable, and validate PostgreSQL and Valkey.                                                        |
+| `--locale`    | Install Spanish locale data and set the system locale to `es_VE.UTF-8`.                                                   |
 
-`--fonts`, `--locale`, and `--no-validate` are exclusive to Omarchy and are
-rejected for Fedora WSL2. Fedora's `--services` can interactively set the
+Fedora's `--deps` phase also installs Google Chrome Stable from Google's official
+RPM when it is absent. Its `--dots` and `--dots-only` phases install OpenCode
+when it is absent. `--fonts` and `--no-validate` are exclusive to Omarchy and
+are rejected for Fedora WSL2. Fedora's `--services` can interactively set the
 PostgreSQL `postgres` role password; it never prompts in
 `--non-interactive` or `--dry-run` mode. Valkey accepts local socket connections
 through `/run/valkey/valkey.sock` for users in the `wheel` group. The profile
@@ -87,3 +91,4 @@ socket with mode `770`.
 - `fedora-wsl2/utils/bash/setup-dots` — Mise bootstrap, dotfiles, and tools.
 - `fedora-wsl2/utils/bash/setup-deps` — DNF group and package setup.
 - `fedora-wsl2/utils/bash/setup-services` — PostgreSQL and Valkey setup.
+- `fedora-wsl2/utils/bash/setup-locale` — Spanish locale setup.

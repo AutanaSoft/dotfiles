@@ -28,7 +28,7 @@ Actions:
   --deps             Run the selected profile dependency phase.
   --fonts            Install Omarchy user-local fonts.
   --services         Configure profile-specific services.
-  --locale           Install the Omarchy locale.
+  --locale           Install the selected profile's locale.
 
 Options:
   --profile NAME     Select omarchy or fedora-wsl2.
@@ -41,7 +41,7 @@ Examples:
   $0 --dots
   $0 --profile omarchy --dots-only --dry-run
   $0 --profile omarchy --dots --deps --fonts --services --locale
-  $0 --profile fedora-wsl2 --dots --deps --services
+  $0 --profile fedora-wsl2 --dots --deps --services --locale
 EOF
 }
 
@@ -103,8 +103,8 @@ case "$PROFILE" in
     *) fail "unsupported profile: $PROFILE" ;;
 esac
 
-if [[ "$PROFILE" == fedora-wsl2 ]] && (( FONTS || LOCALE || NO_VALIDATE )); then
-    fail "--fonts, --locale, and --no-validate are unsupported for fedora-wsl2."
+if [[ "$PROFILE" == fedora-wsl2 ]] && (( FONTS || NO_VALIDATE )); then
+    fail "--fonts and --no-validate are unsupported for fedora-wsl2."
 fi
 
 if (( !DOTS && !DOTS_ONLY && !DEPS && !FONTS && !SERVICES && !LOCALE )); then
@@ -114,7 +114,7 @@ fi
 if (( DOTS )); then
     if (( !NON_INTERACTIVE )); then
         phases=(deps fonts services locale)
-        [[ "$PROFILE" == fedora-wsl2 ]] && phases=(deps services)
+        [[ "$PROFILE" == fedora-wsl2 ]] && phases=(deps services locale)
         for phase in "${phases[@]}"; do
             case "$phase" in
                 deps) selected=$DEPS ;;

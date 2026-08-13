@@ -42,3 +42,4 @@ postgresql
 postgresql-server
 postgresql-contrib
 valkey
+wireguard-tools

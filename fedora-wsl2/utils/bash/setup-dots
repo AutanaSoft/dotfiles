@@ -8,6 +8,7 @@ DRY_RUN="${DOTFILES_DRY_RUN:-0}"
 MANIFEST="$REPO_ROOT/fedora-wsl2/dots-paths"
 SOURCE_ROOT="$REPO_ROOT/fedora-wsl2/home"
 MISE_BIN="$HOME/.local/bin/mise"
+OPENCODE_BIN="$HOME/.opencode/bin/opencode"
 
 log() { echo "[setup-dots] $*"; }
 fail() { echo "[setup-dots] ERROR: $*" >&2; exit 1; }
@@ -92,9 +93,22 @@ install_mise() {
     curl https://mise.run | sh
 }
 
+install_opencode() {
+    if [[ -x "$OPENCODE_BIN" ]]; then
+        log "OpenCode is installed: $OPENCODE_BIN"
+        return
+    fi
+    log "Installing OpenCode at $OPENCODE_BIN"
+    (( DRY_RUN )) && return
+    command -v curl >/dev/null 2>&1 || fail "curl is required to install OpenCode"
+    curl -fsSL https://opencode.ai/install | bash
+    [[ -x "$OPENCODE_BIN" ]] || fail "OpenCode installation did not create $OPENCODE_BIN"
+}
+
 install_lazyvim
 apply_manifest
 install_mise
+install_opencode
 log "Installing tools declared by Mise"
 if (( !DRY_RUN )); then
     [[ -x "$MISE_BIN" ]] || fail "Mise installation did not create $MISE_BIN"

@@ -9,6 +9,7 @@ SERVICES_SETUP="$ROOT_DIR/omarchy/utils/bash/setup-services"
 DEP_SETUP="$ROOT_DIR/omarchy/utils/bash/setup-deps"
 FEDORA_DEPS_SETUP="$ROOT_DIR/fedora-wsl2/utils/bash/setup-deps"
 FEDORA_SERVICES_SETUP="$ROOT_DIR/fedora-wsl2/utils/bash/setup-services"
+FEDORA_LOCALE_SETUP="$ROOT_DIR/fedora-wsl2/utils/bash/setup-locale"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -73,8 +74,10 @@ fedora_deps_output="$($SETUP --profile fedora-wsl2 --deps --non-interactive --dr
 [[ "$fedora_deps_output" == *"[setup-deps]"* ]] || fail "Fedora --deps did not dispatch to setup-deps"
 [[ "$fedora_deps_output" != *"[setup-dots]"* ]] || fail "Fedora --deps unexpectedly dispatched dots"
 [[ "$fedora_deps_output" != *"[setup-services]"* ]] || fail "Fedora --deps unexpectedly dispatched services"
+[[ "$fedora_deps_output" != *"[setup-locale]"* ]] || fail "Fedora --deps unexpectedly dispatched locale"
 [[ "$fedora_deps_output" != *"would initialize PostgreSQL"* ]] || fail "Fedora --deps previewed PostgreSQL initialization"
 [[ "$fedora_deps_output" != *"would enable postgresql"* ]] || fail "Fedora --deps previewed service management"
+[[ "$fedora_deps_output" == *"google-chrome-stable"* ]] || fail "Fedora --deps did not check Google Chrome"
 
 fedora_dots_output="$($SETUP --profile fedora-wsl2 --dots-only --non-interactive --dry-run)"
 [[ "$fedora_dots_output" == *"[setup-dots]"* ]] || fail "Fedora --dots-only did not dispatch to setup-dots"
@@ -83,6 +86,7 @@ fedora_dots_output="$($SETUP --profile fedora-wsl2 --dots-only --non-interactive
 [[ "$fedora_dots_output" == *"Installing LazyVim starter"* ]] || fail "Fedora --dots-only did not preview LazyVim installation"
 [[ "$fedora_dots_output" != *"Copying Neovim bootstrap"* ]] || fail "Fedora --dots-only retained the Neovim bootstrap copy"
 [[ "$fedora_dots_output" != *"[setup-services]"* ]] || fail "Fedora --dots-only dispatched services"
+[[ "$fedora_dots_output" == *"Installing OpenCode at"* ]] || fail "Fedora --dots-only did not preview OpenCode installation"
 
 mkdir -p "$tmp_home/.config/nvim"
 fedora_existing_nvim_output="$($SETUP --profile fedora-wsl2 --dots-only --non-interactive --dry-run)"
@@ -96,9 +100,14 @@ fedora_services_output="$($SETUP --profile fedora-wsl2 --services --non-interact
 [[ "$fedora_services_output" == *"[setup-services] [dry-run] would install configuration: /etc/systemd/system/valkey.service.d/socket-group.conf"* ]] || fail "Fedora --services did not preview the Valkey drop-in"
 [[ "$fedora_services_output" == *"[setup-services] [dry-run] would run: systemctl daemon-reload"* ]] || fail "Fedora --services did not preview systemd reload"
 
-fedora_full_output="$($SETUP --profile fedora-wsl2 --dots --deps --services --non-interactive --dry-run)"
+fedora_locale_output="$($SETUP --profile fedora-wsl2 --locale --non-interactive --dry-run)"
+[[ "$fedora_locale_output" == *"glibc-langpack-es"* ]] || fail "Fedora --locale did not check Spanish locale data"
+[[ "$fedora_locale_output" == *"[setup-locale] [dry-run] would install locale configuration: /etc/locale.conf"* ]] || fail "Fedora --locale did not preview locale configuration"
+[[ "$fedora_locale_output" != *"[setup-deps]"* ]] || fail "Fedora --locale unexpectedly dispatched dependencies"
+
+fedora_full_output="$($SETUP --profile fedora-wsl2 --dots --deps --services --locale --non-interactive --dry-run)"
 [[ "$fedora_full_output" != *"unknown option: --final-validation"* ]] || fail "Fedora --dots forwarded Omarchy validation"
-[[ "$fedora_full_output" == *"[setup-deps]"*"[setup-dots]"*"[setup-services]"* ]] || fail "Fedora full flow did not dispatch phases in order"
+[[ "$fedora_full_output" == *"[setup-deps]"*"[setup-dots]"*"[setup-services]"*"[setup-locale]"* ]] || fail "Fedora full flow did not dispatch phases in order"
 
 fedora_deps_config_output="$($SETUP --profile fedora-wsl2 --deps --non-interactive --dry-run)"
 [[ "$fedora_deps_config_output" != *"would install configuration"* ]] || fail "Fedora --deps previewed custom configuration"
@@ -154,6 +163,7 @@ set -e
 rm -rf "$manifest_root"
 
 assert_status 1 "$FEDORA_SERVICES_SETUP" --unknown
+assert_status 1 "$FEDORA_LOCALE_SETUP" --unknown
 
 [[ "$(< "$ROOT_DIR/fedora-wsl2/home/config/mise/config.toml")" == *'python = "3.14.7"'* ]] || fail "Fedora Mise configuration does not pin Python 3.14.7"
 [[ "$(< "$ROOT_DIR/fedora-wsl2/home/config/mise/config.toml")" == *'"npm:markdownlint-cli2" = "latest"'* ]] || fail "Fedora Mise configuration does not install markdownlint-cli2"

@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+REPO_ROOT="${DOTFILES_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)}"
+BACKUP_DIR="${DOTFILES_BACKUP_DIR:-$REPO_ROOT/backup/$(date -u +%Y%m%dT%H%M%SZ)}"
+DRY_RUN="${DOTFILES_DRY_RUN:-0}"
+LOCALE_CONF_SRC="$REPO_ROOT/fedora-wsl2/etc/locale.conf"
+LOCALE_CONF_TARGET="/etc/locale.conf"
+
+log() { echo "[setup-locale] $*"; }
+fail() { echo "[setup-locale] ERROR: $*" >&2; exit 1; }
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dry-run) DRY_RUN=1; shift ;;
+        --non-interactive) shift ;;
+        *) fail "unknown option: $1" ;;
+    esac
+done
+
+[[ -f "$LOCALE_CONF_SRC" ]] || fail "locale configuration not found: $LOCALE_CONF_SRC"
+command -v rpm >/dev/null 2>&1 || fail "rpm is required"
+command -v dnf >/dev/null 2>&1 || fail "dnf is required"
+
+if rpm -q glibc-langpack-es >/dev/null 2>&1; then
+    log "[installed] glibc-langpack-es"
+else
+    log "[missing] glibc-langpack-es"
+    log "Installing Spanish locale data"
+    (( DRY_RUN )) || sudo dnf install glibc-langpack-es
+fi
+
+if (( DRY_RUN )); then
+    log "[dry-run] would install locale configuration: $LOCALE_CONF_TARGET"
+elif [[ -f "$LOCALE_CONF_TARGET" ]] && sudo cmp -s -- "$LOCALE_CONF_SRC" "$LOCALE_CONF_TARGET"; then
+    log "Unchanged: $LOCALE_CONF_TARGET"
+else
+    if sudo test -f "$LOCALE_CONF_TARGET"; then
+        backup="$BACKUP_DIR/etc/locale.conf"
+        log "Backing up: $LOCALE_CONF_TARGET -> $backup"
+        mkdir -p "$(dirname -- "$backup")"
+        sudo cp -- "$LOCALE_CONF_TARGET" "$backup"
+    fi
+    log "Installing locale configuration: $LOCALE_CONF_TARGET"
+    sudo install -D -m 0644 -- "$LOCALE_CONF_SRC" "$LOCALE_CONF_TARGET"
+fi
+
+if (( DRY_RUN )); then
+    log "[dry-run] would verify es_VE.UTF-8"
+elif locale -a | grep -qx 'es_VE.utf8'; then
+    log "Verified: es_VE.UTF-8 is available"
+else
+    fail "es_VE.UTF-8 is unavailable after installing glibc-langpack-es"
+fi
+
+log "Start a new WSL session for LANG=es_VE.UTF-8 to take effect."

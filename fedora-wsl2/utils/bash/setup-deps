@@ -5,6 +5,7 @@ set -euo pipefail
 REPO_ROOT="${DOTFILES_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)}"
 DRY_RUN="${DOTFILES_DRY_RUN:-0}"
 MANIFEST="$REPO_ROOT/fedora-wsl2/dnf-packages"
+CHROME_RPM_URL="https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm"
 
 log() { echo "[setup-deps] $*"; }
 fail() { echo "[setup-deps] ERROR: $*" >&2; exit 1; }
@@ -70,4 +71,12 @@ done
 if ((${#missing_packages[@]})); then
     log "Installing missing packages: ${missing_packages[*]}"
     (( DRY_RUN )) || sudo dnf install "${missing_packages[@]}"
+fi
+
+if rpm -q google-chrome-stable >/dev/null 2>&1; then
+    log "[installed] google-chrome-stable"
+else
+    log "[missing] google-chrome-stable"
+    log "Installing Google Chrome Stable from the official RPM"
+    (( DRY_RUN )) || sudo dnf install "$CHROME_RPM_URL"
 fi
