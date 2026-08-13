@@ -79,6 +79,8 @@ fedora_dots_output="$($SETUP --profile fedora-wsl2 --dots-only --non-interactive
 fedora_full_output="$($SETUP --profile fedora-wsl2 --dots --deps --non-interactive --dry-run)"
 [[ "$fedora_full_output" != *"unknown option: --final-validation"* ]] || fail "Fedora --dots forwarded Omarchy validation"
 [[ "$fedora_full_output" == *"[setup-dots] [dry-run] would install configuration: /var/lib/pgsql/data/pg_hba.conf"* ]] || fail "Fedora --dots did not preview PostgreSQL configuration"
+[[ "$fedora_full_output" == *"[setup-dots] [dry-run] would install configuration: /etc/systemd/system/valkey.service.d/socket-group.conf"* ]] || fail "Fedora --dots did not preview the Valkey drop-in"
+[[ "$fedora_full_output" == *"[setup-dots] [dry-run] would run: systemctl daemon-reload"* ]] || fail "Fedora --dots did not preview systemd reload"
 
 fedora_deps_config_output="$($SETUP --profile fedora-wsl2 --deps --non-interactive --dry-run)"
 [[ "$fedora_deps_config_output" != *"would install configuration"* ]] || fail "Fedora --deps previewed custom configuration"

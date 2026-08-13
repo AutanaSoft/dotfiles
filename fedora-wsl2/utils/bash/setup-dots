@@ -11,6 +11,7 @@ MANIFEST="$REPO_ROOT/fedora-wsl2/dots-paths"
 SOURCE_ROOT="$REPO_ROOT/fedora-wsl2/home"
 MISE_BIN="$HOME/.local/bin/mise"
 POSTGRES_DATA_DIR="/var/lib/pgsql/data"
+VALKEY_DROP_IN="/etc/systemd/system/valkey.service.d/socket-group.conf"
 
 log() { echo "[setup-dots] $*"; }
 fail() { echo "[setup-dots] ERROR: $*" >&2; exit 1; }
@@ -103,29 +104,15 @@ install_system_config() {
     return 1
 }
 
-add_user_to_valkey_group() {
-    local valkey_gid
-    valkey_gid="$(getent group valkey | cut -d: -f3)"
-    [[ -n "$valkey_gid" ]] || fail "the valkey group does not exist; run --deps first"
-    if [[ " $(id -G "$USER") " == *" $valkey_gid "* ]]; then
-        log "User is in the valkey group: $USER"
-        return
-    fi
-    log "Adding $USER to the valkey group"
-    if (( !DRY_RUN )); then
-        sudo usermod -aG valkey "$USER"
-        log "Restart WSL before using the Valkey socket: wsl --shutdown"
-    fi
-}
-
 configure_services() {
-    local postgres_changed=0 valkey_changed=0 answer password confirmation escaped_password
+    local postgres_changed=0 valkey_changed=0 drop_in_changed=0 answer password confirmation escaped_password
     if (( DRY_RUN )); then
-        log "[dry-run] would add $USER to the valkey group if needed"
         install_system_config "$REPO_ROOT/fedora-wsl2/etc/postgresql/pg_hba.conf" "$POSTGRES_DATA_DIR/pg_hba.conf" postgres 0600 || postgres_changed=1
         install_system_config "$REPO_ROOT/fedora-wsl2/etc/valkey/valkey.conf" /etc/valkey/valkey.conf valkey 0640 || valkey_changed=1
+        install_system_config "$REPO_ROOT/fedora-wsl2/etc/systemd/system/valkey.service.d/socket-group.conf" "$VALKEY_DROP_IN" root 0644 || drop_in_changed=1
+        (( drop_in_changed )) && log "[dry-run] would run: systemctl daemon-reload"
         (( postgres_changed )) && log "[dry-run] would restart postgresql"
-        (( valkey_changed )) && log "[dry-run] would restart valkey"
+        (( valkey_changed || drop_in_changed )) && log "[dry-run] would restart valkey"
         return
     fi
 
@@ -133,14 +120,16 @@ configure_services() {
     command -v valkey-cli >/dev/null 2>&1 || fail "valkey-cli is required; run --deps first"
     [[ -f "$POSTGRES_DATA_DIR/PG_VERSION" ]] || fail "PostgreSQL is not initialized; run --deps first"
 
-    add_user_to_valkey_group
+    [[ " $(id -nG "$USER") " == *" wheel "* ]] || fail "$USER must belong to the wheel group to use the Valkey socket"
     install_system_config "$REPO_ROOT/fedora-wsl2/etc/postgresql/pg_hba.conf" "$POSTGRES_DATA_DIR/pg_hba.conf" postgres 0600 || postgres_changed=1
     install_system_config "$REPO_ROOT/fedora-wsl2/etc/valkey/valkey.conf" /etc/valkey/valkey.conf valkey 0640 || valkey_changed=1
+    install_system_config "$REPO_ROOT/fedora-wsl2/etc/systemd/system/valkey.service.d/socket-group.conf" "$VALKEY_DROP_IN" root 0644 || drop_in_changed=1
 
+    (( drop_in_changed )) && sudo systemctl daemon-reload
     (( postgres_changed )) && sudo systemctl restart postgresql
-    (( valkey_changed )) && sudo systemctl restart valkey
+    (( valkey_changed || drop_in_changed )) && sudo systemctl restart valkey
     pg_isready -q || fail "PostgreSQL is not ready"
-    [[ "$(sudo -u valkey valkey-cli -s /run/valkey/valkey.sock ping)" == PONG ]] || fail "Valkey socket is not ready"
+    [[ "$(valkey-cli -s /run/valkey/valkey.sock ping)" == PONG ]] || fail "Valkey socket is not ready"
 
     if (( !NON_INTERACTIVE )) && [[ -t 0 ]]; then
         read -r -p "Set a password for the PostgreSQL superuser? [y/N] " answer

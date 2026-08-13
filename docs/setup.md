@@ -55,9 +55,9 @@ dependency phase; it does not apply dotfiles or validation.
 Omarchy and are rejected for Fedora WSL2. Fedora's `--dots` can interactively
 set the PostgreSQL `postgres` role password; it never prompts in
 `--non-interactive` or `--dry-run` mode. Valkey accepts local socket connections
-through `/run/valkey/valkey.sock` for users in the `valkey` group. `--dots` adds
-the executing user to that group when necessary; restart WSL with
-`wsl --shutdown` before using the socket from a new shell.
+through `/run/valkey/valkey.sock` for users in the `wheel` group. The profile
+installs a Valkey systemd drop-in so the service can create that group-owned
+socket with mode `770`.
 
 ## Safety boundaries
 
