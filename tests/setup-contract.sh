@@ -74,9 +74,14 @@ fedora_deps_output="$($SETUP --profile fedora-wsl2 --deps --non-interactive --dr
 fedora_dots_output="$($SETUP --profile fedora-wsl2 --dots-only --non-interactive --dry-run)"
 [[ "$fedora_dots_output" == *"[setup-dots]"* ]] || fail "Fedora --dots-only did not dispatch to setup-dots"
 [[ "$fedora_dots_output" != *"[setup-deps]"* ]] || fail "Fedora --dots-only unexpectedly dispatched deps"
+[[ "$fedora_dots_output" != *"would install configuration"* ]] || fail "Fedora --dots-only previewed system configuration"
 
 fedora_full_output="$($SETUP --profile fedora-wsl2 --dots --deps --non-interactive --dry-run)"
 [[ "$fedora_full_output" != *"unknown option: --final-validation"* ]] || fail "Fedora --dots forwarded Omarchy validation"
+[[ "$fedora_full_output" == *"[setup-dots] [dry-run] would install configuration: /var/lib/pgsql/data/pg_hba.conf"* ]] || fail "Fedora --dots did not preview PostgreSQL configuration"
+
+fedora_deps_config_output="$($SETUP --profile fedora-wsl2 --deps --non-interactive --dry-run)"
+[[ "$fedora_deps_config_output" != *"would install configuration"* ]] || fail "Fedora --deps previewed custom configuration"
 
 before="$(find "$tmp_home" -mindepth 1 -print | sort)"
 "$FONT_SETUP" --dry-run >/tmp/setup-contract.stdout
@@ -108,8 +113,7 @@ assert_dependency_status 1
 rm -rf "$manifest_root"
 
 manifest_root="$(mktemp -d)"
-mkdir -p "$manifest_root/fedora-wsl2/etc/postgresql" "$manifest_root/fedora-wsl2/etc/valkey"
-touch "$manifest_root/fedora-wsl2/etc/postgresql/pg_hba.conf" "$manifest_root/fedora-wsl2/etc/valkey/valkey.conf"
+mkdir -p "$manifest_root/fedora-wsl2"
 printf '# comment\n\nalpha\nbeta\n' > "$manifest_root/fedora-wsl2/dnf-packages"
 fedora_dependency_output="$(DOTFILES_ROOT="$manifest_root" "$FEDORA_DEPS_SETUP" --dry-run)"
 [[ "$fedora_dependency_output" == *"[missing] alpha"* ]] || fail "Fedora manifest package alpha was not parsed"

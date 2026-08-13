@@ -3,9 +3,7 @@
 set -euo pipefail
 
 REPO_ROOT="${DOTFILES_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)}"
-BACKUP_DIR="${DOTFILES_BACKUP_DIR:-$REPO_ROOT/backup/$(date -u +%Y%m%dT%H%M%SZ)}"
 DRY_RUN="${DOTFILES_DRY_RUN:-0}"
-NON_INTERACTIVE=0
 MANIFEST="$REPO_ROOT/fedora-wsl2/dnf-packages"
 POSTGRES_DATA_DIR="/var/lib/pgsql/data"
 
@@ -15,31 +13,10 @@ fail() { echo "[setup-deps] ERROR: $*" >&2; exit 1; }
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run) DRY_RUN=1; shift ;;
-        --non-interactive) NON_INTERACTIVE=1; shift ;;
+        --non-interactive) shift ;;
         *) fail "unknown option: $1" ;;
     esac
 done
-
-install_config() {
-    local source="$1" target="$2" owner="$3" mode="$4" backup
-    [[ -f "$source" ]] || fail "configuration source does not exist: $source"
-    if (( DRY_RUN )); then
-        log "[dry-run] would install configuration: $target"
-        return 1
-    fi
-    if sudo cmp -s -- "$source" "$target" 2>/dev/null; then
-        log "Unchanged: $target"
-        return 0
-    fi
-    backup="$BACKUP_DIR${target}"
-    log "Installing configuration: $target"
-    if sudo test -e "$target"; then
-        mkdir -p "$(dirname -- "$backup")"
-        sudo cat -- "$target" > "$backup"
-    fi
-    sudo install -o "$owner" -g "$owner" -m "$mode" -- "$source" "$target"
-    return 1
-}
 
 read_packages() {
     local package
@@ -79,31 +56,7 @@ if [[ ! -f "$POSTGRES_DATA_DIR/PG_VERSION" ]]; then
     (( DRY_RUN )) || sudo postgresql-setup --initdb
 fi
 
-postgres_changed=0
-valkey_changed=0
-install_config "$REPO_ROOT/fedora-wsl2/etc/postgresql/pg_hba.conf" "$POSTGRES_DATA_DIR/pg_hba.conf" postgres 0600 || postgres_changed=1
-install_config "$REPO_ROOT/fedora-wsl2/etc/valkey/valkey.conf" /etc/valkey/valkey.conf valkey 0640 || valkey_changed=1
-
 log "Enabling PostgreSQL and Valkey"
 if (( !DRY_RUN )); then
     sudo systemctl enable --now postgresql valkey
-    (( postgres_changed )) && sudo systemctl restart postgresql
-    (( valkey_changed )) && sudo systemctl restart valkey
-    pg_isready -q || fail "PostgreSQL is not ready"
-    [[ "$(valkey-cli -s /run/valkey/valkey.sock ping)" == PONG ]] || fail "Valkey socket is not ready"
-fi
-
-if (( !DRY_RUN && !NON_INTERACTIVE )) && [[ -t 0 ]]; then
-    read -r -p "Set a password for the PostgreSQL superuser? [y/N] " answer
-    case "$answer" in
-        y|Y|yes|YES)
-            read -r -s -p "PostgreSQL password: " password; printf '\n'
-            read -r -s -p "Confirm PostgreSQL password: " confirmation; printf '\n'
-            [[ -n "$password" ]] || fail "password cannot be empty"
-            [[ "$password" == "$confirmation" ]] || fail "passwords do not match"
-            escaped_password="${password//\'/\'\'}"
-            printf "ALTER ROLE postgres WITH PASSWORD '%s';\n" "$escaped_password" | sudo -u postgres psql --set ON_ERROR_STOP=1
-            unset password confirmation escaped_password
-            ;;
-    esac
 fi

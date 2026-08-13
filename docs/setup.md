@@ -47,15 +47,17 @@ dependency phase; it does not apply dotfiles or validation.
 
 | Flag          | Meaning                                                                                                                         |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `--dots-only` | Install Mise if necessary, apply `fedora-wsl2/dots-paths`, and run `mise install`. It does not use `sudo`.                      |
-| `--dots`      | Apply the user configuration and, interactively, offer the dependency phase.                                                    |
-| `--deps`      | Install `fedora-wsl2/dnf-packages`, initialize PostgreSQL, apply PostgreSQL and Valkey configuration, and enable both services. |
+| `--dots-only` | Install Mise if necessary, apply `fedora-wsl2/dots-paths`, and run `mise install`. It does not use `sudo`.                |
+| `--dots`      | Apply user configuration plus the PostgreSQL and Valkey configuration from the profile.                                  |
+| `--deps`      | Install `fedora-wsl2/dnf-packages`, initialize PostgreSQL, and enable PostgreSQL and Valkey with Fedora defaults.       |
 
 `--fonts`, `--services`, `--locale`, and `--no-validate` are exclusive to
-Omarchy and are rejected for Fedora WSL2. Fedora's `--deps` can interactively
+Omarchy and are rejected for Fedora WSL2. Fedora's `--dots` can interactively
 set the PostgreSQL `postgres` role password; it never prompts in
 `--non-interactive` or `--dry-run` mode. Valkey accepts local socket connections
-through `/run/valkey/valkey.sock` for users in the `wheel` group.
+through `/run/valkey/valkey.sock` for users in the `valkey` group. `--dots` adds
+the executing user to that group when necessary; restart WSL with
+`wsl --shutdown` before using the socket from a new shell.
 
 ## Safety boundaries
 

@@ -5,9 +5,12 @@ set -euo pipefail
 REPO_ROOT="${DOTFILES_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)}"
 BACKUP_DIR="${DOTFILES_BACKUP_DIR:-$REPO_ROOT/backup/$(date -u +%Y%m%dT%H%M%SZ)}"
 DRY_RUN="${DOTFILES_DRY_RUN:-0}"
+NON_INTERACTIVE=0
+SYSTEM_CONFIG=0
 MANIFEST="$REPO_ROOT/fedora-wsl2/dots-paths"
 SOURCE_ROOT="$REPO_ROOT/fedora-wsl2/home"
 MISE_BIN="$HOME/.local/bin/mise"
+POSTGRES_DATA_DIR="/var/lib/pgsql/data"
 
 log() { echo "[setup-dots] $*"; }
 fail() { echo "[setup-dots] ERROR: $*" >&2; exit 1; }
@@ -15,7 +18,8 @@ fail() { echo "[setup-dots] ERROR: $*" >&2; exit 1; }
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run) DRY_RUN=1; shift ;;
-        --non-interactive) shift ;;
+        --non-interactive) NON_INTERACTIVE=1; shift ;;
+        --system-config) SYSTEM_CONFIG=1; shift ;;
         *) fail "unknown option: $1" ;;
     esac
 done
@@ -78,10 +82,89 @@ apply_manifest() {
     done < "$MANIFEST"
 }
 
+install_system_config() {
+    local source="$1" target="$2" owner="$3" mode="$4" backup
+    [[ -f "$source" ]] || fail "configuration source does not exist: $source"
+    if (( DRY_RUN )); then
+        log "[dry-run] would install configuration: $target"
+        return 1
+    fi
+    if sudo cmp -s -- "$source" "$target" 2>/dev/null; then
+        log "Unchanged: $target"
+        return 0
+    fi
+    backup="$BACKUP_DIR${target}"
+    log "Installing configuration: $target"
+    if sudo test -e "$target"; then
+        mkdir -p "$(dirname -- "$backup")"
+        sudo cat -- "$target" > "$backup"
+    fi
+    sudo install -D -o "$owner" -g "$owner" -m "$mode" -- "$source" "$target"
+    return 1
+}
+
+add_user_to_valkey_group() {
+    local valkey_gid
+    valkey_gid="$(getent group valkey | cut -d: -f3)"
+    [[ -n "$valkey_gid" ]] || fail "the valkey group does not exist; run --deps first"
+    if [[ " $(id -G "$USER") " == *" $valkey_gid "* ]]; then
+        log "User is in the valkey group: $USER"
+        return
+    fi
+    log "Adding $USER to the valkey group"
+    if (( !DRY_RUN )); then
+        sudo usermod -aG valkey "$USER"
+        log "Restart WSL before using the Valkey socket: wsl --shutdown"
+    fi
+}
+
+configure_services() {
+    local postgres_changed=0 valkey_changed=0 answer password confirmation escaped_password
+    if (( DRY_RUN )); then
+        log "[dry-run] would add $USER to the valkey group if needed"
+        install_system_config "$REPO_ROOT/fedora-wsl2/etc/postgresql/pg_hba.conf" "$POSTGRES_DATA_DIR/pg_hba.conf" postgres 0600 || postgres_changed=1
+        install_system_config "$REPO_ROOT/fedora-wsl2/etc/valkey/valkey.conf" /etc/valkey/valkey.conf valkey 0640 || valkey_changed=1
+        (( postgres_changed )) && log "[dry-run] would restart postgresql"
+        (( valkey_changed )) && log "[dry-run] would restart valkey"
+        return
+    fi
+
+    command -v pg_isready >/dev/null 2>&1 || fail "pg_isready is required; run --deps first"
+    command -v valkey-cli >/dev/null 2>&1 || fail "valkey-cli is required; run --deps first"
+    [[ -f "$POSTGRES_DATA_DIR/PG_VERSION" ]] || fail "PostgreSQL is not initialized; run --deps first"
+
+    add_user_to_valkey_group
+    install_system_config "$REPO_ROOT/fedora-wsl2/etc/postgresql/pg_hba.conf" "$POSTGRES_DATA_DIR/pg_hba.conf" postgres 0600 || postgres_changed=1
+    install_system_config "$REPO_ROOT/fedora-wsl2/etc/valkey/valkey.conf" /etc/valkey/valkey.conf valkey 0640 || valkey_changed=1
+
+    (( postgres_changed )) && sudo systemctl restart postgresql
+    (( valkey_changed )) && sudo systemctl restart valkey
+    pg_isready -q || fail "PostgreSQL is not ready"
+    [[ "$(sudo -u valkey valkey-cli -s /run/valkey/valkey.sock ping)" == PONG ]] || fail "Valkey socket is not ready"
+
+    if (( !NON_INTERACTIVE )) && [[ -t 0 ]]; then
+        read -r -p "Set a password for the PostgreSQL superuser? [y/N] " answer
+        case "$answer" in
+            y|Y|yes|YES)
+                read -r -s -p "PostgreSQL password: " password; printf '\n'
+                read -r -s -p "Confirm PostgreSQL password: " confirmation; printf '\n'
+                [[ -n "$password" ]] || fail "password cannot be empty"
+                [[ "$password" == "$confirmation" ]] || fail "passwords do not match"
+                escaped_password="${password//\'/\'\'}"
+                printf "ALTER ROLE postgres WITH PASSWORD '%s';\n" "$escaped_password" | sudo -u postgres psql --set ON_ERROR_STOP=1
+                unset password confirmation escaped_password
+                ;;
+        esac
+    fi
+}
+
 install_mise
 apply_manifest
 log "Installing tools declared by Mise"
 if (( !DRY_RUN )); then
     [[ -x "$MISE_BIN" ]] || fail "Mise installation did not create $MISE_BIN"
     "$MISE_BIN" install
+fi
+if (( SYSTEM_CONFIG )); then
+    configure_services
 fi

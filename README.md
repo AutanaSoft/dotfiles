@@ -46,9 +46,9 @@ mutating the host.
 
 The `fedora-wsl2` profile supports `--dots`, `--dots-only`, and `--deps`.
 Its dotfiles phase installs Mise in the user home, applies `dots-paths`, and
-installs the tools declared in the linked Mise configuration. Its dependency
-phase installs `dnf-packages`, initializes PostgreSQL, applies PostgreSQL and
-Valkey configuration, and enables both services.
+installs the tools declared in the linked Mise configuration. `--dots` also
+applies the PostgreSQL and Valkey configuration. Its dependency phase installs
+`dnf-packages`, initializes PostgreSQL, and enables both services.
 
 The `--deps`, `--fonts`, `--services`, and `--locale` flags are explicit phases
 for the same current profile; they do not add support for another platform.

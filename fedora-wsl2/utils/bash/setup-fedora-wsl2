@@ -38,4 +38,5 @@ helper_args=()
 (( DRY_RUN )) && helper_args+=(--dry-run)
 (( NON_INTERACTIVE )) && helper_args+=(--non-interactive)
 if (( DEPS )); then run_helper setup-deps "${helper_args[@]}"; fi
-if (( DOTS || DOTS_ONLY )); then run_helper setup-dots "${helper_args[@]}"; fi
+if (( DOTS )); then run_helper setup-dots --system-config "${helper_args[@]}"; fi
+if (( DOTS_ONLY )); then run_helper setup-dots "${helper_args[@]}"; fi
