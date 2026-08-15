@@ -1,4 +1,0 @@
-# tmp data files — local to each machine, not for committing.
-# Ignore everything in tmp/ except this file itself, so transient
-*
-!.gitignore

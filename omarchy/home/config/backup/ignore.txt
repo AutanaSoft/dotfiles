@@ -1,35 +1,10 @@
 # Node y package managers
 node_modules/
-.npm/
-.pnpm-store/
-.pnp/
-.yarn/cache/
-
-# Build / dist / temp
 build/
 dist/
 tmp/
 .tmp/
-
-# Angular
 .angular/
-
-# NextJS
 .next/
 out/
-.swc/
-
-# Monorepos / build systems
 .turbo/
-.nx/
-.parcel-cache/
-
-# Tests / logs
-coverage/
-logs/
-
-# OS / IDE junk
-.DS_Store
-Thumbs.db
-.idea/
-.vscode/

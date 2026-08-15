@@ -1,39 +1,87 @@
 #!/usr/bin/env bash
-# Syncs personal folders to the Backup NTFS disk.
+# Backs up personal folders to the automounted Backup NTFS disk.
 # Repo: omarchy/home/local/bin/backup-personal
 # Live: ~/.local/bin/backup-personal (symlinked by setup --dots)
 
 set -euo pipefail
 
-MOUNT_POINT="/mnt/backup"
+BACKUP_DESTINATION="/run/media/lcardenas/Backup"
 CONFIG_DIR="${HOME}/.config/backup"
 EXCLUDES="${CONFIG_DIR}/ignore.txt"
 FOLDERS_FILE="${CONFIG_DIR}/folders.txt"
 SOURCE_BASE="${HOME}"
+TEMPORARY_DIR=""
+
+error() {
+  echo "ERROR: $*" >&2
+  exit 1
+}
+
+require_command() {
+  local command_name="$1"
+
+  if ! command -v "${command_name}" >/dev/null 2>&1; then
+    error "required command not found: ${command_name}"
+  fi
+}
+
+cleanup() {
+  if [[ -n "${TEMPORARY_DIR}" ]]; then
+    rm -rf -- "${TEMPORARY_DIR}" || true
+  fi
+}
+
+trap cleanup EXIT
 
 for f in "${EXCLUDES}" "${FOLDERS_FILE}"; do
   if [[ ! -f "${f}" ]]; then
-    echo "ERROR: config file not found at ${f}" >&2
-    exit 1
+    error "config file not found at ${f}"
   fi
 done
 
-# Load folders list (skip blanks and comments)
-mapfile -t FOLDERS < <(grep -vE '^\s*(#|$)' "${FOLDERS_FILE}")
-
-if [[ ${#FOLDERS[@]} -eq 0 ]]; then
-  echo "ERROR: no folders listed in ${FOLDERS_FILE}" >&2
-  exit 1
+if [[ ! -d "${BACKUP_DESTINATION}" ]]; then
+  error "backup destination does not exist: ${BACKUP_DESTINATION}"
 fi
 
-if ! mountpoint -q "${MOUNT_POINT}"; then
-  echo "Mounting ${MOUNT_POINT}..."
-  sudo mount "${MOUNT_POINT}"
+if [[ ! -w "${BACKUP_DESTINATION}" ]]; then
+  error "backup destination is not writable: ${BACKUP_DESTINATION}"
+fi
+
+# Load folders list (skip blanks and comments)
+FOLDERS=()
+while IFS= read -r folder || [[ -n "${folder}" ]]; do
+  if [[ "${folder}" =~ ^[[:space:]]*($|#) ]]; then
+    continue
+  fi
+
+  FOLDERS+=("${folder}")
+done < "${FOLDERS_FILE}"
+
+if [[ ${#FOLDERS[@]} -eq 0 ]]; then
+  error "no folders listed in ${FOLDERS_FILE}"
+fi
+
+PROJECTS_LISTED=false
+DIRECT_SYNC_LISTED=false
+for folder in "${FOLDERS[@]}"; do
+  if [[ "${folder}" == "Projects" ]]; then
+    PROJECTS_LISTED=true
+  else
+    DIRECT_SYNC_LISTED=true
+  fi
+done
+
+if [[ "${DIRECT_SYNC_LISTED}" == true ]]; then
+  require_command rsync
 fi
 
 for folder in "${FOLDERS[@]}"; do
+  if [[ "${folder}" == "Projects" ]]; then
+    continue
+  fi
+
   src="${SOURCE_BASE}/${folder}/"
-  dst="${MOUNT_POINT}/${folder}/"
+  dst="${BACKUP_DESTINATION}/${folder}/"
   if [[ ! -d "${src}" ]]; then
     echo "[skip] ${src} does not exist locally"
     continue
@@ -41,12 +89,54 @@ for folder in "${FOLDERS[@]}"; do
   echo "=== ${folder} ==="
   rsync -rt \
     --no-perms --no-owner --no-group --no-xattrs --no-links \
-    --info=progress2,name,nonreg0 --delete \
+    --info=progress2,name,nonreg0 \
     --exclude-from="${EXCLUDES}" \
     "${src}" "${dst}"
 done
 
-echo
-echo "Unmounting ${MOUNT_POINT}..."
-sudo umount "${MOUNT_POINT}"
-echo "Done."
+if [[ "${PROJECTS_LISTED}" == false ]]; then
+  echo "[skip] Projects is not listed in ${FOLDERS_FILE}; archive not created"
+elif [[ ! -d "${SOURCE_BASE}/Projects" ]]; then
+  echo "[skip] ${SOURCE_BASE}/Projects does not exist locally; archive not created"
+else
+  require_command date
+  require_command mktemp
+  require_command mv
+  require_command rm
+  require_command zip
+
+  ZIP_EXCLUDES=()
+  while IFS= read -r directory || [[ -n "${directory}" ]]; do
+    if [[ "${directory}" =~ ^[[:space:]]*($|#) ]]; then
+      continue
+    fi
+
+    directory="${directory%/}"
+    ZIP_EXCLUDES+=("*/${directory}/" "*/${directory}/*")
+  done < "${EXCLUDES}"
+
+  archive_date="$(date +%F)"
+  final_archive="${BACKUP_DESTINATION}/Projects-${archive_date}.zip"
+  if ! TEMPORARY_DIR="$(mktemp -d "${BACKUP_DESTINATION}/.Projects-${archive_date}.XXXXXX")"; then
+    error "could not create a temporary Projects archive directory in ${BACKUP_DESTINATION}"
+  fi
+  temporary_archive="${TEMPORARY_DIR}/Projects-${archive_date}.zip"
+
+  echo "=== Projects archive ==="
+  if [[ ${#ZIP_EXCLUDES[@]} -gt 0 ]]; then
+    (
+      cd "${SOURCE_BASE}"
+      zip -r "${temporary_archive}" Projects -x "${ZIP_EXCLUDES[@]}"
+    )
+  else
+    (
+      cd "${SOURCE_BASE}"
+      zip -r "${temporary_archive}" Projects
+    )
+  fi
+
+  mv -f -- "${temporary_archive}" "${final_archive}"
+  echo "Created ${final_archive}"
+fi
+
+echo "Backup complete."
