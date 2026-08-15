@@ -8,3 +8,7 @@ tmp/
 .next/
 out/
 .turbo/
+
+# gentle-ai folders
+.atl/
+.codegraph/
