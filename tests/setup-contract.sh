@@ -47,7 +47,7 @@ assert_dependency_status() {
 }
 
 tmp_home="$(mktemp -d)"
-trap 'rm -rf "$tmp_home" "${manifest_root:-}" /tmp/setup-contract.stdout /tmp/setup-contract.stderr' EXIT
+trap 'rm -rf "$tmp_home" "${manifest_root:-}" "${omarchy_3_bin:-}" /tmp/setup-contract.stdout /tmp/setup-contract.stderr' EXIT
 export HOME="$tmp_home"
 export TMPDIR="$tmp_home/tmp"
 mkdir -p "$TMPDIR"
@@ -59,6 +59,17 @@ assert_status 2 "$SETUP" --profile fedora-wsl2 --fonts --dry-run
 assert_status 2 "$SETUP" --profile fedora-wsl2 --dots-only --deps --dry-run
 assert_status 2 "$SETUP" --profile fedora-wsl2 --dots-only --services --dry-run
 
+omarchy_3_bin="$(mktemp -d)"
+printf '#!/usr/bin/env bash\nprintf "3.8.4\\n"\n' > "$omarchy_3_bin/omarchy"
+chmod +x "$omarchy_3_bin/omarchy"
+set +e
+PATH="$omarchy_3_bin:$PATH" "$SETUP" --profile omarchy --dots-only --non-interactive --dry-run >/tmp/setup-contract.stdout 2>/tmp/setup-contract.stderr
+omarchy_3_status=$?
+set -e
+[[ "$omarchy_3_status" -eq 1 ]] || fail "Omarchy 3.x was accepted for dotfiles"
+[[ "$(< /tmp/setup-contract.stderr)" == *"Omarchy 4.x is required"* ]] || fail "Omarchy 3.x rejection was not explained"
+rm -rf "$omarchy_3_bin"
+
 deps_output="$($SETUP --profile omarchy --deps --non-interactive --dry-run)"
 [[ "$deps_output" == *"[setup-deps]"* ]] || fail "--deps did not dispatch to setup-deps"
 [[ "$deps_output" != *"[setup-fonts]"* ]] || fail "--deps unexpectedly dispatched fonts"
@@ -69,6 +80,12 @@ dots_output="$($SETUP --profile omarchy --dots-only --non-interactive --dry-run)
 for excluded in setup-deps setup-fonts setup-services setup-locale setup-validate; do
     [[ "$dots_output" != *"[$excluded]"* ]] || fail "--dots-only dispatched excluded phase $excluded"
 done
+[[ "$dots_output" == *"hyprland.lua"* ]] || fail "--dots-only did not preview the Omarchy 4 Hyprland entry point"
+[[ "$dots_output" != *"waybar"* ]] || fail "--dots-only previewed retired Waybar configuration"
+
+validate_output="$($SETUP --profile omarchy --dots --non-interactive --dry-run)"
+[[ "$validate_output" == *"would verify: Omarchy 4."* ]] || fail "validation did not check Omarchy 4"
+[[ "$validate_output" != *"tokyo-night-autana"* ]] || fail "validation retained the custom theme"
 
 fedora_deps_output="$($SETUP --profile fedora-wsl2 --deps --non-interactive --dry-run)"
 [[ "$fedora_deps_output" == *"[setup-deps]"* ]] || fail "Fedora --deps did not dispatch to setup-deps"
@@ -164,6 +181,14 @@ rm -rf "$manifest_root"
 
 assert_status 1 "$FEDORA_SERVICES_SETUP" --unknown
 assert_status 1 "$FEDORA_LOCALE_SETUP" --unknown
+
+[[ ! -e "$ROOT_DIR/omarchy/home/config/waybar/config.jsonc" ]] || fail "Omarchy profile still includes Waybar configuration"
+[[ ! -e "$ROOT_DIR/omarchy/home/config/hypr/hypridle.conf" ]] || fail "Omarchy profile still includes hypridle configuration"
+[[ ! -e "$ROOT_DIR/omarchy/home/config/omarchy/themes/tokyo-night-autana" ]] || fail "Omarchy profile still includes a custom theme"
+[[ "$(< "$ROOT_DIR/omarchy/dots-manifest")" == *'hypr/*.lua'* ]] || fail "Omarchy manifest does not link Lua modules"
+[[ "$(< "$ROOT_DIR/omarchy/dots-manifest")" != *'waybar'* ]] || fail "Omarchy manifest still links Waybar"
+[[ "$(< "$ROOT_DIR/omarchy/home/bashrc")" == *'/usr/share/omarchy/default/bash/env-bootstrap'* ]] || fail "Omarchy Bash does not bootstrap Omarchy 4"
+[[ "$(< "$ROOT_DIR/omarchy/home/bashrc")" != *'.local/share/omarchy'* ]] || fail "Omarchy Bash still references Omarchy 3"
 
 [[ "$(< "$ROOT_DIR/fedora-wsl2/home/config/mise/config.toml")" == *'python = "3.14.7"'* ]] || fail "Fedora Mise configuration does not pin Python 3.14.7"
 [[ "$(< "$ROOT_DIR/fedora-wsl2/home/config/mise/config.toml")" == *'"npm:markdownlint-cli2" = "latest"'* ]] || fail "Fedora Mise configuration does not install markdownlint-cli2"

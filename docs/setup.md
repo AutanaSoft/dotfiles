@@ -1,8 +1,8 @@
 # Setup
 
-`./setup` is the profile dispatcher. It supports `omarchy` and `fedora-wsl2`,
-resolves the repository root independently of the current directory, and
-validates the complete request before invoking a profile helper.
+`./setup` is the profile dispatcher. It supports `omarchy` and `fedora-wsl2`, resolves the
+repository root independently of the current directory, and validates the complete request before
+invoking a profile helper. The Omarchy profile requires Omarchy 4.x.
 
 ## Quick path
 
@@ -13,8 +13,8 @@ Preview and apply only user dotfiles:
 ./setup --profile omarchy --dots-only
 ```
 
-For the full interactive flow, `--dots` applies dotfiles and asks which
-optional phases to run. Empty or negative answers leave a phase disabled.
+For the full interactive flow, `--dots` applies dotfiles and asks which optional phases to run.
+Empty or negative answers leave a phase disabled.
 
 ## CLI contract
 
@@ -32,10 +32,10 @@ optional phases to run. Empty or negative answers leave a phase disabled.
 | `--dry-run`         | Show actions without downloads, writes, sudo, service changes, or graphical changes.                            |
 | `--help`, `-h`      | Show usage.                                                                                                     |
 
-Without `--non-interactive`, `--dots` asks separately about `deps`, `fonts`,
-`services`, and `locale`. In non-interactive mode, no optional phase is
-inferred. A request such as `--profile omarchy --deps --dry-run` runs only the
-dependency phase; it does not apply dotfiles or validation.
+Without `--non-interactive`, `--dots` asks separately about `deps`, `fonts`, `services`, and
+`locale`. In non-interactive mode, no optional phase is inferred. A request such as
+`--profile omarchy --deps --dry-run` runs only the dependency phase; it does not apply dotfiles or
+validation.
 
 ## Fedora WSL2
 
@@ -47,32 +47,30 @@ dependency phase; it does not apply dotfiles or validation.
 ./setup --profile fedora-wsl2 --dots --deps --services --locale
 ```
 
-| Flag          | Meaning                                                                                                                         |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Flag          | Meaning                                                                                                                                   |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | `--dots-only` | Install a new LazyVim starter, apply `fedora-wsl2/dots-paths`, install Mise if necessary, and run `mise install`. It does not use `sudo`. |
-| `--dots`      | Apply the same user configuration as `--dots-only`.                                                                       |
-| `--deps`      | Install the groups and packages declared in `fedora-wsl2/dnf-packages`.                                                   |
-| `--services`  | Initialize, configure, enable, and validate PostgreSQL and Valkey.                                                        |
-| `--locale`    | Install Spanish locale data and set the system locale to `es_VE.UTF-8`.                                                   |
+| `--dots`      | Apply the same user configuration as `--dots-only`.                                                                                       |
+| `--deps`      | Install the groups and packages declared in `fedora-wsl2/dnf-packages`.                                                                   |
+| `--services`  | Initialize, configure, enable, and validate PostgreSQL and Valkey.                                                                        |
+| `--locale`    | Install Spanish locale data and set the system locale to `es_VE.UTF-8`.                                                                   |
 
-Fedora's `--deps` phase also installs Google Chrome Stable from Google's official
-RPM when it is absent. Its `--dots` and `--dots-only` phases install OpenCode
-when it is absent. `--fonts` and `--no-validate` are exclusive to Omarchy and
-are rejected for Fedora WSL2. Fedora's `--services` can interactively set the
-PostgreSQL `postgres` role password; it never prompts in
-`--non-interactive` or `--dry-run` mode. Valkey accepts local socket connections
-through `/run/valkey/valkey.sock` for users in the `wheel` group. The profile
-installs a Valkey systemd drop-in so the service can create that group-owned
-socket with mode `770`.
+Fedora's `--deps` phase also installs Google Chrome Stable from Google's official RPM when it is
+absent. Its `--dots` and `--dots-only` phases install OpenCode when it is absent. `--fonts` and
+`--no-validate` are exclusive to Omarchy and are rejected for Fedora WSL2. Fedora's `--services` can
+interactively set the PostgreSQL `postgres` role password; it never prompts in `--non-interactive`
+or `--dry-run` mode. Valkey accepts local socket connections through `/run/valkey/valkey.sock` for
+users in the `wheel` group. The profile installs a Valkey systemd drop-in so the service can create
+that group-owned socket with mode `770`.
 
 ## Safety boundaries
 
-- `setup-dots` owns only user configuration, including LazyVim, the manifest,
-  backups, symlinks, Mise, and Mise-managed tools.
-- `setup-deps`, `setup-fonts`, `setup-services`, `setup-locale`, and
-  `setup-validate` each own one phase.
-- `--dry-run` never invokes `sudo`, package managers, downloads, `fc-cache`,
-  service management, or Hyprland commands.
+- `setup-dots` owns only user configuration, including LazyVim, the manifest, backups, symlinks,
+  Mise, and Mise-managed tools.
+- `setup-deps`, `setup-fonts`, `setup-services`, `setup-locale`, and `setup-validate` each own one
+  phase.
+- `--dry-run` never invokes `sudo`, package managers, downloads, `fc-cache`, service management, or
+  Hyprland commands.
 - Existing targets are moved to a timestamped `backup/` path before replacement.
 - Fonts are installed directly under `$HOME/.local/share/fonts/<family>/`.
 
@@ -85,7 +83,7 @@ socket with mode `770`.
 - `omarchy/utils/bash/setup-deps` — dependency manifest parser and installer.
 - `omarchy/utils/bash/setup-fonts` — user-local Nerd Font installer.
 - `omarchy/utils/bash/setup-services` — keyd and ratbagd configuration.
-- `omarchy/utils/bash/setup-validate` — theme and Hyprland validation.
+- `omarchy/utils/bash/setup-validate` — Omarchy 4 and Hyprland validation.
 - `omarchy/utils/bash/setup-locale` — opt-in locale installer.
 - `fedora-wsl2/utils/bash/setup-fedora-wsl2` — Fedora WSL2 phase orchestrator.
 - `fedora-wsl2/utils/bash/setup-dots` — Mise bootstrap, dotfiles, and tools.

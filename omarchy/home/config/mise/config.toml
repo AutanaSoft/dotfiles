@@ -2,10 +2,16 @@
 # Mise Config
 # ------------------------------------------------------------------------------
 [tools]
+# Omarchy Default
+codex = "latest"
 go = "latest"
-node = "latest"
+node = "26.7.0"
+opencode = "latest"
+pi = "latest"
+python = "latest"
+
+# Custom
 "npm:markdownlint-cli2" = "latest"
 pnpm = "latest"
 prettier = "latest"
-python = "latest"
 zellij = "latest"

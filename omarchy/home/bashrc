@@ -1,12 +1,9 @@
-# If not running interactively, don't do anything (leave this at the top of this file)
+# Omarchy sets OMARCHY_PATH and its command locations for every shell.
+[[ -r /usr/share/omarchy/default/bash/env-bootstrap ]] && source /usr/share/omarchy/default/bash/env-bootstrap
+
+# If not running interactively, don't load aliases and interactive helpers.
 [[ $- != *i* ]] && return
 
-# All the default Omarchy aliases and functions
-# (don't mess with these directly, just overwrite them here!)
-source ~/.local/share/omarchy/default/bash/rc
-
-# Add your own exports, aliases, and functions here.
-#
-# Make an alias for invoking commands you use constantly
-# alias p='python'
+# Load Omarchy defaults before personal aliases and functions.
+source "$OMARCHY_PATH/default/bash/rc"
 source ~/.config/bash/rc

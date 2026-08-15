@@ -6,7 +6,7 @@
 # `omarchy update` are left intact; re-run the script if intent changes.
 #
 # Forbidden paths: this script never touches anything under
-# ~/.local/share/omarchy/. All removals go through Omarchy's public
+# /usr/share/omarchy/. All removals go through Omarchy's public
 # package/webapp/TUI removal APIs and direct `rm` on the npx stubs.
 # Enforcement is by code review (REQ-CLEANUP-011).
 #
@@ -125,7 +125,7 @@ Audit log (one file per run):
   $LOG_TEMPLATE
 
 Forbidden paths: this script never touches anything under
-~/.local/share/omarchy/. All removals use Omarchy's public APIs.
+/usr/share/omarchy/. All removals use Omarchy's public APIs.
 EOF
 }
 
