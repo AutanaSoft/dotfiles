@@ -3,6 +3,7 @@
 # Comments start with # and empty lines are ignored.
 
 package	systemd-resolvconf
+package	wireguard-tools
 package	lsof
 package	hunspell
 package	hunspell-en_us
@@ -13,3 +14,5 @@ package	piper
 package	libratbag
 package	postgresql
 package	valkey
+package	discord
+package	anydesk-bin
