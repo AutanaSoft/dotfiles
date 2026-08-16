@@ -5,7 +5,7 @@
 # Omarchy Default
 codex = "latest"
 go = "latest"
-node = "26.7.0"
+node = "latest"
 opencode = "latest"
 pi = "latest"
 python = "latest"

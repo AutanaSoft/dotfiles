@@ -26,7 +26,7 @@ file	omarchy/home/config/nvim/lua/plugins/editorconfig.lua	.config/nvim/lua/plug
 file	omarchy/home/config/nvim/lua/plugins/opencode.lua	.config/nvim/lua/plugins/opencode.lua
 file	omarchy/home/config/nvim/lua/plugins/render-markdown.lua	.config/nvim/lua/plugins/render-markdown.lua
 file	omarchy/home/config/nvim/lua/plugins/snacks-paths.lua	.config/nvim/lua/plugins/snacks-paths.lua
-dir	omarchy/home/config/nvim/spell	.config/nvim/spell
+file	omarchy/home/config/nvim/spell/custom.utf-8.add	.config/nvim/spell/custom.utf-8.add
 
 # --- Bash ---
 dir	omarchy/home/config/bash	.config/bash
@@ -36,10 +36,10 @@ file	omarchy/home/bashrc	.bashrc
 file	omarchy/home/config/starship.toml	.config/starship.toml
 
 # --- Mise ---
-dir	omarchy/home/config/mise	.config/mise
+file	omarchy/home/config/mise/config.toml	.config/mise/config.toml
 
 # --- Alacritty ---
-file	omarchy/home/config/alacritty/alacritty.toml	.config/alacritty/alacritty.toml
+# file	omarchy/home/config/alacritty/alacritty.toml	.config/alacritty/alacritty.toml
 
 # --- Tmux ---
 dir	omarchy/home/config/tmux	.config/tmux
@@ -48,7 +48,11 @@ dir	omarchy/home/config/tmux	.config/tmux
 dir	omarchy/home/config/zellij	.config/zellij
 
 # --- SSH ---
-copy	omarchy/home/ssh/config	.ssh/config
+# copy	omarchy/home/ssh/config	.ssh/config
+
+# Personal Backup
+dir	omarchy/home/config/backup	.config/backup
+file	omarchy/home/local/bin/backup-personal	.local/bin/backup
 
 # --- Explicit exclusions ---
 file	omarchy/home/local/bin/monitor	.local/bin/monitor
