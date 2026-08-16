@@ -84,6 +84,14 @@ copy_file() {
     if (( !DRY_RUN )); then mkdir -p "$(dirname -- "$target")"; cp -- "$source" "$target"; fi
 }
 
+require_omarchy_4() {
+    local version
+
+    command -v omarchy >/dev/null 2>&1 || fail "required command 'omarchy' is not on PATH"
+    version="$(omarchy version 2>/dev/null)" || fail "could not determine the installed Omarchy version"
+    [[ "$version" =~ ^4\. ]] || fail "Omarchy 4.x is required; found: $version"
+}
+
 apply_manifest() {
     local manifest="$REPO_ROOT/omarchy/dots-manifest" action source target expanded
     [[ -f "$manifest" ]] || fail "manifest not found: $manifest"
@@ -105,6 +113,7 @@ apply_manifest() {
     done < "$manifest"
 }
 
+require_omarchy_4
 log "Repo root: $REPO_ROOT"
 (( DRY_RUN )) && log "Mode: DRY-RUN (no user changes)"
 apply_manifest

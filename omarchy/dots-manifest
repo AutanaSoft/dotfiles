@@ -14,14 +14,8 @@
 #   - Empty lines are ignored
 #   - Tab-separated fields
 
-# --- Omarchy ---
-dir	omarchy/home/config/omarchy/themes/tokyo-night-autana	.config/omarchy/themes/tokyo-night-autana
-
-# --- Hyprland ---
-glob	omarchy/home/config/hypr/*.conf	.config/hypr/
-
-# -- Waybar ---
-file	omarchy/home/config/waybar/config.jsonc	.config/waybar/config.jsonc
+# --- Hyprland (Omarchy 4 Lua modules) ---
+glob	omarchy/home/config/hypr/*.lua	.config/hypr/
 
 # --- Neovim ---
 file	omarchy/home/config/nvim/lazyvim.json	.config/nvim/lazyvim.json

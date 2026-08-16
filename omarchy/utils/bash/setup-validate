@@ -8,7 +8,7 @@ usage() {
     cat <<EOF
 Usage: $0 [--dry-run] [--help]
 
-Apply the tracked Omarchy theme, reload Hyprland, and fail on config errors.
+Check Omarchy 4, reload Hyprland, and fail on configuration errors.
 EOF
 }
 log() { echo "[setup-validate] $*"; }
@@ -22,17 +22,18 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+command -v omarchy >/dev/null 2>&1 || fail "required command 'omarchy' is not on PATH"
+omarchy_version="$(omarchy version 2>/dev/null)" || fail "could not determine the installed Omarchy version"
+[[ "$omarchy_version" =~ ^4\. ]] || fail "Omarchy 4.x is required; found: $omarchy_version"
+command -v hyprctl >/dev/null 2>&1 || fail "required command 'hyprctl' is not on PATH"
+
 if (( DRY_RUN )); then
-    log "[dry-run] would run: omarchy theme set tokyo-night-autana"
+    log "[dry-run] would verify: Omarchy $omarchy_version"
     log "[dry-run] would run: hyprctl reload"
     log "[dry-run] would run: hyprctl configerrors"
     exit 0
 fi
 
-command -v omarchy >/dev/null 2>&1 || fail "required command 'omarchy' is not on PATH"
-command -v hyprctl >/dev/null 2>&1 || fail "required command 'hyprctl' is not on PATH"
-log "Applying Omarchy theme"
-omarchy theme set tokyo-night-autana
 log "Reloading Hyprland"
 hyprctl reload
 log "Checking Hyprland configuration"
