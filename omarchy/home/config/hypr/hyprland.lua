@@ -10,3 +10,6 @@ require("hypr.windows")
 
 -- Load Omarchy's dynamic toggles and saved workspace layouts.
 require("default.hypr.toggles")
+
+-- Keep versioned workspace rules after Omarchy's saved runtime layout choices.
+require("hypr.workspaces")
