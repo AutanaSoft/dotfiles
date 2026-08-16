@@ -5,6 +5,7 @@ o.window("^Spotify$", widescreen_float)
 o.window("^org\\.omarchy\\.cliamp$", widescreen_float)
 o.window("^org\\.omarchy\\.nvim$", widescreen_float)
 o.window("^Alacritty$", widescreen_float)
+o.window("^foot$", widescreen_float)
 o.window("^discord$", widescreen_float)
 
 o.window("^chrome-www\\.netflix\\.com__-Default$", { tag = "+pip" })

@@ -7,3 +7,6 @@ require("hypr.monitors")
 require("hypr.bindings")
 require("hypr.looknfeel")
 require("hypr.windows")
+
+-- Load Omarchy's dynamic toggles and saved workspace layouts.
+require("default.hypr.toggles")
