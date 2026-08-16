@@ -44,6 +44,9 @@ file	omarchy/home/config/mise/config.toml	.config/mise/config.toml
 # --- Tmux ---
 dir	omarchy/home/config/tmux	.config/tmux
 
+# --- Herdr ---
+file	omarchy/home/config/herdr/config.toml	.config/herdr/config.toml
+
 # --- Zellij ---
 dir	omarchy/home/config/zellij	.config/zellij
 

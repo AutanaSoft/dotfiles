@@ -72,6 +72,7 @@ that group-owned socket with mode `770`.
 - `--dry-run` never invokes `sudo`, package managers, downloads, `fc-cache`, service management, or
   Hyprland commands.
 - Existing targets are moved to a timestamped `backup/` path before replacement.
+- Herdr's `config.toml` is managed as a symlink from `omarchy/dots-manifest`.
 - Fonts are installed directly under `$HOME/.local/share/fonts/<family>/`.
 
 ## Related files
@@ -83,7 +84,7 @@ that group-owned socket with mode `770`.
 - `omarchy/utils/bash/setup-deps` — dependency manifest parser and installer.
 - `omarchy/utils/bash/setup-fonts` — user-local Nerd Font installer.
 - `omarchy/utils/bash/setup-services` — keyd and ratbagd configuration.
-- `omarchy/utils/bash/setup-validate` — Omarchy 4 and Hyprland validation.
+- `omarchy/utils/bash/setup-validate` — Omarchy 4, Hyprland, and Herdr configuration validation.
 - `omarchy/utils/bash/setup-locale` — opt-in locale installer.
 - `fedora-wsl2/utils/bash/setup-fedora-wsl2` — Fedora WSL2 phase orchestrator.
 - `fedora-wsl2/utils/bash/setup-dots` — Mise bootstrap, dotfiles, and tools.

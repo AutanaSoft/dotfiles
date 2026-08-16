@@ -26,11 +26,13 @@ command -v omarchy >/dev/null 2>&1 || fail "required command 'omarchy' is not on
 omarchy_version="$(omarchy version 2>/dev/null)" || fail "could not determine the installed Omarchy version"
 [[ "$omarchy_version" =~ ^4\. ]] || fail "Omarchy 4.x is required; found: $omarchy_version"
 command -v hyprctl >/dev/null 2>&1 || fail "required command 'hyprctl' is not on PATH"
+command -v herdr >/dev/null 2>&1 || fail "required command 'herdr' is not on PATH"
 
 if (( DRY_RUN )); then
     log "[dry-run] would verify: Omarchy $omarchy_version"
     log "[dry-run] would run: hyprctl reload"
     log "[dry-run] would run: hyprctl configerrors"
+    log "[dry-run] would run: herdr config check"
     exit 0
 fi
 
@@ -38,3 +40,5 @@ log "Reloading Hyprland"
 hyprctl reload
 log "Checking Hyprland configuration"
 hyprctl configerrors
+log "Checking Herdr configuration"
+herdr config check

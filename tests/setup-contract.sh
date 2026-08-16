@@ -85,6 +85,7 @@ done
 
 validate_output="$($SETUP --profile omarchy --dots --non-interactive --dry-run)"
 [[ "$validate_output" == *"would verify: Omarchy 4."* ]] || fail "validation did not check Omarchy 4"
+[[ "$validate_output" == *"would run: herdr config check"* ]] || fail "validation did not check Herdr configuration"
 [[ "$validate_output" != *"tokyo-night-autana"* ]] || fail "validation retained the custom theme"
 
 fedora_deps_output="$($SETUP --profile fedora-wsl2 --deps --non-interactive --dry-run)"
@@ -186,6 +187,7 @@ assert_status 1 "$FEDORA_LOCALE_SETUP" --unknown
 [[ ! -e "$ROOT_DIR/omarchy/home/config/hypr/hypridle.conf" ]] || fail "Omarchy profile still includes hypridle configuration"
 [[ ! -e "$ROOT_DIR/omarchy/home/config/omarchy/themes/tokyo-night-autana" ]] || fail "Omarchy profile still includes a custom theme"
 [[ "$(< "$ROOT_DIR/omarchy/dots-manifest")" == *'hypr/*.lua'* ]] || fail "Omarchy manifest does not link Lua modules"
+[[ "$(< "$ROOT_DIR/omarchy/dots-manifest")" == *$'file\tomarchy/home/config/herdr/config.toml\t.config/herdr/config.toml'* ]] || fail "Omarchy manifest does not link Herdr configuration"
 [[ "$(< "$ROOT_DIR/omarchy/dots-manifest")" != *'waybar'* ]] || fail "Omarchy manifest still links Waybar"
 [[ "$(< "$ROOT_DIR/omarchy/home/bashrc")" == *'/usr/share/omarchy/default/bash/env-bootstrap'* ]] || fail "Omarchy Bash does not bootstrap Omarchy 4"
 [[ "$(< "$ROOT_DIR/omarchy/home/bashrc")" != *'.local/share/omarchy'* ]] || fail "Omarchy Bash still references Omarchy 3"
@@ -204,6 +206,10 @@ tmux_functions="$(< "$ROOT_DIR/fedora-wsl2/home/config/bash/functions")"
 [[ "$tmux_functions" == *'run this command inside the %s tmux session'* ]] || fail "tdl does not protect other Tmux sessions"
 
 [[ "$(< "$ROOT_DIR/fedora-wsl2/home/bashrc")" == *"/etc/bashrc"* ]] || fail "Fedora bashrc does not source /etc/bashrc"
+
+herdr_config="$ROOT_DIR/omarchy/home/config/herdr/config.toml"
+[[ -f "$herdr_config" ]] || fail "Herdr configuration is missing"
+[[ "$(< "$ROOT_DIR/omarchy/home/config/bash/functions")" == *'hdl() {'* ]] || fail "Herdr hdl function is missing"
 
 bash_home="$(mktemp -d)"
 mkdir -p "${bash_home}/.bashrc.d" "${bash_home}/.config"

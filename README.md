@@ -36,6 +36,7 @@ The `./setup` entrypoint is a dispatcher, not a distribution-neutral installer. 
 - uses the Arch package toolchain (`yay` and `pacman`) for dependencies;
 - reads dependency names from `omarchy/deps-manifest`;
 - requires the `omarchy` command and `hyprctl` from a running Hyprland session;
+- validates the installed Herdr configuration during final graphical validation;
 - applies user dotfiles by default when `--dots` is selected; and
 - can explicitly run dependencies, fonts, services, locale, and final graphical validation as
   separate phases.
@@ -86,7 +87,8 @@ it is not a reason to split the repository before a second profile requires that
 
 - `omarchy/` — Omarchy profile.
 - `fedora-wsl2/` — Fedora WSL2 development profile.
-- `omarchy/home/` — files linked or copied into the user's home directory.
+- `omarchy/home/` — files linked or copied into the user's home directory, including Herdr, Tmux,
+  Zellij, and shell functions.
 - `omarchy/etc/` — privileged or host-specific files requiring explicit care.
 - `omarchy/utils/bash/` — profile helpers dispatched by `setup`.
 - `setup` — the profile dispatcher and shared dry-run interface.
