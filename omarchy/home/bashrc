@@ -7,3 +7,4 @@
 # Load Omarchy defaults before personal aliases and functions.
 source "$OMARCHY_PATH/default/bash/rc"
 source ~/.config/bash/rc
+. "$HOME/.local/share/../bin/env"

@@ -22,7 +22,7 @@ enable_monitor() {
 disable_monitor() {
   # Disabling a monitor causes Hyprland to move its workspaces and windows
   # to the remaining active monitors.
-  hyprctl keyword monitor "${SECONDARY_MONITOR},disable"
+  hyprctl eval "hl.monitor({ output = \"${SECONDARY_MONITOR}\", disabled = true })"
 }
 
 main() {
