@@ -26,6 +26,21 @@ For Fedora WSL2:
 ./setup --profile fedora-wsl2 --locale
 ```
 
+## Tests
+
+Run all isolated profile contracts with:
+
+```bash
+./tests/run.sh
+```
+
+Run only one profile when changing a profile-specific setup helper:
+
+```bash
+./tests/run.sh omarchy
+./tests/run.sh fedora-wsl2
+```
+
 ## Current limits
 
 The `./setup` entrypoint is a dispatcher, not a distribution-neutral installer. The implemented
