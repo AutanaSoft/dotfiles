@@ -52,7 +52,7 @@ dir	omarchy/home/config/zellij	.config/zellij
 
 # Personal Backup
 dir	omarchy/home/config/backup	.config/backup
-file	omarchy/home/local/bin/backup-personal	.local/bin/backup
+file	omarchy/home/local/bin/backup	.local/bin/backup
 
 # --- Explicit exclusions ---
 file	omarchy/home/local/bin/monitor	.local/bin/monitor
