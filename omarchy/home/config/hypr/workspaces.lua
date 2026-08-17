@@ -1,7 +1,7 @@
--- These master defaults provide workspace 1's 62/38 split and retain its first window as master.
+-- These master defaults provide workspace 1's 67/33 split and retain its first window as master.
 hl.config({
   master = {
-    mfact = 0.6,
+    mfact = 0.67,
     new_status = "slave",
   },
 })
