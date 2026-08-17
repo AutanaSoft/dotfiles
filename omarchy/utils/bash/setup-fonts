@@ -83,6 +83,9 @@ while [[ $# -gt 0 ]]; do
             DRY_RUN=1
             shift
             ;;
+        --non-interactive)
+            shift
+            ;;
         --help | -h)
             usage
             exit 0

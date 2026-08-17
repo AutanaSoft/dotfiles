@@ -1,13 +1,12 @@
 # Post-Setup
 
-Run-once manual steps that `./setup --profile omarchy --dots` cannot finish for you — sudo
-tweaks, partition mounts, secrets, and service auth. Each section is
-independent; rerun any single one without touching the rest.
+Run-once manual steps that `./setup --profile omarchy --dots` cannot finish for you — sudo tweaks,
+partition mounts, secrets, and service auth. Each section is independent; rerun any single one
+without touching the rest.
 
 ## Sudo Password Feedback
 
-By default, sudo prints nothing while you type the password. A sudoers
-drop-in restores asterisks:
+By default, sudo prints nothing while you type the password. A sudoers drop-in restores asterisks:
 
 ```bash
 # 1. Drop in the sudoers file
@@ -26,9 +25,8 @@ Reload the shell and verify with `sudo -K && sudo true`.
 
 ## Personal fstab
 
-The personal `fstab` lives in the repo at
-[`omarchy/etc/fstab`](../omarchy/etc/fstab). Edit it there, then apply on the
-host:
+The personal `fstab` lives in the repo at [`omarchy/etc/fstab`](../omarchy/etc/fstab). Edit it
+there, then apply on the host:
 
 ```bash
 # 1. Install from the repo
@@ -41,15 +39,13 @@ sudo systemctl daemon-reload
 sudo mount -a
 ```
 
-Use `nofail` for any drive that may be detached, so a missing disk does
-not block boot.
+Use `nofail` for any drive that may be detached, so a missing disk does not block boot.
 
 ## SSH
 
-Setup copies the safe template at `omarchy/home/ssh/config` to
-`~/.ssh/config` the first time. Edit the placeholders
-(`your.server.ip.or.domain`, `your-user`, key paths) with your real
-values. This workflow uses direct key files, not ssh-agent/ssh-add.
+Setup copies the safe template at `omarchy/home/ssh/config` to `~/.ssh/config` the first time. Edit
+the placeholders (`your.server.ip.or.domain`, `your-user`, key paths) with your real values. This
+workflow uses direct key files, not ssh-agent/ssh-add.
 
 The referenced key files must have the right permissions:
 
@@ -94,128 +90,48 @@ sudo wg show
 
 Replace `wg0` with the interface name from your config file.
 
-## PostgreSQL
+## PostgreSQL and Valkey
 
-`postgresql` is already installed. Set up the cluster and auth:
+`./setup --profile omarchy --services` initializes an absent or empty PostgreSQL cluster and
+configures both services. It never creates databases, PostgreSQL roles, or passwords.
 
-```bash
-# 1. Init the cluster (first time only — errors if already initialized)
-sudo -u postgres initdb -D /var/lib/postgres/data
-
-# 2. Start the service
-sudo systemctl enable --now postgresql
-
-# 3. Set the superuser password
-sudo -u postgres psql -c "ALTER USER postgres WITH PASSWORD 'postgres';"
-```
-
-Open the auth config in nvim and make sure it matches the example
-below — the `# comment` lines are part of the file and explain each
-rule:
+PostgreSQL keeps the Arch-standard socket at `/run/postgresql`. Local socket connections use `peer`;
+TCP connections are restricted to localhost and require SCRAM passwords. Create a role for the
+current system user when needed:
 
 ```bash
-sudo -u postgres nvim /var/lib/postgres/data/pg_hba.conf
+sudo -u postgres createuser --login "$(whoami)"
 ```
 
-```conf
-# "local" is for Unix domain socket connections only
-local   all             all                                     trust
-# IPv4 local connections:
-host    all             all             127.0.0.1/32            scram-sha-256
-# IPv6 local connections:
-host    all             all             ::1/128                 scram-sha-256
-# Allow replication connections from localhost, by a user with the
-# replication privilege.
-local   replication     all                                     trust
-host    replication     all             127.0.0.1/32            scram-sha-256
-host    replication     all             ::1/128                 scram-sha-256
-```
-
-Save the file, then apply:
+Interactive service setup offers to update the `postgres` role password without exposing it in the
+command line. If that step was declined, configure it safely with `psql`:
 
 ```bash
-sudo systemctl reload postgresql
+sudo -u postgres psql --command='\password postgres'
 ```
 
-Verify both auth paths:
+Then verify both transports:
 
 ```bash
-# TCP with the password you just set — should print the version
-PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres -c "SELECT version();"
-
-# TCP without a password — must fail with "password authentication failed"
-psql -h 127.0.0.1 -U postgres -c "SELECT 1;" || echo "good: rejected without password"
-
-# Unix socket as the postgres OS user — must work without typing a password
-sudo -u postgres psql -c "SELECT current_user;"
+PGPASSWORD='choose-a-secret' psql -h 127.0.0.1 -U postgres -c 'SELECT 1;'
+sudo -u postgres psql -h /run/postgresql -d postgres -c 'SELECT 1;'
 ```
 
-Note: `postgres / postgres` is a dev convenience (same credential the
-official Docker image uses). Do not reuse it on anything reachable
-from outside the host.
-
-## Valkey
-
-`valkey` is already installed. Enable both transports:
+Valkey listens on loopback TCP port 6379 and `/run/valkey/valkey.sock`. The socket is owned by
+`valkey:valkey` with mode `0770`. In an interactive setup, accept the optional group enrollment,
+then start a new session before using the socket. `newgrp valkey` can open an immediate subshell for
+manual use.
 
 ```bash
-# 1. Start the service
-sudo systemctl enable --now valkey
-
-# 2. Open the config
-sudo nvim /etc/valkey/valkey.conf
+valkey-cli -h 127.0.0.1 -p 6379 ping
+valkey-cli -s /run/valkey/valkey.sock ping
 ```
 
-Make the Unix socket block match this — the `# comment` lines are part of the file and explain the directive:
-
-```conf
-# Unix socket.
-#
-# Specify the path for the Unix socket that will be used to listen for
-# incoming connections. There is no default, so the server will not listen
-# on a unix socket when not specified.
-#
-unixsocket /run/valkey/valkey.sock
-# unixsocketgroup wheel
-unixsocketperm 770
-```
-
-Save the file, then restart and grant your user access:
-
-```bash
-# 3. Restart to pick up the new config
-sudo systemctl restart valkey
-
-# 4. Add your user to the valkey group
-sudo usermod -aG valkey "$(whoami)"
-```
-
-Verify both transports. The socket path is what the running service
-actually has, not what we wrote above — read it back so this stays
-true if the package changes:
-
-```bash
-# Confirm the socket directive the service is using
-redis-cli CONFIG GET unixsocket
-
-# TCP — should print PONG
-redis-cli -h 127.0.0.1 -p 6379 PING
-
-# Unix socket — should print PONG
-redis-cli -s /run/valkey/valkey.sock PING
-```
-
-If the socket command errors with `Permission denied`, log out and
-back in so the new `valkey` group membership takes effect.
-
-The default config binds to `127.0.0.1` only, so `protected-mode`
-keeps external traffic blocked without a password. If you ever need
-remote access, set `requirepass` and allowlist the source — do not
-bind to `0.0.0.0` without auth.
+Both commands should return `PONG`. Do not expose either service beyond loopback without separately
+reviewing authentication and firewall requirements.
 
 ## Related Files
 
 - `setup` — dispatcher run before this checklist.
 - `omarchy/etc/fstab` — repo source for personal `/etc/fstab`.
-- `omarchy/home/ssh/config` — SSH client template (placeholders; copied
-  to `~/.ssh/config` once).
+- `omarchy/home/ssh/config` — SSH client template (placeholders; copied to `~/.ssh/config` once).

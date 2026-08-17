@@ -54,7 +54,9 @@ The `./setup` entrypoint is a dispatcher, not a distribution-neutral installer. 
 - validates the installed Herdr configuration during final graphical validation;
 - applies user dotfiles by default when `--dots` is selected; and
 - can explicitly run dependencies, fonts, services, locale, and final graphical validation as
-  separate phases.
+  separate phases. Its services phase preserves keyd/ratbagd setup, configures local PostgreSQL
+  (peer sockets and SCRAM localhost TCP), and configures Valkey through loopback TCP and a Unix
+  socket.
 
 It does not install Omarchy. Ubuntu is not supported. `--dots-only` is the non-graphical user
 configuration path. `--dry-run` previews actions without mutating the host.

@@ -25,7 +25,7 @@ Empty or negative answers leave a phase disabled.
 | `--dots-only`       | Apply only the manifest and permitted user copies. It cannot combine with optional phases and skips validation. |
 | `--deps`            | Validate and install the packages in `omarchy/deps-manifest` in one batch.                                      |
 | `--fonts`           | Install user-local fonts under `$HOME/.local/share/fonts/<family>/`.                                            |
-| `--services`        | Install keyd configuration and enable keyd/ratbagd.                                                             |
+| `--services`        | Configure keyd/ratbagd plus local PostgreSQL and Valkey services.                                               |
 | `--locale`          | Opt in to the locale declared by `omarchy/etc/locale.conf`.                                                     |
 | `--no-validate`     | Skip the final validation of a `--dots` run.                                                                    |
 | `--non-interactive` | Require `--profile` and run only phases explicitly declared by flags.                                           |
@@ -36,6 +36,14 @@ Without `--non-interactive`, `--dots` asks separately about `deps`, `fonts`, `se
 `locale`. In non-interactive mode, no optional phase is inferred. A request such as
 `--profile omarchy --deps --dry-run` runs only the dependency phase; it does not apply dotfiles or
 validation.
+
+For Omarchy, `--services` preserves the keyd and ratbagd setup, initializes PostgreSQL only when
+`/var/lib/postgres/data` is absent or empty, and configures peer authentication for local sockets
+and SCRAM authentication for localhost TCP. Interactive runs can optionally update the `postgres`
+role password; dry-run and non-interactive runs never ask for or change it. The phase configures
+Valkey on loopback TCP port 6379 and `/run/valkey/valkey.sock` with group `valkey` and mode `0770`.
+Interactive runs can add the current user to that group; `--non-interactive` never changes group
+membership.
 
 ## Fedora WSL2
 
@@ -83,7 +91,10 @@ that group-owned socket with mode `770`.
 - `omarchy/deps-manifest` — the package manifest consumed by the dependency phase.
 - `omarchy/utils/bash/setup-deps` — dependency manifest parser and installer.
 - `omarchy/utils/bash/setup-fonts` — user-local Nerd Font installer.
-- `omarchy/utils/bash/setup-services` — keyd and ratbagd configuration.
+- `omarchy/utils/bash/setup-services` — ordered input, PostgreSQL, and Valkey service orchestrator.
+- `omarchy/utils/bash/setup-services-input` — keyd and ratbagd configuration.
+- `omarchy/utils/bash/setup-services-postgresql` — local PostgreSQL cluster and authentication.
+- `omarchy/utils/bash/setup-services-valkey` — local TCP and Unix-socket Valkey configuration.
 - `omarchy/utils/bash/setup-validate` — Omarchy 4, Hyprland, and Herdr configuration validation.
 - `omarchy/utils/bash/setup-locale` — opt-in locale installer.
 - `fedora-wsl2/utils/bash/setup-fedora-wsl2` — Fedora WSL2 phase orchestrator.
