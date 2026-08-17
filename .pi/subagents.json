@@ -1,0 +1,116 @@
+{
+  "timeout_ms": 1200000,
+  "stall_timeout_ms": 240000,
+  "max_concurrency": 5,
+  "debug": false,
+  "session_resources": "lean",
+  "history_panel_shortcut": "ctrl+,",
+  "detail_cancel_shortcut": "x",
+  "background_handoff_shortcut": "ctrl+h",
+  "default_mode": "task",
+  "enable_continue": false,
+  "default_tools": [
+    "read",
+    "grep",
+    "find",
+    "codegraph"
+  ],
+  "model_profiles": {
+    "gentle-ai-explore": {
+      "model": "openai-codex/gpt-5.6-terra",
+      "effort": "medium"
+    },
+    "gentle-ai-verify": {
+      "model": "openai-codex/gpt-5.6-terra",
+      "effort": "medium"
+    },
+    "gentle-ai-worker": {
+      "model": "openai-codex/gpt-5.6-luna",
+      "effort": "xhigh"
+    },
+    "jd-fix-agent": {
+      "model": "openai-codex/gpt-5.6-luna",
+      "effort": "xhigh"
+    },
+    "jd-judge-a": {
+      "model": "openai-codex/gpt-5.6-luna",
+      "effort": "xhigh"
+    },
+    "jd-judge-b": {
+      "model": "openai-codex/gpt-5.6-luna",
+      "effort": "xhigh"
+    },
+    "review-readability": {
+      "model": "openai-codex/gpt-5.6-luna",
+      "effort": "xhigh"
+    },
+    "review-refuter": {
+      "model": "openai-codex/gpt-5.6-luna",
+      "effort": "xhigh"
+    },
+    "review-reliability": {
+      "model": "openai-codex/gpt-5.6-luna",
+      "effort": "xhigh"
+    },
+    "review-resilience": {
+      "model": "openai-codex/gpt-5.6-luna",
+      "effort": "xhigh"
+    },
+    "review-risk": {
+      "model": "openai-codex/gpt-5.6-luna",
+      "effort": "xhigh"
+    },
+    "review-validator": {
+      "model": "openai-codex/gpt-5.6-luna",
+      "effort": "xhigh"
+    },
+    "sdd-apply": {
+      "model": "openai-codex/gpt-5.6-luna",
+      "effort": "xhigh"
+    },
+    "sdd-archive": {
+      "model": "openai-codex/gpt-5.6-luna",
+      "effort": "xhigh"
+    },
+    "sdd-design": {
+      "model": "openai-codex/gpt-5.6-luna",
+      "effort": "xhigh"
+    },
+    "sdd-explore": {
+      "model": "openai-codex/gpt-5.6-luna",
+      "effort": "xhigh"
+    },
+    "sdd-init": {
+      "model": "openai-codex/gpt-5.6-luna",
+      "effort": "xhigh"
+    },
+    "sdd-onboard": {
+      "model": "openai-codex/gpt-5.6-luna",
+      "effort": "xhigh"
+    },
+    "sdd-proposal": {
+      "model": "openai-codex/gpt-5.6-luna",
+      "effort": "xhigh"
+    },
+    "sdd-spec": {
+      "model": "openai-codex/gpt-5.6-luna",
+      "effort": "xhigh"
+    },
+    "sdd-status": {
+      "model": "openai-codex/gpt-5.6-luna",
+      "effort": "xhigh"
+    },
+    "sdd-sync": {
+      "model": "openai-codex/gpt-5.6-luna",
+      "effort": "xhigh"
+    },
+    "sdd-tasks": {
+      "model": "openai-codex/gpt-5.6-luna",
+      "effort": "xhigh"
+    },
+    "sdd-verify": {
+      "model": "openai-codex/gpt-5.6-luna",
+      "effort": "xhigh"
+    }
+  }
+}
