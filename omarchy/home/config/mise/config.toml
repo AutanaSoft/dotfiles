@@ -8,7 +8,6 @@ go = "latest"
 node = "latest"
 opencode = "latest"
 pi = "latest"
-python = "latest"
 
 # Custom
 "npm:markdownlint-cli2" = "latest"
