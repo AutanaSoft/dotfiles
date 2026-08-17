@@ -7,7 +7,6 @@ codex = "latest"
 go = "latest"
 node = "latest"
 opencode = "latest"
-pi = "latest"
 
 # Custom
 "npm:markdownlint-cli2" = "latest"
@@ -15,3 +14,4 @@ pnpm = "latest"
 prettier = "latest"
 zellij = "latest"
 gh = "latest"
+"npm:@earendil-works/pi-coding-agent" = "latest"
