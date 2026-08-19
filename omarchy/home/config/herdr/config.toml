@@ -70,6 +70,9 @@ next_workspace = "prefix+shift+n"
 
 [ui]
 accent = "blue"
+sidebar_width = 20
+sidebar_min_width = 18
+sidebar_max_width = 36
 
 # tmux drew single-line dividers between adjacent panes and no outer frame
 pane_gaps = false
