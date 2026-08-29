@@ -27,8 +27,8 @@ detach = "prefix+d"
 copy_mode = "prefix+["
 
 # Panes
-split_horizontal = ["prefix+h", "alt+enter"]
-split_vertical = ["prefix+v", "alt+shift+enter"]
+split_horizontal = ["prefix+h", "alt+shift+enter"]
+split_vertical = ["prefix+v", "alt+enter"]
 close_pane = ["prefix+x", "alt+esc"]
 zoom = "prefix+z"
 last_pane = "prefix+;"
@@ -97,3 +97,5 @@ tab_bar_right = [{ type = "zoom" }, { type = "hostname" }]
 # the basename of the pane cwd. This is what Hyprland shows in the group bar,
 # and it resolves on the server so remote sessions name the remote host.
 window_title = "{hostname}: {workspace}"
+status_indicators = "symbols"
+show_agent_labels_on_pane_borders = true
