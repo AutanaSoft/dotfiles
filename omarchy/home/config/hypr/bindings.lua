@@ -8,10 +8,13 @@ for _, keys in ipairs({
   "SUPER + SHIFT + S",
   "SUPER + SHIFT + W",
   "SUPER + SHIFT + Y",
+  "SUPER + ALT + RETURN"
 }) do
   hl.unbind(keys)
 end
 
+o.bind("SUPER + SHIFT + T", "Tmux", { omarchy = "terminal-tmux" })
+o.bind("SUPER + ALT + RETURN", "Zellij", 'omarchy-launch-terminal bash -c "exec zellij attach --create AutanaSoft"')
 o.bind("SUPER + SHIFT + B", "Browser (private)", { omarchy = "browser --private" })
 o.bind("SUPER + SHIFT + C", "Calculator", "omacalc")
 o.bind("SUPER + SHIFT + D", "Discord", { launch = "discord", focus = "^discord$" })
