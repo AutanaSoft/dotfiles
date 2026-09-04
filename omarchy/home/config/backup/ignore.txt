@@ -8,6 +8,7 @@ tmp/
 .next/
 out/
 .turbo/
+backup/
 
 # gentle-ai folders
 .atl/
