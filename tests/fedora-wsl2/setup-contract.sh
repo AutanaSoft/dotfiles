@@ -7,6 +7,7 @@ SETUP="$ROOT_DIR/setup"
 FEDORA_DEPS_SETUP="$ROOT_DIR/fedora-wsl2/utils/bash/setup-deps"
 FEDORA_SERVICES_SETUP="$ROOT_DIR/fedora-wsl2/utils/bash/setup-services"
 FEDORA_LOCALE_SETUP="$ROOT_DIR/fedora-wsl2/utils/bash/setup-locale"
+FEDORA_CONTAINERS_SETUP="$ROOT_DIR/fedora-wsl2/utils/bash/setup-containers"
 
 # shellcheck source=../lib/test-helpers.sh
 source "$ROOT_DIR/tests/lib/test-helpers.sh"
@@ -28,6 +29,8 @@ export PATH="$fake_bin:$PATH"
 assert_status 2 "$SETUP" --profile fedora-wsl2 --fonts --dry-run
 assert_status 2 "$SETUP" --profile fedora-wsl2 --dots-only --deps --dry-run
 assert_status 2 "$SETUP" --profile fedora-wsl2 --dots-only --services --dry-run
+assert_status 2 "$SETUP" --profile fedora-wsl2 --dots-only --containers --dry-run
+assert_status 2 "$SETUP" --profile omarchy --containers --dry-run
 
 fedora_deps_output="$("$SETUP" --profile fedora-wsl2 --deps --non-interactive --dry-run)"
 [[ "$fedora_deps_output" == *"[setup-deps]"* ]] || fail "Fedora --deps did not dispatch to setup-deps"
@@ -58,6 +61,78 @@ fedora_services_output="$("$SETUP" --profile fedora-wsl2 --services --non-intera
 [[ "$fedora_services_output" == *"[setup-services] [dry-run] would install configuration: /var/lib/pgsql/data/pg_hba.conf"* ]] || fail "Fedora --services did not preview PostgreSQL configuration"
 [[ "$fedora_services_output" == *"[setup-services] [dry-run] would install configuration: /etc/systemd/system/valkey.service.d/socket-group.conf"* ]] || fail "Fedora --services did not preview the Valkey drop-in"
 [[ "$fedora_services_output" == *"[setup-services] [dry-run] would run: systemctl daemon-reload"* ]] || fail "Fedora --services did not preview systemd reload"
+
+containers_root="$TEST_TMP_DIR/containers"
+mkdir -p "$containers_root/etc" "$containers_root/bin"
+printf 'ID=fedora\nVERSION_ID=44\n' >"$containers_root/etc/os-release"
+printf '6.15.0-microsoft-standard-WSL2\n' >"$containers_root/kernel-release"
+for command in rpm dnf sudo getent; do
+  printf '#!/usr/bin/env bash\nexit 1\n' >"$containers_root/bin/$command"
+done
+printf '#!/usr/bin/env bash\nif [[ $* == *"-p 1 -o comm="* ]]; then printf "systemd\\n"; fi\n' >"$containers_root/bin/ps"
+printf '#!/usr/bin/env bash\n[[ $1 == is-system-running ]] && printf "running\\n"\n' >"$containers_root/bin/systemctl"
+printf '#!/usr/bin/env bash\nif [[ $1 == -un ]]; then printf "developer\\n"; elif [[ $1 == -nG ]]; then printf "wheel\\n"; else exit 0; fi\n' >"$containers_root/bin/id"
+chmod +x "$containers_root/bin"/*
+fedora_containers_output="$(
+  PATH="$containers_root/bin:$PATH" \
+    DOTFILES_OS_RELEASE_FILE="$containers_root/etc/os-release" \
+    DOTFILES_KERNEL_RELEASE_FILE="$containers_root/kernel-release" \
+    DOTFILES_DOCKER_REPO_FILE="$containers_root/docker-ce.repo" \
+    DOTFILES_DOCKER_CONFIG_FILE="$containers_root/daemon.json" \
+    DOTFILES_DOCKER_DATA_DIR="$containers_root/docker-data" \
+    DOTFILES_CONTAINERD_DATA_DIR="$containers_root/containerd-data" \
+    "$SETUP" --profile fedora-wsl2 --containers --non-interactive --dry-run
+)"
+[[ "$fedora_containers_output" == *"[setup-containers] Adding Docker's official Fedora repository"* ]] || fail "Fedora --containers did not preview the official Docker repository"
+[[ "$fedora_containers_output" == *"docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin"* ]] || fail "Fedora --containers did not preview all official Docker packages"
+[[ "$fedora_containers_output" == *"log-driver"* || "$fedora_containers_output" == *"log rotation configuration"* ]] || fail "Fedora --containers did not preview log rotation configuration"
+[[ "$fedora_containers_output" == *"root-level privileges"* ]] || fail "Fedora --containers did not warn about docker group privileges"
+[[ "$fedora_containers_output" == *"Adding developer to the docker group"* ]] || fail "Fedora --containers selected the invoking user"
+[[ "$fedora_containers_output" == *"would enable and start docker.service"* ]] || fail "Fedora --containers did not preview Docker service activation"
+[[ "$fedora_containers_output" != *"hello-world"* ]] || fail "Fedora --containers dry-run attempted hello-world"
+
+printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >>"$DOTFILES_SUDO_LOG"\n' >"$containers_root/bin/sudo"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$containers_root/bin/docker"
+chmod +x "$containers_root/bin/sudo" "$containers_root/bin/docker"
+containers_sudo_log="$containers_root/sudo.log"
+DOTFILES_SUDO_LOG="$containers_sudo_log" PATH="$containers_root/bin:$PATH" \
+  DOTFILES_OS_RELEASE_FILE="$containers_root/etc/os-release" \
+  DOTFILES_KERNEL_RELEASE_FILE="$containers_root/kernel-release" \
+  DOTFILES_DOCKER_REPO_FILE="$containers_root/docker-ce.repo" \
+  DOTFILES_DOCKER_CONFIG_FILE="$containers_root/daemon.json" \
+  DOTFILES_DOCKER_DATA_DIR="$containers_root/docker-data" \
+  DOTFILES_CONTAINERD_DATA_DIR="$containers_root/containerd-data" \
+  "$FEDORA_CONTAINERS_SETUP" --non-interactive >/dev/null
+[[ "$(<"$containers_sudo_log")" == *"dnf --assumeyes install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin"* ]] || fail "Fedora non-interactive containers install did not enable DNF automatic confirmation"
+
+: >"$containers_sudo_log"
+DOTFILES_SUDO_LOG="$containers_sudo_log" PATH="$containers_root/bin:$PATH" \
+  DOTFILES_OS_RELEASE_FILE="$containers_root/etc/os-release" \
+  DOTFILES_KERNEL_RELEASE_FILE="$containers_root/kernel-release" \
+  DOTFILES_DOCKER_REPO_FILE="$containers_root/docker-ce.repo" \
+  DOTFILES_DOCKER_CONFIG_FILE="$containers_root/daemon.json" \
+  DOTFILES_DOCKER_DATA_DIR="$containers_root/docker-data" \
+  DOTFILES_CONTAINERD_DATA_DIR="$containers_root/containerd-data" \
+  "$FEDORA_CONTAINERS_SETUP" >/dev/null
+[[ "$(<"$containers_sudo_log")" == *"dnf install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin"* ]] || fail "Fedora interactive containers install did not preserve DNF confirmation"
+[[ "$(<"$containers_sudo_log")" != *"dnf --assumeyes install"* ]] || fail "Fedora interactive containers install forced DNF automatic confirmation"
+
+printf 'ID=ubuntu\nVERSION_ID=24.04\n' >"$containers_root/etc/not-fedora"
+assert_status 1 env PATH="$containers_root/bin:$PATH" \
+  DOTFILES_OS_RELEASE_FILE="$containers_root/etc/not-fedora" \
+  DOTFILES_KERNEL_RELEASE_FILE="$containers_root/kernel-release" \
+  "$FEDORA_CONTAINERS_SETUP" --dry-run
+
+printf '#!/usr/bin/env bash\n[[ $1 == -q && $2 == docker ]] && exit 0\nexit 1\n' >"$containers_root/bin/rpm"
+chmod +x "$containers_root/bin/rpm"
+assert_status 1 env PATH="$containers_root/bin:$PATH" \
+  DOTFILES_OS_RELEASE_FILE="$containers_root/etc/os-release" \
+  DOTFILES_KERNEL_RELEASE_FILE="$containers_root/kernel-release" \
+  DOTFILES_DOCKER_REPO_FILE="$containers_root/docker-ce.repo" \
+  DOTFILES_DOCKER_CONFIG_FILE="$containers_root/daemon.json" \
+  DOTFILES_DOCKER_DATA_DIR="$containers_root/docker-data" \
+  DOTFILES_CONTAINERD_DATA_DIR="$containers_root/containerd-data" \
+  "$FEDORA_CONTAINERS_SETUP" --dry-run
 
 fedora_locale_output="$("$SETUP" --profile fedora-wsl2 --locale --non-interactive --dry-run)"
 [[ "$fedora_locale_output" == *"glibc-langpack-es"* ]] || fail "Fedora --locale did not check Spanish locale data"
@@ -96,6 +171,7 @@ assert_status 1 "$FEDORA_LOCALE_SETUP" --unknown
 
 [[ "$(<"$ROOT_DIR/fedora-wsl2/home/config/mise/config.toml")" == *'python = "3.14.7"'* ]] || fail "Fedora Mise configuration does not pin Python 3.14.7"
 [[ "$(<"$ROOT_DIR/fedora-wsl2/home/config/mise/config.toml")" == *'"npm:markdownlint-cli2" = "latest"'* ]] || fail "Fedora Mise configuration does not install markdownlint-cli2"
+[[ "$(<"$ROOT_DIR/fedora-wsl2/home/config/mise/config.toml")" == *'lazydocker = "latest"'* ]] || fail "Fedora Mise configuration does not install Lazydocker"
 [[ "$(<"$FEDORA_SERVICES_SETUP")" == *'log "PostgreSQL is ready"'* ]] || fail "Fedora services do not confirm PostgreSQL readiness"
 [[ "$(<"$FEDORA_SERVICES_SETUP")" == *'log "Valkey socket is ready"'* ]] || fail "Fedora services do not confirm Valkey readiness"
 

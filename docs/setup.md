@@ -26,6 +26,7 @@ Empty or negative answers leave a phase disabled.
 | `--deps`            | Validate and install the packages in `omarchy/deps-manifest` in one batch.                                      |
 | `--fonts`           | Install user-local fonts under `$HOME/.local/share/fonts/<family>/`.                                            |
 | `--services`        | Configure keyd/ratbagd plus local PostgreSQL and Valkey services.                                               |
+| `--containers`      | Install Docker Engine on Fedora WSL2. Unsupported by Omarchy.                                                   |
 | `--locale`          | Opt in to the locale declared by `omarchy/etc/locale.conf`.                                                     |
 | `--no-validate`     | Skip the final validation of a `--dots` run.                                                                    |
 | `--non-interactive` | Require `--profile` and run only phases explicitly declared by flags.                                           |
@@ -51,17 +52,19 @@ membership.
 ./setup --profile fedora-wsl2 --dots-only
 ./setup --profile fedora-wsl2 --deps
 ./setup --profile fedora-wsl2 --services
+./setup --profile fedora-wsl2 --containers
 ./setup --profile fedora-wsl2 --locale
 ./setup --profile fedora-wsl2 --dots --deps --services --locale
 ```
 
-| Flag          | Meaning                                                                                                                                   |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `--dots-only` | Install a new LazyVim starter, apply `fedora-wsl2/dots-paths`, install Mise if necessary, and run `mise install`. It does not use `sudo`. |
-| `--dots`      | Apply the same user configuration as `--dots-only`.                                                                                       |
-| `--deps`      | Install the groups and packages declared in `fedora-wsl2/dnf-packages`.                                                                   |
-| `--services`  | Initialize, configure, enable, and validate PostgreSQL and Valkey.                                                                        |
-| `--locale`    | Install Spanish locale data and set the system locale to `es_VE.UTF-8`.                                                                   |
+| Flag           | Meaning                                                                                                                                   |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `--dots-only`  | Install a new LazyVim starter, apply `fedora-wsl2/dots-paths`, install Mise if necessary, and run `mise install`. It does not use `sudo`. |
+| `--dots`       | Apply the same user configuration as `--dots-only`.                                                                                       |
+| `--deps`       | Install the groups and packages declared in `fedora-wsl2/dnf-packages`.                                                                   |
+| `--services`   | Initialize, configure, enable, and validate PostgreSQL and Valkey.                                                                        |
+| `--containers` | Install Docker Engine from Docker's official Fedora repository, configure log rotation, and start the service.                            |
+| `--locale`     | Install Spanish locale data and set the system locale to `es_VE.UTF-8`.                                                                   |
 
 Fedora's `--deps` phase also installs Google Chrome Stable from Google's official RPM when it is
 absent. Its `--dots` and `--dots-only` phases install OpenCode when it is absent. `--fonts` and
@@ -71,12 +74,27 @@ or `--dry-run` mode. Valkey accepts local socket connections through `/run/valke
 users in the `wheel` group. The profile installs a Valkey systemd drop-in so the service can create
 that group-owned socket with mode `770`.
 
+Fedora's `--containers` phase requires Fedora 44 under WSL2 with systemd running. It stops before
+mutation when conflicting Docker packages, ambiguous data directories, repository state, or
+`/etc/docker/daemon.json` configuration are detected; it never removes packages or data. The phase
+installs Docker's official Engine, CLI, containerd, Buildx, and Compose packages, uses the `local`
+logging driver for bounded container logs, and enables `docker.service`.
+
+The invoking user is added to the `docker` group. **This grants root-level privileges.** The script
+does not run `newgrp`; start a new WSL session after installation. Its final runtime validation runs
+`docker version`, `docker info`, `docker compose version`, and the `hello-world` container. Preview
+the complete phase without `sudo`, downloads, writes, or service changes:
+
+```bash
+./setup --profile fedora-wsl2 --containers --non-interactive --dry-run
+```
+
 ## Safety boundaries
 
 - `setup-dots` owns only user configuration, including LazyVim, the manifest, backups, symlinks,
   Mise, and Mise-managed tools.
-- `setup-deps`, `setup-fonts`, `setup-services`, `setup-locale`, and `setup-validate` each own one
-  phase.
+- `setup-deps`, `setup-fonts`, `setup-containers`, `setup-services`, `setup-locale`, and
+  `setup-validate` each own one phase.
 - `--dry-run` never invokes `sudo`, package managers, downloads, `fc-cache`, service management, or
   Hyprland commands.
 - Existing targets are moved to a timestamped `backup/` path before replacement.
@@ -101,4 +119,5 @@ that group-owned socket with mode `770`.
 - `fedora-wsl2/utils/bash/setup-dots` — Mise bootstrap, dotfiles, and tools.
 - `fedora-wsl2/utils/bash/setup-deps` — DNF group and package setup.
 - `fedora-wsl2/utils/bash/setup-services` — PostgreSQL and Valkey setup.
+- `fedora-wsl2/utils/bash/setup-containers` — official Docker Engine setup for Fedora WSL2.
 - `fedora-wsl2/utils/bash/setup-locale` — Spanish locale setup.

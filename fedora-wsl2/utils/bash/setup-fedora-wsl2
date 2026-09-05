@@ -8,6 +8,7 @@ DOTS=0
 DOTS_ONLY=0
 DEPS=0
 SERVICES=0
+CONTAINERS=0
 LOCALE=0
 NON_INTERACTIVE=0
 
@@ -20,6 +21,7 @@ while [[ $# -gt 0 ]]; do
         --dots-only) DOTS_ONLY=1; shift ;;
         --deps) DEPS=1; shift ;;
         --services) SERVICES=1; shift ;;
+        --containers) CONTAINERS=1; shift ;;
         --locale) LOCALE=1; shift ;;
         --dry-run) DRY_RUN=1; shift ;;
         --non-interactive) NON_INTERACTIVE=1; shift ;;
@@ -28,8 +30,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 (( DOTS && DOTS_ONLY )) && fail "dots and dots-only cannot be combined"
-(( DOTS_ONLY && (DEPS || SERVICES || LOCALE) )) && fail "dots-only cannot include phases"
-(( DOTS || DOTS_ONLY || DEPS || SERVICES || LOCALE )) || fail "no phase selected"
+(( DOTS_ONLY && (DEPS || SERVICES || CONTAINERS || LOCALE) )) && fail "dots-only cannot include phases"
+(( DOTS || DOTS_ONLY || DEPS || SERVICES || CONTAINERS || LOCALE )) || fail "no phase selected"
 
 run_helper() {
     local helper="$REPO_ROOT/fedora-wsl2/utils/bash/$1"
@@ -44,5 +46,6 @@ helper_args=()
 if (( DEPS )); then run_helper setup-deps "${helper_args[@]}"; fi
 if (( DOTS )); then run_helper setup-dots "${helper_args[@]}"; fi
 if (( DOTS_ONLY )); then run_helper setup-dots "${helper_args[@]}"; fi
+if (( CONTAINERS )); then run_helper setup-containers "${helper_args[@]}"; fi
 if (( SERVICES )); then run_helper setup-services "${helper_args[@]}"; fi
 if (( LOCALE )); then run_helper setup-locale "${helper_args[@]}"; fi

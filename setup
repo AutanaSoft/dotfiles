@@ -11,6 +11,7 @@ DOTS_ONLY=0
 DEPS=0
 FONTS=0
 SERVICES=0
+CONTAINERS=0
 LOCALE=0
 NO_VALIDATE=0
 NON_INTERACTIVE=0
@@ -28,6 +29,7 @@ Actions:
   --deps             Run the selected profile dependency phase.
   --fonts            Install Omarchy user-local fonts.
   --services         Configure profile-specific services.
+  --containers       Install and configure Docker Engine on Fedora WSL2.
   --locale           Install the selected profile's locale.
 
 Options:
@@ -41,7 +43,7 @@ Examples:
   $0 --dots
   $0 --profile omarchy --dots-only --dry-run
   $0 --profile omarchy --dots --deps --fonts --services --locale
-  $0 --profile fedora-wsl2 --dots --deps --services --locale
+  $0 --profile fedora-wsl2 --dots --deps --containers --services --locale
 EOF
 }
 
@@ -62,6 +64,7 @@ while [[ $# -gt 0 ]]; do
         --deps) DEPS=1; shift ;;
         --fonts) FONTS=1; shift ;;
         --services) SERVICES=1; shift ;;
+        --containers) CONTAINERS=1; shift ;;
         --locale) LOCALE=1; shift ;;
         --no-validate) NO_VALIDATE=1; shift ;;
         --non-interactive) NON_INTERACTIVE=1; shift ;;
@@ -74,7 +77,7 @@ done
 if (( DOTS && DOTS_ONLY )); then
     fail "--dots and --dots-only cannot be combined."
 fi
-if (( DOTS_ONLY && (DEPS || FONTS || SERVICES || LOCALE || NO_VALIDATE) )); then
+if (( DOTS_ONLY && (DEPS || FONTS || SERVICES || CONTAINERS || LOCALE || NO_VALIDATE) )); then
     fail "--dots-only cannot be combined with phases or --no-validate."
 fi
 if (( NO_VALIDATE && !DOTS )); then
@@ -103,23 +106,27 @@ case "$PROFILE" in
     *) fail "unsupported profile: $PROFILE" ;;
 esac
 
+if [[ "$PROFILE" == omarchy ]] && (( CONTAINERS )); then
+    fail "--containers is unsupported for omarchy."
+fi
 if [[ "$PROFILE" == fedora-wsl2 ]] && (( FONTS || NO_VALIDATE )); then
     fail "--fonts and --no-validate are unsupported for fedora-wsl2."
 fi
 
-if (( !DOTS && !DOTS_ONLY && !DEPS && !FONTS && !SERVICES && !LOCALE )); then
+if (( !DOTS && !DOTS_ONLY && !DEPS && !FONTS && !SERVICES && !CONTAINERS && !LOCALE )); then
     fail "choose --dots, --dots-only, or at least one phase."
 fi
 
 if (( DOTS )); then
     if (( !NON_INTERACTIVE )); then
         phases=(deps fonts services locale)
-        [[ "$PROFILE" == fedora-wsl2 ]] && phases=(deps services locale)
+        [[ "$PROFILE" == fedora-wsl2 ]] && phases=(deps containers services locale)
         for phase in "${phases[@]}"; do
             case "$phase" in
                 deps) selected=$DEPS ;;
                 fonts) selected=$FONTS ;;
                 services) selected=$SERVICES ;;
+                containers) selected=$CONTAINERS ;;
                 locale) selected=$LOCALE ;;
             esac
             if (( !selected )); then
@@ -133,12 +140,13 @@ if (( DOTS )); then
                             prompt="Run services? This uses sudo, overwrites/backups keyd configuration, and enables/reloads keyd/ratbagd. [y/N] "
                         fi
                         ;;
+                    containers) prompt="Run containers? This uses sudo and installs Docker Engine with root-equivalent group access. [y/N] " ;;
                     locale) prompt="Run locale? This writes /etc/locale.conf and may require sudo. [y/N] " ;;
                 esac
                 read -r -p "$prompt" answer || answer=""
                 case "$answer" in
                     y|Y|yes|YES) case "$phase" in
-                        deps) DEPS=1 ;; fonts) FONTS=1 ;; services) SERVICES=1 ;; locale) LOCALE=1 ;;
+                        deps) DEPS=1 ;; fonts) FONTS=1 ;; containers) CONTAINERS=1 ;; services) SERVICES=1 ;; locale) LOCALE=1 ;;
                     esac ;;
                 esac
             fi
@@ -163,6 +171,7 @@ args=(--profile "$PROFILE")
 (( DEPS )) && args+=(--deps)
 (( FONTS )) && args+=(--fonts)
 (( SERVICES )) && args+=(--services)
+(( CONTAINERS )) && args+=(--containers)
 (( LOCALE )) && args+=(--locale)
 if [[ "$PROFILE" == omarchy ]] && (( DOTS && !NO_VALIDATE )); then
     args+=(--final-validation)

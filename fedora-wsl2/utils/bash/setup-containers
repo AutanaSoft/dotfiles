@@ -1,0 +1,158 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+REPO_ROOT="${DOTFILES_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)}"
+DRY_RUN="${DOTFILES_DRY_RUN:-0}"
+OS_RELEASE_FILE="${DOTFILES_OS_RELEASE_FILE:-/etc/os-release}"
+KERNEL_RELEASE_FILE="${DOTFILES_KERNEL_RELEASE_FILE:-/proc/sys/kernel/osrelease}"
+DOCKER_REPO_FILE="${DOTFILES_DOCKER_REPO_FILE:-/etc/yum.repos.d/docker-ce.repo}"
+DOCKER_DATA_DIR="${DOTFILES_DOCKER_DATA_DIR:-/var/lib/docker}"
+CONTAINERD_DATA_DIR="${DOTFILES_CONTAINERD_DATA_DIR:-/var/lib/containerd}"
+DAEMON_CONFIG_SOURCE="$REPO_ROOT/fedora-wsl2/etc/docker/daemon.json"
+DAEMON_CONFIG_TARGET="${DOTFILES_DOCKER_CONFIG_FILE:-/etc/docker/daemon.json}"
+DOCKER_REPO_URL="https://download.docker.com/linux/fedora/docker-ce.repo"
+DOCKER_PACKAGES=(docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin)
+DAEMON_CONFIG_CHANGED=0
+DNF_ARGS=()
+CONFLICTING_PACKAGES=(
+    docker docker-client docker-client-latest docker-common docker-latest
+    docker-latest-logrotate docker-logrotate docker-selinux docker-engine-selinux docker-engine
+)
+
+log() { echo "[setup-containers] $*"; }
+fail() { echo "[setup-containers] ERROR: $*" >&2; exit 1; }
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dry-run) DRY_RUN=1; shift ;;
+        --non-interactive) DNF_ARGS+=(--assumeyes); shift ;;
+        *) fail "unknown option: $1" ;;
+    esac
+done
+
+preflight() {
+    local id="" version_id="" pid_one system_state
+
+    [[ -r "$OS_RELEASE_FILE" ]] || fail "cannot read OS metadata: $OS_RELEASE_FILE"
+    # shellcheck disable=SC1090
+    source "$OS_RELEASE_FILE"
+    id="${ID:-}"
+    version_id="${VERSION_ID:-}"
+    [[ "$id" == fedora && "$version_id" == 44 ]] || fail "Fedora 44 is required (found ${id:-unknown} ${version_id:-unknown})"
+    [[ -r "$KERNEL_RELEASE_FILE" ]] || fail "cannot read kernel release: $KERNEL_RELEASE_FILE"
+    grep -qi microsoft "$KERNEL_RELEASE_FILE" || fail "WSL2 is required"
+    pid_one="$(ps -p 1 -o comm=)"
+    [[ "$pid_one" == systemd ]] || fail "systemd must run as PID 1 (found ${pid_one:-unknown})"
+    system_state="$(systemctl is-system-running 2>/dev/null || true)"
+    [[ "$system_state" == running ]] || fail "systemd must be running (found ${system_state:-unknown})"
+    command -v rpm >/dev/null 2>&1 || fail "rpm is required"
+    command -v dnf >/dev/null 2>&1 || fail "dnf is required"
+    command -v sudo >/dev/null 2>&1 || fail "sudo is required"
+    [[ -f "$DAEMON_CONFIG_SOURCE" ]] || fail "Docker daemon configuration not found: $DAEMON_CONFIG_SOURCE"
+}
+
+resolve_invoking_user() {
+    if (( EUID == 0 )); then
+        INVOKING_USER="${SUDO_USER:-}"
+        [[ -n "$INVOKING_USER" && "$INVOKING_USER" != root ]] || fail "run as the intended user, not directly as root"
+    else
+        INVOKING_USER="$(id -un)"
+    fi
+    [[ "$INVOKING_USER" != root ]] || fail "refusing to grant Docker access to root as the invoking user"
+    id "$INVOKING_USER" >/dev/null 2>&1 || fail "invoking user does not exist: $INVOKING_USER"
+}
+
+check_existing_state() {
+    local package installed_official=0
+    for package in "${CONFLICTING_PACKAGES[@]}"; do
+        rpm -q "$package" >/dev/null 2>&1 && fail "conflicting package is installed: $package; remove it manually after reviewing Docker's migration guidance"
+    done
+    for package in "${DOCKER_PACKAGES[@]}"; do
+        rpm -q "$package" >/dev/null 2>&1 && installed_official=1
+    done
+    if (( !installed_official )); then
+        [[ ! -e "$DOCKER_DATA_DIR" ]] || fail "ambiguous existing Docker data without official Docker packages: $DOCKER_DATA_DIR"
+        [[ ! -e "$CONTAINERD_DATA_DIR" ]] || fail "ambiguous existing containerd data without official Docker packages: $CONTAINERD_DATA_DIR"
+    fi
+    if [[ -e "$DAEMON_CONFIG_TARGET" ]] && ! cmp -s -- "$DAEMON_CONFIG_SOURCE" "$DAEMON_CONFIG_TARGET"; then
+        fail "existing Docker daemon configuration differs: $DAEMON_CONFIG_TARGET; merge it manually"
+    fi
+}
+
+install_repo() {
+    if [[ -e "$DOCKER_REPO_FILE" ]]; then
+        grep -q 'download\.docker\.com/linux/fedora' "$DOCKER_REPO_FILE" || fail "ambiguous Docker repository file: $DOCKER_REPO_FILE"
+        dnf repolist --enabled docker-ce-stable 2>/dev/null | grep -q docker-ce-stable || fail "Docker's stable repository exists but is not enabled"
+        log "Docker repository is configured"
+        return
+    fi
+    log "Adding Docker's official Fedora repository"
+    (( DRY_RUN )) || sudo dnf "${DNF_ARGS[@]}" config-manager addrepo --from-repofile "$DOCKER_REPO_URL"
+}
+
+install_packages() {
+    local package
+    missing_packages=()
+    for package in "${DOCKER_PACKAGES[@]}"; do
+        if rpm -q "$package" >/dev/null 2>&1; then
+            log "[installed] $package"
+        else
+            log "[missing] $package"
+            missing_packages+=("$package")
+        fi
+    done
+    if ((${#missing_packages[@]})); then
+        log "Installing Docker Engine packages: ${missing_packages[*]}"
+        (( DRY_RUN )) || sudo dnf "${DNF_ARGS[@]}" install "${missing_packages[@]}"
+    fi
+}
+
+install_daemon_config() {
+    if [[ -e "$DAEMON_CONFIG_TARGET" ]]; then
+        log "Docker daemon configuration is unchanged"
+        return
+    fi
+    log "Installing Docker log rotation configuration: $DAEMON_CONFIG_TARGET"
+    DAEMON_CONFIG_CHANGED=1
+    (( DRY_RUN )) || sudo install -D -o root -g root -m 0644 -- "$DAEMON_CONFIG_SOURCE" "$DAEMON_CONFIG_TARGET"
+}
+
+configure_access() {
+    log "WARNING: membership in the docker group grants root-level privileges."
+    if ! getent group docker >/dev/null 2>&1; then
+        log "Creating docker group"
+        (( DRY_RUN )) || sudo groupadd docker
+    fi
+    if id -nG "$INVOKING_USER" | tr ' ' '\n' | grep -qx docker; then
+        log "$INVOKING_USER already belongs to the docker group"
+    else
+        log "Adding $INVOKING_USER to the docker group"
+        (( DRY_RUN )) || sudo usermod -aG docker "$INVOKING_USER"
+    fi
+}
+
+enable_and_validate() {
+    if (( DRY_RUN )); then
+        log "[dry-run] would enable and start docker.service"
+        log "[dry-run] would validate Docker Engine and Compose"
+        return
+    fi
+    sudo systemctl enable --now docker
+    (( DAEMON_CONFIG_CHANGED )) && sudo systemctl restart docker
+    sudo docker version
+    sudo docker info
+    docker compose version
+    sudo docker run --rm hello-world
+    log "Docker Engine and Compose are ready"
+}
+
+preflight
+resolve_invoking_user
+check_existing_state
+install_repo
+install_packages
+install_daemon_config
+configure_access
+enable_and_validate
+log "Start a new WSL session before using Docker without sudo; this script does not run newgrp."
