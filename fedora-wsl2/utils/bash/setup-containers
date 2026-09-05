@@ -2,7 +2,11 @@
 
 set -euo pipefail
 
-REPO_ROOT="${DOTFILES_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=setup-common
+source "$SCRIPT_DIR/setup-common"
+
+REPO_ROOT="${DOTFILES_ROOT:-$(cd -- "$SCRIPT_DIR/../../.." && pwd)}"
 DRY_RUN="${DOTFILES_DRY_RUN:-0}"
 OS_RELEASE_FILE="${DOTFILES_OS_RELEASE_FILE:-/etc/os-release}"
 KERNEL_RELEASE_FILE="${DOTFILES_KERNEL_RELEASE_FILE:-/proc/sys/kernel/osrelease}"
@@ -15,6 +19,7 @@ DOCKER_REPO_URL="https://download.docker.com/linux/fedora/docker-ce.repo"
 DOCKER_PACKAGES=(docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin)
 DAEMON_CONFIG_CHANGED=0
 DNF_ARGS=()
+NON_INTERACTIVE=0
 CONFLICTING_PACKAGES=(
     docker docker-client docker-client-latest docker-common docker-latest
     docker-latest-logrotate docker-logrotate docker-selinux docker-engine-selinux docker-engine
@@ -26,7 +31,7 @@ fail() { echo "[setup-containers] ERROR: $*" >&2; exit 1; }
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run) DRY_RUN=1; shift ;;
-        --non-interactive) DNF_ARGS+=(--assumeyes); shift ;;
+        --non-interactive) NON_INTERACTIVE=1; DNF_ARGS+=(--assumeyes); shift ;;
         *) fail "unknown option: $1" ;;
     esac
 done
@@ -46,21 +51,10 @@ preflight() {
     [[ "$pid_one" == systemd ]] || fail "systemd must run as PID 1 (found ${pid_one:-unknown})"
     system_state="$(systemctl is-system-running 2>/dev/null || true)"
     [[ "$system_state" == running ]] || fail "systemd must be running (found ${system_state:-unknown})"
-    command -v rpm >/dev/null 2>&1 || fail "rpm is required"
-    command -v dnf >/dev/null 2>&1 || fail "dnf is required"
-    command -v sudo >/dev/null 2>&1 || fail "sudo is required"
+    setup_require_command rpm
+    setup_require_command dnf
+    setup_require_command sudo
     [[ -f "$DAEMON_CONFIG_SOURCE" ]] || fail "Docker daemon configuration not found: $DAEMON_CONFIG_SOURCE"
-}
-
-resolve_invoking_user() {
-    if (( EUID == 0 )); then
-        INVOKING_USER="${SUDO_USER:-}"
-        [[ -n "$INVOKING_USER" && "$INVOKING_USER" != root ]] || fail "run as the intended user, not directly as root"
-    else
-        INVOKING_USER="$(id -un)"
-    fi
-    [[ "$INVOKING_USER" != root ]] || fail "refusing to grant Docker access to root as the invoking user"
-    id "$INVOKING_USER" >/dev/null 2>&1 || fail "invoking user does not exist: $INVOKING_USER"
 }
 
 check_existing_state() {
@@ -83,6 +77,10 @@ check_existing_state() {
 install_repo() {
     if [[ -e "$DOCKER_REPO_FILE" ]]; then
         grep -q 'download\.docker\.com/linux/fedora' "$DOCKER_REPO_FILE" || fail "ambiguous Docker repository file: $DOCKER_REPO_FILE"
+        if (( DRY_RUN )); then
+            log "Docker repository is present (dry-run does not query DNF repository state)"
+            return
+        fi
         dnf repolist --enabled docker-ce-stable 2>/dev/null | grep -q docker-ce-stable || fail "Docker's stable repository exists but is not enabled"
         log "Docker repository is configured"
         return
@@ -148,7 +146,8 @@ enable_and_validate() {
 }
 
 preflight
-resolve_invoking_user
+setup_preflight_privileged_phase "$DRY_RUN" "$NON_INTERACTIVE"
+setup_resolve_invoking_user
 check_existing_state
 install_repo
 install_packages

@@ -18,20 +18,20 @@ Empty or negative answers leave a phase disabled.
 
 ## CLI contract
 
-| Flag                | Meaning                                                                                                         |
-| ------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `--profile omarchy` | Select the implemented profile. Interactive runs offer `omarchy` when omitted.                                  |
-| `--dots`            | Apply dotfiles, ask interactively about optional phases, then validate unless `--no-validate` is used.          |
-| `--dots-only`       | Apply only the manifest and permitted user copies. It cannot combine with optional phases and skips validation. |
-| `--deps`            | Validate and install the packages in `omarchy/deps-manifest` in one batch.                                      |
-| `--fonts`           | Install user-local fonts under `$HOME/.local/share/fonts/<family>/`.                                            |
-| `--services`        | Configure keyd/ratbagd plus local PostgreSQL and Valkey services.                                               |
-| `--containers`      | Install Docker Engine on Fedora WSL2. Unsupported by Omarchy.                                                   |
-| `--locale`          | Opt in to the locale declared by `omarchy/etc/locale.conf`.                                                     |
-| `--no-validate`     | Skip the final validation of a `--dots` run.                                                                    |
-| `--non-interactive` | Require `--profile` and run only phases explicitly declared by flags.                                           |
-| `--dry-run`         | Show actions without downloads, writes, sudo, service changes, or graphical changes.                            |
-| `--help`, `-h`      | Show usage.                                                                                                     |
+| Flag                | Meaning                                                                                                               |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `--profile omarchy` | Select the implemented profile. Interactive runs offer `omarchy` when omitted.                                        |
+| `--dots`            | Apply dotfiles, ask interactively about optional phases, then validate unless `--no-validate` is used.                |
+| `--dots-only`       | Apply only the manifest and permitted user copies. It cannot combine with optional phases and skips validation.       |
+| `--deps`            | Validate and install the packages in `omarchy/deps-manifest` in one batch.                                            |
+| `--fonts`           | Install user-local fonts under `$HOME/.local/share/fonts/<family>/`.                                                  |
+| `--services`        | Configure keyd/ratbagd plus local PostgreSQL and Valkey services.                                                     |
+| `--containers`      | Install Docker Engine on Fedora WSL2. Unsupported by Omarchy.                                                         |
+| `--locale`          | Opt in to the locale declared by `omarchy/etc/locale.conf`.                                                           |
+| `--no-validate`     | Skip the final validation of a `--dots` run.                                                                          |
+| `--non-interactive` | Require `--profile`, run only explicitly declared phases, and enable DNF automatic confirmation for Fedora mutations. |
+| `--dry-run`         | Show actions without downloads, writes, sudo, DNF, service changes, or graphical changes.                             |
+| `--help`, `-h`      | Show usage.                                                                                                           |
 
 Without `--non-interactive`, `--dots` asks separately about `deps`, `fonts`, `services`, and
 `locale`. In non-interactive mode, no optional phase is inferred. A request such as
@@ -54,14 +54,14 @@ membership.
 ./setup --profile fedora-wsl2 --services
 ./setup --profile fedora-wsl2 --containers
 ./setup --profile fedora-wsl2 --locale
-./setup --profile fedora-wsl2 --dots --deps --services --locale
+./setup --profile fedora-wsl2 --dots --deps --containers --services --locale
 ```
 
 | Flag           | Meaning                                                                                                                                   |
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | `--dots-only`  | Install a new LazyVim starter, apply `fedora-wsl2/dots-paths`, install Mise if necessary, and run `mise install`. It does not use `sudo`. |
 | `--dots`       | Apply the same user configuration as `--dots-only`.                                                                                       |
-| `--deps`       | Install the groups and packages declared in `fedora-wsl2/dnf-packages`.                                                                   |
+| `--deps`       | Install the groups and packages declared in `fedora-wsl2/dnf-packages`; dry-runs leave group state unqueried.                             |
 | `--services`   | Initialize, configure, enable, and validate PostgreSQL and Valkey.                                                                        |
 | `--containers` | Install Docker Engine from Docker's official Fedora repository, configure log rotation, and start the service.                            |
 | `--locale`     | Install Spanish locale data and set the system locale to `es_VE.UTF-8`.                                                                   |
@@ -73,6 +73,11 @@ interactively set the PostgreSQL `postgres` role password; it never prompts in `
 or `--dry-run` mode. Valkey accepts local socket connections through `/run/valkey/valkey.sock` for
 users in the `wheel` group. The profile installs a Valkey systemd drop-in so the service can create
 that group-owned socket with mode `770`.
+
+`--non-interactive` requires `--profile`, runs only requested phases, and supplies DNF automatic
+confirmation for every Fedora package mutation. `--dry-run` invokes neither `sudo` nor DNF; it
+checks RPM package state but reports declared DNF groups as unverified rather than calling them
+missing.
 
 Fedora's `--containers` phase requires Fedora 44 under WSL2 with systemd running. It stops before
 mutation when conflicting Docker packages, ambiguous data directories, repository state, or
@@ -95,7 +100,7 @@ the complete phase without `sudo`, downloads, writes, or service changes:
   Mise, and Mise-managed tools.
 - `setup-deps`, `setup-fonts`, `setup-containers`, `setup-services`, `setup-locale`, and
   `setup-validate` each own one phase.
-- `--dry-run` never invokes `sudo`, package managers, downloads, `fc-cache`, service management, or
+- `--dry-run` never invokes `sudo`, DNF, package downloads, `fc-cache`, service management, or
   Hyprland commands.
 - Existing targets are moved to a timestamped `backup/` path before replacement.
 - Herdr's `config.toml` is managed as a symlink from `omarchy/dots-manifest`.

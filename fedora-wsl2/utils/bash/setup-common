@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+setup_require_command() {
+    local command_name="$1"
+    command -v "$command_name" >/dev/null 2>&1 || fail "$command_name is required"
+}
+
+setup_preflight_privileged_phase() {
+    local dry_run="$1" non_interactive="$2"
+
+    (( dry_run )) && return
+    setup_require_command sudo
+    if (( non_interactive )); then
+        sudo -n true || fail "passwordless sudo is required in non-interactive mode"
+    fi
+}
+
+setup_resolve_invoking_user() {
+    if (( EUID == 0 )); then
+        INVOKING_USER="${SUDO_USER:-}"
+        [[ -n "$INVOKING_USER" && "$INVOKING_USER" != root ]] || fail "run as the intended user, not directly as root"
+    else
+        INVOKING_USER="$(id -un)"
+    fi
+
+    [[ "$INVOKING_USER" != root ]] || fail "refusing to use root as the invoking user"
+    id "$INVOKING_USER" >/dev/null 2>&1 || fail "invoking user does not exist: $INVOKING_USER"
+}

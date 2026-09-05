@@ -2,7 +2,11 @@
 
 set -euo pipefail
 
-REPO_ROOT="${DOTFILES_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=setup-common
+source "$SCRIPT_DIR/setup-common"
+
+REPO_ROOT="${DOTFILES_ROOT:-$(cd -- "$SCRIPT_DIR/../../.." && pwd)}"
 BACKUP_DIR="${DOTFILES_BACKUP_DIR:-$REPO_ROOT/backup/$(date -u +%Y%m%dT%H%M%SZ)}"
 DRY_RUN="${DOTFILES_DRY_RUN:-0}"
 NON_INTERACTIVE=0
@@ -19,6 +23,9 @@ while [[ $# -gt 0 ]]; do
         *) fail "unknown option: $1" ;;
     esac
 done
+
+setup_preflight_privileged_phase "$DRY_RUN" "$NON_INTERACTIVE"
+setup_resolve_invoking_user
 
 ensure_service() {
     local service="$1"
@@ -98,7 +105,7 @@ configure_postgresql() {
 configure_valkey() {
     local changed=0 drop_in_changed=0
     command -v valkey-cli >/dev/null 2>&1 || fail "valkey-cli is required; run --deps first"
-    [[ " $(id -nG "$USER") " == *" wheel "* ]] || fail "$USER must belong to the wheel group to use the Valkey socket"
+    [[ " $(id -nG "$INVOKING_USER") " == *" wheel "* ]] || fail "$INVOKING_USER must belong to the wheel group to use the Valkey socket"
 
     ensure_service valkey
     install_system_config "$REPO_ROOT/fedora-wsl2/etc/valkey/valkey.conf" /etc/valkey/valkey.conf valkey 0640 || changed=1

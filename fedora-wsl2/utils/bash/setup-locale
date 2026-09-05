@@ -2,9 +2,15 @@
 
 set -euo pipefail
 
-REPO_ROOT="${DOTFILES_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=setup-common
+source "$SCRIPT_DIR/setup-common"
+
+REPO_ROOT="${DOTFILES_ROOT:-$(cd -- "$SCRIPT_DIR/../../.." && pwd)}"
 BACKUP_DIR="${DOTFILES_BACKUP_DIR:-$REPO_ROOT/backup/$(date -u +%Y%m%dT%H%M%SZ)}"
 DRY_RUN="${DOTFILES_DRY_RUN:-0}"
+NON_INTERACTIVE=0
+DNF_ARGS=()
 LOCALE_CONF_SRC="$REPO_ROOT/fedora-wsl2/etc/locale.conf"
 LOCALE_CONF_TARGET="/etc/locale.conf"
 
@@ -14,21 +20,22 @@ fail() { echo "[setup-locale] ERROR: $*" >&2; exit 1; }
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run) DRY_RUN=1; shift ;;
-        --non-interactive) shift ;;
+        --non-interactive) NON_INTERACTIVE=1; DNF_ARGS+=(--assumeyes); shift ;;
         *) fail "unknown option: $1" ;;
     esac
 done
 
 [[ -f "$LOCALE_CONF_SRC" ]] || fail "locale configuration not found: $LOCALE_CONF_SRC"
-command -v rpm >/dev/null 2>&1 || fail "rpm is required"
-command -v dnf >/dev/null 2>&1 || fail "dnf is required"
+setup_require_command rpm
+setup_require_command dnf
+setup_preflight_privileged_phase "$DRY_RUN" "$NON_INTERACTIVE"
 
 if rpm -q glibc-langpack-es >/dev/null 2>&1; then
     log "[installed] glibc-langpack-es"
 else
     log "[missing] glibc-langpack-es"
     log "Installing Spanish locale data"
-    (( DRY_RUN )) || sudo dnf install glibc-langpack-es
+    (( DRY_RUN )) || sudo dnf "${DNF_ARGS[@]}" install glibc-langpack-es
 fi
 
 if (( DRY_RUN )); then

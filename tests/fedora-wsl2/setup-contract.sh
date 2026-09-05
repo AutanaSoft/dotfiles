@@ -8,6 +8,7 @@ FEDORA_DEPS_SETUP="$ROOT_DIR/fedora-wsl2/utils/bash/setup-deps"
 FEDORA_SERVICES_SETUP="$ROOT_DIR/fedora-wsl2/utils/bash/setup-services"
 FEDORA_LOCALE_SETUP="$ROOT_DIR/fedora-wsl2/utils/bash/setup-locale"
 FEDORA_CONTAINERS_SETUP="$ROOT_DIR/fedora-wsl2/utils/bash/setup-containers"
+FEDORA_COMMON_SETUP="$ROOT_DIR/fedora-wsl2/utils/bash/setup-common"
 
 # shellcheck source=../lib/test-helpers.sh
 source "$ROOT_DIR/tests/lib/test-helpers.sh"
@@ -25,6 +26,8 @@ done
 printf '#!/usr/bin/env bash\nprintf "wheel\\n"\n' >"$fake_bin/id"
 chmod +x "$fake_bin"/*
 export PATH="$fake_bin:$PATH"
+
+[[ -r "$FEDORA_COMMON_SETUP" ]] || fail "Fedora shared setup helpers are missing"
 
 assert_status 2 "$SETUP" --profile fedora-wsl2 --fonts --dry-run
 assert_status 2 "$SETUP" --profile fedora-wsl2 --dots-only --deps --dry-run
@@ -91,6 +94,21 @@ fedora_containers_output="$(
 [[ "$fedora_containers_output" == *"would enable and start docker.service"* ]] || fail "Fedora --containers did not preview Docker service activation"
 [[ "$fedora_containers_output" != *"hello-world"* ]] || fail "Fedora --containers dry-run attempted hello-world"
 
+printf '[docker-ce-stable]\nbaseurl=https://download.docker.com/linux/fedora\n' >"$containers_root/docker-ce.repo"
+containers_dnf_log="$containers_root/dnf.log"
+printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >>"$DOTFILES_DNF_LOG"\nexit 1\n' >"$containers_root/bin/dnf"
+chmod +x "$containers_root/bin/dnf"
+DOTFILES_DNF_LOG="$containers_dnf_log" PATH="$containers_root/bin:$PATH" \
+  DOTFILES_OS_RELEASE_FILE="$containers_root/etc/os-release" \
+  DOTFILES_KERNEL_RELEASE_FILE="$containers_root/kernel-release" \
+  DOTFILES_DOCKER_REPO_FILE="$containers_root/docker-ce.repo" \
+  DOTFILES_DOCKER_CONFIG_FILE="$containers_root/daemon.json" \
+  DOTFILES_DOCKER_DATA_DIR="$containers_root/docker-data" \
+  DOTFILES_CONTAINERD_DATA_DIR="$containers_root/containerd-data" \
+  "$FEDORA_CONTAINERS_SETUP" --dry-run >/dev/null
+[[ ! -s "$containers_dnf_log" ]] || fail "Fedora containers dry-run invoked DNF"
+rm "$containers_root/docker-ce.repo"
+
 printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >>"$DOTFILES_SUDO_LOG"\n' >"$containers_root/bin/sudo"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$containers_root/bin/docker"
 chmod +x "$containers_root/bin/sudo" "$containers_root/bin/docker"
@@ -155,10 +173,39 @@ mkdir -p "$fake_bin"
 printf '#!/usr/bin/env bash\nif [[ $1 == group && $2 == info ]]; then exit 1; fi\nexit 0\n' >"$fake_bin/dnf"
 chmod +x "$fake_bin/dnf"
 fedora_dependency_output="$(PATH="$fake_bin:$PATH" DOTFILES_ROOT="$manifest_root" "$FEDORA_DEPS_SETUP" --dry-run)"
-[[ "$fedora_dependency_output" == *"[missing] @alpha"* ]] || fail "Fedora manifest group alpha was not parsed"
+[[ "$fedora_dependency_output" == *"[unverified] @alpha (dry-run does not query DNF group state)"* ]] || fail "Fedora dry-run did not preserve unknown group state"
 [[ "$fedora_dependency_output" == *"[missing] alpha"* ]] || fail "Fedora manifest package alpha was not parsed"
 [[ "$fedora_dependency_output" == *"[missing] beta"* ]] || fail "Fedora manifest package beta was not parsed"
-[[ "$fedora_dependency_output" == *"Installing missing groups: alpha"* ]] || fail "Fedora groups were not batched"
+[[ "$fedora_dependency_output" == *"Would install declared groups without querying installed state: alpha"* ]] || fail "Fedora dry-run groups were not reported accurately"
+[[ "$fedora_dependency_output" != *"[missing] @alpha"* ]] || fail "Fedora dry-run claimed an unqueried group was missing"
+
+dnf_log="$manifest_root/dnf.log"
+printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >>"$DNF_LOG"\nexit 1\n' >"$fake_bin/dnf"
+chmod +x "$fake_bin/dnf"
+DNF_LOG="$dnf_log" PATH="$fake_bin:$PATH" DOTFILES_ROOT="$manifest_root" "$FEDORA_DEPS_SETUP" --dry-run >/dev/null
+[[ ! -s "$dnf_log" ]] || fail "Fedora dependency dry-run invoked DNF"
+
+printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >>"$DNF_LOG"\nexit 0\n' >"$fake_bin/dnf"
+printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >>"$SUDO_LOG"\nif [[ $1 == -n ]]; then shift; fi\nif [[ ${1:-} == dnf ]]; then shift; dnf "$@"; fi\n' >"$fake_bin/sudo"
+chmod +x "$fake_bin/dnf" "$fake_bin/sudo"
+sudo_log="$manifest_root/sudo.log"
+printf 'alpha\n' >"$manifest_root/fedora-wsl2/dnf-packages"
+DNF_LOG="$dnf_log" SUDO_LOG="$sudo_log" PATH="$fake_bin:$PATH" DOTFILES_ROOT="$manifest_root" "$FEDORA_DEPS_SETUP" --non-interactive >/dev/null
+[[ "$(<"$dnf_log")" == *"--assumeyes install alpha"* ]] || fail "Fedora non-interactive dependencies did not enable DNF automatic confirmation"
+[[ "$(<"$dnf_log")" == *"--assumeyes install https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm"* ]] || fail "Fedora non-interactive Chrome install did not enable DNF automatic confirmation"
+
+locale_root="$TEST_TMP_DIR/locale"
+mkdir -p "$locale_root/bin" "$locale_root/fedora-wsl2/etc"
+cp "$ROOT_DIR/fedora-wsl2/etc/locale.conf" "$locale_root/fedora-wsl2/etc/locale.conf"
+printf '#!/usr/bin/env bash\nexit 1\n' >"$locale_root/bin/rpm"
+printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >>"$DNF_LOG"\nexit 0\n' >"$locale_root/bin/dnf"
+printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >>"$SUDO_LOG"\nif [[ $1 == -n ]]; then shift; fi\nif [[ ${1:-} == dnf ]]; then shift; dnf "$@"; fi\n' >"$locale_root/bin/sudo"
+printf '#!/usr/bin/env bash\nprintf "es_VE.utf8\\n"\n' >"$locale_root/bin/locale"
+chmod +x "$locale_root/bin"/*
+locale_dnf_log="$locale_root/dnf.log"
+locale_sudo_log="$locale_root/sudo.log"
+DNF_LOG="$locale_dnf_log" SUDO_LOG="$locale_sudo_log" PATH="$locale_root/bin:$PATH" DOTFILES_ROOT="$locale_root" "$FEDORA_LOCALE_SETUP" --non-interactive >/dev/null
+[[ "$(<"$locale_dnf_log")" == *"--assumeyes install glibc-langpack-es"* ]] || fail "Fedora non-interactive locale install did not enable DNF automatic confirmation"
 printf '@alpha\n@alpha\n' >"$manifest_root/fedora-wsl2/dnf-packages"
 set +e
 PATH="$fake_bin:$PATH" DOTFILES_ROOT="$manifest_root" "$FEDORA_DEPS_SETUP" --dry-run >"$TEST_STDOUT" 2>"$TEST_STDERR"
@@ -168,6 +215,9 @@ set -e
 
 assert_status 1 "$FEDORA_SERVICES_SETUP" --unknown
 assert_status 1 "$FEDORA_LOCALE_SETUP" --unknown
+
+services_user_output="$(USER=incorrect "$FEDORA_SERVICES_SETUP" --dry-run)"
+[[ "$services_user_output" != *"incorrect must belong"* ]] || fail "Fedora services trusted USER instead of the invoking user"
 
 [[ "$(<"$ROOT_DIR/fedora-wsl2/home/config/mise/config.toml")" == *'python = "3.14.7"'* ]] || fail "Fedora Mise configuration does not pin Python 3.14.7"
 [[ "$(<"$ROOT_DIR/fedora-wsl2/home/config/mise/config.toml")" == *'"npm:markdownlint-cli2" = "latest"'* ]] || fail "Fedora Mise configuration does not install markdownlint-cli2"

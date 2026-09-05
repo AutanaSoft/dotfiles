@@ -22,6 +22,7 @@ For Fedora WSL2:
 ```bash
 ./setup --profile fedora-wsl2 --dots-only
 ./setup --profile fedora-wsl2 --deps
+./setup --profile fedora-wsl2 --containers
 ./setup --profile fedora-wsl2 --services
 ./setup --profile fedora-wsl2 --locale
 ```
@@ -61,12 +62,19 @@ The `./setup` entrypoint is a dispatcher, not a distribution-neutral installer. 
 It does not install Omarchy. Ubuntu is not supported. `--dots-only` is the non-graphical user
 configuration path. `--dry-run` previews actions without mutating the host.
 
-The `fedora-wsl2` profile supports `--dots`, `--dots-only`, `--deps`, `--services`, and `--locale`.
-Its dotfiles phase installs a new LazyVim starter instance, applies `dots-paths`, installs Mise and
-OpenCode in the user home, and installs the tools declared in the linked Mise configuration. Its
-dependency phase installs the groups and packages in `dnf-packages` and Google Chrome Stable from
-Google's official RPM. Its services phase initializes, configures, and validates PostgreSQL and
+The `fedora-wsl2` profile supports `--dots`, `--dots-only`, `--deps`, `--containers`, `--services`,
+and `--locale`. Its dotfiles phase installs a new LazyVim starter instance, applies `dots-paths`,
+installs Mise and OpenCode in the user home, and installs the tools declared in the linked Mise
+configuration. Its dependency phase installs the groups and packages in `dnf-packages` and Google
+Chrome Stable from Google's official RPM. Its containers phase requires Fedora 44 under WSL2 with
+systemd running, installs Docker Engine from Docker's official repository, and grants the invoking
+user Docker-group access. Its services phase initializes, configures, and validates PostgreSQL and
 Valkey. Its locale phase installs Spanish locale data and sets `LANG=es_VE.UTF-8`.
+
+Use `--non-interactive` with an explicit `--profile`; it runs only selected phases and passes DNF
+automatic confirmation to Fedora package mutations. Use `--dry-run` to preview without invoking
+`sudo`, DNF, downloads, writes, or service mutations. Dependency dry-runs report declared DNF groups
+without claiming whether they are installed because they do not query DNF group state.
 
 The `--deps`, `--fonts`, `--services`, and `--locale` flags are explicit phases for the same current
 profile; they do not add support for another platform. The dependency phase installs the packages

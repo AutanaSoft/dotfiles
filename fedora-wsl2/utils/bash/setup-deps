@@ -2,8 +2,14 @@
 
 set -euo pipefail
 
-REPO_ROOT="${DOTFILES_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=setup-common
+source "$SCRIPT_DIR/setup-common"
+
+REPO_ROOT="${DOTFILES_ROOT:-$(cd -- "$SCRIPT_DIR/../../.." && pwd)}"
 DRY_RUN="${DOTFILES_DRY_RUN:-0}"
+NON_INTERACTIVE=0
+DNF_ARGS=()
 MANIFEST="$REPO_ROOT/fedora-wsl2/dnf-packages"
 CHROME_RPM_URL="https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm"
 
@@ -13,7 +19,7 @@ fail() { echo "[setup-deps] ERROR: $*" >&2; exit 1; }
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run) DRY_RUN=1; shift ;;
-        --non-interactive) shift ;;
+        --non-interactive) NON_INTERACTIVE=1; DNF_ARGS+=(--assumeyes); shift ;;
         *) fail "unknown option: $1" ;;
     esac
 done
@@ -38,24 +44,33 @@ read_dependencies() {
 }
 
 [[ -f "$MANIFEST" ]] || fail "manifest not found: $MANIFEST"
-command -v rpm >/dev/null 2>&1 || fail "rpm is required"
-command -v dnf >/dev/null 2>&1 || fail "dnf is required"
+setup_require_command rpm
+setup_require_command dnf
+setup_preflight_privileged_phase "$DRY_RUN" "$NON_INTERACTIVE"
 read_dependencies
 
 missing_groups=()
-for group in "${groups[@]}"; do
-    group_info="$(dnf group info --installed "$group" 2>/dev/null || true)"
-    if [[ "$group_info" == *"Id                   : $group"* ]]; then
-        log "[installed] @$group"
-    else
-        log "[missing] @$group"
-        missing_groups+=("$group")
-    fi
-done
+if (( DRY_RUN )); then
+    for group in "${groups[@]}"; do
+        log "[unverified] @$group (dry-run does not query DNF group state)"
+    done
+else
+    for group in "${groups[@]}"; do
+        group_info="$(dnf group info --installed "$group" 2>/dev/null || true)"
+        if [[ "$group_info" == *"Id                   : $group"* ]]; then
+            log "[installed] @$group"
+        else
+            log "[missing] @$group"
+            missing_groups+=("$group")
+        fi
+    done
+fi
 
-if ((${#missing_groups[@]})); then
+if (( DRY_RUN && ${#groups[@]} )); then
+    log "Would install declared groups without querying installed state: ${groups[*]}"
+elif ((${#missing_groups[@]})); then
     log "Installing missing groups: ${missing_groups[*]}"
-    (( DRY_RUN )) || sudo dnf group install "${missing_groups[@]}"
+    sudo dnf "${DNF_ARGS[@]}" group install "${missing_groups[@]}"
 fi
 
 missing_packages=()
@@ -70,7 +85,7 @@ done
 
 if ((${#missing_packages[@]})); then
     log "Installing missing packages: ${missing_packages[*]}"
-    (( DRY_RUN )) || sudo dnf install "${missing_packages[@]}"
+    (( DRY_RUN )) || sudo dnf "${DNF_ARGS[@]}" install "${missing_packages[@]}"
 fi
 
 if rpm -q google-chrome-stable >/dev/null 2>&1; then
@@ -78,5 +93,5 @@ if rpm -q google-chrome-stable >/dev/null 2>&1; then
 else
     log "[missing] google-chrome-stable"
     log "Installing Google Chrome Stable from the official RPM"
-    (( DRY_RUN )) || sudo dnf install "$CHROME_RPM_URL"
+    (( DRY_RUN )) || sudo dnf "${DNF_ARGS[@]}" install "$CHROME_RPM_URL"
 fi
