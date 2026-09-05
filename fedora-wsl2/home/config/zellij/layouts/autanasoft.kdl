@@ -18,9 +18,9 @@ layout {
                 color_green    "#9ece6a"
                 color_blue     "#7aa2f7"
                 color_purple   "#bb9af7"
-                color_orange   "#ff9e64"
-                color_red      "#f93357"
-                color_cyan     "#2ac3de"
+                color_orange   "#eb927b"
+                color_red      "#f7768e"
+                color_cyan     "#449dab"
 
                 // --- format ---
                 format_left   "#[fg=$purple,bold] {mode} #[fg=$fg_dim] {tabs}"
@@ -35,7 +35,7 @@ layout {
                 border_position "top"
 
                 // --- modes ---
-                mode_normal "#[bg=$green,fg=$bg] NORMAL "
+                mode_normal "#[bg=$blue,fg=$bg] NORMAL "
                 mode_tmux   "#[bg=$orange,fg=$bg] TMUX "
                 mode_locked "#[bg=$blue,fg=$bg] LOCKED "
                 mode_pane   "#[bg=$purple,fg=$bg] PANE "
@@ -45,7 +45,7 @@ layout {
 
                 // --- tabs ---
                 tab_normal "#[fg=$fg_dim] {index}:{name} "
-                tab_active "#[fg=$green,bold,italic] {index}:{name} "
+                tab_active "#[fg=$blue,bold,italic] {index}:{name} "
 
                 // --- datetime ---
                 datetime          "#[fg=$blue,bold] {format} "

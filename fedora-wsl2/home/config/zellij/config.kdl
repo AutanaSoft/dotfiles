@@ -1,5 +1,5 @@
-// If you'd like to override the default keybindings completely, be sure to change "keybinds" to "keybinds clear-defaults=true"
-keybinds {
+// Zellij 0.45 keybindings with Fedora WSL2's locked-mode workflow and direct Alt shortcuts.
+keybinds clear-defaults=true {
     normal {
         // uncomment this and adjust key if using copy_on_select=false
         // bind "Alt c" { Copy; }
@@ -40,6 +40,7 @@ keybinds {
         bind "s" { NewPane "stacked"; SwitchToMode "Locked"; }
         bind "x" { CloseFocus; SwitchToMode "Locked"; }
         bind "f" { ToggleFocusFullscreen; SwitchToMode "Locked"; }
+        bind "Shift f" { ToggleFocusNoUiFullscreen; SwitchToMode "Locked"; }
         bind "z" { TogglePaneFrames; SwitchToMode "Locked"; }
         bind "w" { ToggleFloatingPanes; SwitchToMode "Locked"; }
         bind "e" { TogglePaneEmbedOrFloating; SwitchToMode "Locked"; }
@@ -88,6 +89,10 @@ keybinds {
         bind "Ctrl b" "PageUp" "Left" "h" { PageScrollUp; }
         bind "d" { HalfPageScrollDown; }
         bind "u" { HalfPageScrollUp; }
+        bind "[" { ScrollToPreviousPrompt; }
+        bind "]" { ScrollToNextPrompt; }
+        bind "c" { CopyLastCommandOutput; SwitchToMode "Locked"; }
+        bind "m" { SelectCommandAtScrollPosition; }
         // uncomment this and adjust key if using copy_on_select=false
         // bind "Alt c" { Copy; }
     }
@@ -105,6 +110,9 @@ keybinds {
         bind "c" { SearchToggleOption "CaseSensitivity"; }
         bind "w" { SearchToggleOption "Wrap"; }
         bind "o" { SearchToggleOption "WholeWord"; }
+        bind "[" { ScrollToPreviousPrompt; }
+        bind "]" { ScrollToNextPrompt; }
+        bind "m" { SelectCommandAtScrollPosition; }
     }
     entersearch {
         bind "Ctrl c" "Esc" { SwitchToMode "Scroll"; }
@@ -122,6 +130,9 @@ keybinds {
         bind "Ctrl o" { SwitchToMode "Locked"; }
         bind "Ctrl s" { SwitchToMode "Scroll"; }
         bind "d" { Detach; }
+        bind "[" { FocusGuestSession; SwitchToMode "Locked"; }
+        bind "]" { FocusHostSession; SwitchToMode "Locked"; }
+        bind "f" { ToggleHostFullscreen; SwitchToMode "Locked"; }
         bind "w" {
             LaunchOrFocusPlugin "session-manager" {
                 floating true
@@ -243,11 +254,32 @@ keybinds {
         bind "Alt Shift Down" { Resize "Increase Down"; }
         bind "Alt Shift Up" { Resize "Increase Up"; }
     }
-    shared_except "normal" "locked" {
-        bind "Enter" "Esc" { SwitchToMode "Locked"; }
+    shared_except "locked" "move" {
+        bind "Ctrl h" { SwitchToMode "Move"; }
     }
-    shared_except "tmux" "locked" {
+    shared_except "locked" "session" {
+        bind "Ctrl o" { SwitchToMode "Session"; }
+    }
+    shared_except "locked" "scroll" "search" "tmux" {
         bind "Ctrl b" { SwitchToMode "Tmux"; }
+    }
+    shared_except "locked" "scroll" "search" {
+        bind "Ctrl s" { SwitchToMode "Scroll"; }
+    }
+    shared_except "locked" "tab" {
+        bind "Ctrl t" { SwitchToMode "Tab"; }
+    }
+    shared_except "locked" "pane" {
+        bind "Ctrl p" { SwitchToMode "Pane"; }
+    }
+    shared_except "locked" "resize" {
+        bind "Ctrl n" { SwitchToMode "Resize"; }
+    }
+    shared_except "normal" "locked" "entersearch" {
+        bind "Enter" { SwitchToMode "Locked"; }
+    }
+    shared_except "normal" "locked" "entersearch" "renametab" "renamepane" {
+        bind "Esc" { SwitchToMode "Locked"; }
     }
 }
 
@@ -293,7 +325,7 @@ web_client {
 // ------------------------------------------------------------------------------
 
 default_layout "autanasoft"
-// theme "tokyo-night-storm"
+theme "tokyo-night-storm"
 default_mode "locked"
 pane_frames false
 scrollback_editor "nvim"

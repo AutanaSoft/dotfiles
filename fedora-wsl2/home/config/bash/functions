@@ -9,6 +9,15 @@ tmux() {
   fi
 }
 
+# Create or attach the default development session when Zellij has no arguments.
+zellij() {
+  if (($# == 0)); then
+    command zellij attach --create AutanaSoft
+  else
+    command zellij "$@"
+  fi
+}
+
 # Create a tmux development layout with editor, AI, and terminal panes.
 # Usage: tdl <ai> [second_ai]
 tdl() {
