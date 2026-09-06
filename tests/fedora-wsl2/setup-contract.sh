@@ -46,6 +46,10 @@ fedora_deps_output="$("$SETUP" --profile fedora-wsl2 --deps --non-interactive --
 
 fedora_dots_output="$("$SETUP" --profile fedora-wsl2 --dots-only --non-interactive --dry-run)"
 [[ "$fedora_dots_output" == *"[setup-dots]"* ]] || fail "Fedora --dots-only did not dispatch to setup-dots"
+[[ -f "$ROOT_DIR/fedora-wsl2/home/config/herdr/config.toml" ]] || fail "Fedora Herdr config source is missing"
+[[ "$(<"$ROOT_DIR/fedora-wsl2/home/config/mise/config.toml")" == *'herdr = "0.8.2"'* ]] || fail "Fedora Mise configuration does not pin Herdr 0.8.2"
+[[ "$(<"$ROOT_DIR/fedora-wsl2/dots-paths")" == *'config/herdr/config.toml | .config/herdr/config.toml'* ]] || fail "Fedora dots manifest does not map the Herdr config"
+[[ "$fedora_dots_output" == *"Creating symlink: $HOME/.config/herdr/config.toml -> $ROOT_DIR/fedora-wsl2/home/config/herdr/config.toml"* ]] || fail "Fedora --dots-only did not preview the Herdr config link"
 [[ "$fedora_dots_output" != *"[setup-deps]"* ]] || fail "Fedora --dots-only unexpectedly dispatched deps"
 [[ "$fedora_dots_output" != *"would install configuration"* ]] || fail "Fedora --dots-only previewed system configuration"
 [[ "$fedora_dots_output" == *"Installing LazyVim starter"* ]] || fail "Fedora --dots-only did not preview LazyVim installation"

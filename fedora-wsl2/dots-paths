@@ -11,6 +11,9 @@ config/starship.toml | .config/starship.toml
 # --- Mise ---
 config/mise | .config/mise
 
+# --- Herdr ---
+config/herdr/config.toml | .config/herdr/config.toml
+
 # --- Neovim ---
 config/nvim/lazyvim.json | .config/nvim/lazyvim.json
 config/nvim/lua/config/autocmds.lua | .config/nvim/lua/config/autocmds.lua

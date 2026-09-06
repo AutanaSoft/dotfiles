@@ -1,0 +1,75 @@
+onboarding = false
+
+[theme]
+name = "tokyo-night"
+auto_switch = false
+
+[terminal]
+new_cwd = "follow"
+
+[update]
+
+[keys]
+# Prefix
+prefix = "ctrl+space"
+
+# General
+reload_config = "prefix+q"
+detach = "prefix+d"
+
+# Tabs
+new_tab = ["prefix+c", "alt+t"]
+rename_tab = ["prefix+r", "alt+r"]
+previous_tab = "ctrl+alt+left"
+next_tab = "ctrl+alt+right"
+move_tab_previous = "ctrl+alt+shift+left"
+move_tab_next = "ctrl+alt+shift+right"
+switch_tab = ["prefix+1..9", "alt+1..9"]
+close_tab = "prefix+k"
+
+# Panes
+split_vertical = ["prefix+v", "alt+d"]
+close_pane = ["prefix+x", "alt+x"]
+zoom = "prefix+z"
+last_pane = "prefix+;"
+focus_pane_left = "alt+left"
+focus_pane_down = "alt+down"
+focus_pane_up = "alt+up"
+focus_pane_right = "alt+right"
+resize_mode = ["prefix+ctrl+left", "prefix+ctrl+down", "prefix+ctrl+up", "prefix+ctrl+right"]
+resize_pane_left = "alt+shift+left"
+resize_pane_down = "alt+shift+down"
+resize_pane_up = "alt+shift+up"
+resize_pane_right = "alt+shift+right"
+rename_pane = "prefix+shift+o"
+
+[server]
+
+[ui]
+host_cursor = "native"
+
+# tmux drew single-line dividers between adjacent panes and no outer frame
+pane_gaps =false
+pane_outer_borders =false
+
+# tmux had no scrollbar column beside its panes
+pane_scrollbars = false
+
+# kill-window and kill-session never asked
+confirm_close = false
+
+# automatic-rename gave windows a name without prompting
+prompt_new_tab_name = false
+
+# set -g mouse on
+mouse_capture = true
+
+# status-right had the zoom flag followed by #h
+tab_bar_right = [{ type = "zoom" }, { type = "hostname" }]
+
+# set -g set-titles on / set -g set-titles-string '#h:#W', where tmux's #W was
+# the basename of the pane cwd. This is what Hyprland shows in the group bar,
+# and it resolves on the server so remote sessions name the remote host.
+window_title = "{hostname}: {workspace}"
+status_indicators = "symbols"
+show_agent_labels_on_pane_borders = true

@@ -74,6 +74,10 @@ or `--dry-run` mode. Valkey accepts local socket connections through `/run/valke
 users in the `wheel` group. The profile installs a Valkey systemd drop-in so the service can create
 that group-owned socket with mode `770`.
 
+The Fedora Mise configuration pins Herdr to `0.8.2`. Its configuration is managed at
+`~/.config/herdr/config.toml` with Windows Terminal-compatible pane and tab bindings derived from
+the Fedora WSL2 tmux profile.
+
 `--non-interactive` requires `--profile`, runs only requested phases, and supplies DNF automatic
 confirmation for every Fedora package mutation. `--dry-run` invokes neither `sudo` nor DNF; it
 checks RPM package state but reports declared DNF groups as unverified rather than calling them
