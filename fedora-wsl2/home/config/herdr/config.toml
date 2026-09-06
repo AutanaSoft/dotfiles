@@ -19,7 +19,7 @@ detach = "prefix+d"
 
 # Tabs
 new_tab = ["prefix+c", "alt+t"]
-rename_tab = ["prefix+r", "alt+r"]
+rename_tab = "prefix+r"
 previous_tab = "ctrl+alt+left"
 next_tab = "ctrl+alt+right"
 move_tab_previous = "ctrl+alt+shift+left"
@@ -28,6 +28,7 @@ switch_tab = ["prefix+1..9", "alt+1..9"]
 close_tab = "prefix+k"
 
 # Panes
+split_horizontal = ["prefix+h", "alt+v"]
 split_vertical = ["prefix+v", "alt+d"]
 close_pane = ["prefix+x", "alt+x"]
 zoom = "prefix+z"
