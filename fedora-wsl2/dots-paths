@@ -29,8 +29,5 @@ config/nvim/spell | .config/nvim/spell
 # --- Tmux ---
 config/tmux | .config/tmux
 
-# --- WezTerm ---
-config/wezterm | .config/wezterm
-
 # --- Zellij ---
 config/zellij | .config/zellij
