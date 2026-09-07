@@ -24,6 +24,7 @@ config/nvim/lua/plugins/editorconfig.lua | .config/nvim/lua/plugins/editorconfig
 config/nvim/lua/plugins/opencode.lua | .config/nvim/lua/plugins/opencode.lua
 config/nvim/lua/plugins/render-markdown.lua | .config/nvim/lua/plugins/render-markdown.lua
 config/nvim/lua/plugins/snacks-paths.lua | .config/nvim/lua/plugins/snacks-paths.lua
+config/nvim/lua/plugins/tokyonight.lua | .config/nvim/lua/plugins/tokyonight.lua
 config/nvim/spell | .config/nvim/spell
 
 # --- Tmux ---
