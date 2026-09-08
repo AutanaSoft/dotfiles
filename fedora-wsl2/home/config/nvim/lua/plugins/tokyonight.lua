@@ -3,15 +3,16 @@
 -------------------------------------------------------------------------------
 return {
   {
-    'folke/tokyonight.nvim',
+    "folke/tokyonight.nvim",
     opts = {
-      style = 'night',
+      -- Available styles: moon, storm, night, day.
+      style = "night",
     },
   },
   {
-    'LazyVim/LazyVim',
+    "LazyVim/LazyVim",
     opts = {
-      colorscheme = 'tokyonight',
+      colorscheme = "tokyonight",
     },
   },
 }
