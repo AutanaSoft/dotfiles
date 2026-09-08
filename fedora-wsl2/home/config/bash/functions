@@ -18,6 +18,11 @@ zellij() {
   fi
 }
 
+# Start Herdr with a short command while preserving all arguments.
+hr() {
+  command herdr "$@"
+}
+
 # Create a tmux development layout with editor, AI, and terminal panes.
 # Usage: tdl <ai> [second_ai]
 tdl() {

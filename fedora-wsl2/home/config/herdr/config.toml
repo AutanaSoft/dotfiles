@@ -5,9 +5,8 @@ name = "terminal"
 auto_switch = false
 
 [terminal]
+# New sessions start in the launch directory; persisted workspaces keep their own cwd.
 new_cwd = "follow"
-
-[update]
 
 [keys]
 # Prefix
@@ -55,8 +54,6 @@ rename_workspace = "prefix+shift+r"
 close_workspace = "prefix+shift+k"
 previous_workspace = "prefix+shift+p"
 next_workspace = "prefix+shift+n"
-
-[server]
 
 [ui]
 host_cursor = "native"
