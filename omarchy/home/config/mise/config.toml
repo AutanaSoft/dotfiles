@@ -17,3 +17,7 @@ gh = "latest"
 "npm:@earendil-works/pi-coding-agent" = "latest"
 "npm:@fission-ai/openspec" = "latest"
 pi = "latest"
+"npm:@colbymchenry/codegraph" = "latest"
+
+[settings.upgrade]
+auto_prune = false
