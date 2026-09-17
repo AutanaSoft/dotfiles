@@ -7,17 +7,13 @@ codex = "latest"
 go = "latest"
 node = "latest"
 opencode = "latest"
-
-# Custom
-"npm:markdownlint-cli2" = "latest"
 pnpm = "latest"
 prettier = "latest"
 zellij = "latest"
 gh = "latest"
-"npm:@earendil-works/pi-coding-agent" = "latest"
-"npm:@fission-ai/openspec" = "latest"
 pi = "latest"
-"npm:@colbymchenry/codegraph" = "latest"
+markdownlint-cli2 = "latest"
+gentle-ai = "latest"
 
 [settings.upgrade]
 auto_prune = false
