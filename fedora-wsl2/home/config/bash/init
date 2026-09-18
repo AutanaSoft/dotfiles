@@ -1,7 +1,7 @@
 # Optional interactive tool initialization.
 
-if [[ -x "${HOME}/.local/bin/mise" ]]; then
-  eval "$("${HOME}/.local/bin/mise" activate bash)"
+if command -v mise >/dev/null 2>&1; then
+  eval "$(mise activate bash)"
 fi
 
 if [[ ${TERM:-} != "dumb" ]] && command -v starship >/dev/null 2>&1; then

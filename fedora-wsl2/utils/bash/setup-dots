@@ -2,12 +2,17 @@
 
 set -euo pipefail
 
-REPO_ROOT="${DOTFILES_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=setup-common
+source "$SCRIPT_DIR/setup-common"
+
+REPO_ROOT="${DOTFILES_ROOT:-$(cd -- "$SCRIPT_DIR/../../.." && pwd)}"
 BACKUP_DIR="${DOTFILES_BACKUP_DIR:-$REPO_ROOT/backup/$(date -u +%Y%m%dT%H%M%SZ)}"
 DRY_RUN="${DOTFILES_DRY_RUN:-0}"
+NON_INTERACTIVE=0
+DNF_ARGS=()
 MANIFEST="$REPO_ROOT/fedora-wsl2/dots-paths"
 SOURCE_ROOT="$REPO_ROOT/fedora-wsl2/home"
-MISE_BIN="$HOME/.local/bin/mise"
 OPENCODE_BIN="$HOME/.opencode/bin/opencode"
 
 log() { echo "[setup-dots] $*"; }
@@ -16,7 +21,7 @@ fail() { echo "[setup-dots] ERROR: $*" >&2; exit 1; }
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run) DRY_RUN=1; shift ;;
-        --non-interactive) shift ;;
+        --non-interactive) NON_INTERACTIVE=1; DNF_ARGS+=(--assumeyes); shift ;;
         *) fail "unknown option: $1" ;;
     esac
 done
@@ -82,15 +87,46 @@ install_lazyvim() {
     rm -rf -- "$target/.git"
 }
 
+rpm_mise_bin() {
+    local mise_path package_name
+
+    while IFS= read -r mise_path; do
+        package_name="$(rpm -qf --qf '%{NAME}' "$mise_path" 2>/dev/null || true)"
+        if [[ "$package_name" == mise ]]; then
+            printf '%s\n' "$mise_path"
+            return
+        fi
+    done < <(type -a -p mise 2>/dev/null || true)
+
+    return 1
+}
+
 install_mise() {
-    if [[ -x "$MISE_BIN" ]]; then
-        log "Mise is installed: $MISE_BIN"
+    local mise_bin
+
+    if mise_bin="$(rpm_mise_bin)"; then
+        log "Mise is installed from RPM: $mise_bin"
+        MISE_BIN="$mise_bin"
         return
     fi
-    log "Installing Mise at $MISE_BIN"
+
+    setup_require_command rpm
+    setup_require_command dnf
+    setup_preflight_privileged_phase "$DRY_RUN" "$NON_INTERACTIVE"
+
+    if (( DRY_RUN )); then
+        log "Installing DNF COPR support if needed"
+    elif ! dnf copr --help >/dev/null 2>&1; then
+        log "Installing DNF COPR support"
+        sudo dnf "${DNF_ARGS[@]}" install dnf-plugins-core
+    fi
+
+    log "Enabling jdxcode/mise COPR"
+    log "Installing Mise with DNF"
     (( DRY_RUN )) && return
-    command -v curl >/dev/null 2>&1 || fail "curl is required to install Mise"
-    curl https://mise.run | sh
+    sudo dnf "${DNF_ARGS[@]}" copr enable jdxcode/mise
+    sudo dnf "${DNF_ARGS[@]}" install mise
+    MISE_BIN="$(rpm_mise_bin)" || fail "Mise installation did not provide an RPM-managed executable"
 }
 
 install_opencode() {
@@ -111,6 +147,6 @@ install_mise
 install_opencode
 log "Installing tools declared by Mise"
 if (( !DRY_RUN )); then
-    [[ -x "$MISE_BIN" ]] || fail "Mise installation did not create $MISE_BIN"
+    [[ -n "${MISE_BIN:-}" ]] || fail "Mise installation did not provide an RPM-managed executable"
     "$MISE_BIN" install
 fi

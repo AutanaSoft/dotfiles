@@ -57,22 +57,24 @@ membership.
 ./setup --profile fedora-wsl2 --dots --deps --containers --services --locale
 ```
 
-| Flag           | Meaning                                                                                                                                   |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `--dots-only`  | Install a new LazyVim starter, apply `fedora-wsl2/dots-paths`, install Mise if necessary, and run `mise install`. It does not use `sudo`. |
-| `--dots`       | Apply the same user configuration as `--dots-only`.                                                                                       |
-| `--deps`       | Install the groups and packages declared in `fedora-wsl2/dnf-packages`; dry-runs leave group state unqueried.                             |
-| `--services`   | Initialize, configure, enable, and validate PostgreSQL and Valkey.                                                                        |
-| `--containers` | Install Docker Engine from Docker's official Fedora repository, configure log rotation, and start the service.                            |
-| `--locale`     | Install Spanish locale data and set the system locale to `es_VE.UTF-8`.                                                                   |
+| Flag           | Meaning                                                                                                                                                                                                              |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--dots-only`  | Install a new LazyVim starter, apply `fedora-wsl2/dots-paths`, enable the `jdxcode/mise` COPR, install RPM-managed Mise with DNF if needed, and run `mise install`. It uses `sudo` only when Mise must be installed. |
+| `--dots`       | Apply the same user configuration as `--dots-only`.                                                                                                                                                                  |
+| `--deps`       | Install the groups and packages declared in `fedora-wsl2/dnf-packages`; dry-runs leave group state unqueried.                                                                                                        |
+| `--services`   | Initialize, configure, enable, and validate PostgreSQL and Valkey.                                                                                                                                                   |
+| `--containers` | Install Docker Engine from Docker's official Fedora repository, configure log rotation, and start the service.                                                                                                       |
+| `--locale`     | Install Spanish locale data and set the system locale to `es_VE.UTF-8`.                                                                                                                                              |
 
 Fedora's `--deps` phase also installs Google Chrome Stable from Google's official RPM when it is
-absent. Its `--dots` and `--dots-only` phases install OpenCode when it is absent. `--fonts` and
-`--no-validate` are exclusive to Omarchy and are rejected for Fedora WSL2. Fedora's `--services` can
-interactively set the PostgreSQL `postgres` role password; it never prompts in `--non-interactive`
-or `--dry-run` mode. Valkey accepts local socket connections through `/run/valkey/valkey.sock` for
-users in the `wheel` group. The profile installs a Valkey systemd drop-in so the service can create
-that group-owned socket with mode `770`.
+absent. Its `--dots` and `--dots-only` phases install OpenCode when it is absent. Their Mise setup
+requires an RPM-managed executable: a standalone `~/.local/bin/mise` does not satisfy that state.
+When needed, it installs DNF COPR support, enables `jdxcode/mise`, and installs `mise` through DNF.
+`--fonts` and `--no-validate` are exclusive to Omarchy and are rejected for Fedora WSL2. Fedora's
+`--services` can interactively set the PostgreSQL `postgres` role password; it never prompts in
+`--non-interactive` or `--dry-run` mode. Valkey accepts local socket connections through
+`/run/valkey/valkey.sock` for users in the `wheel` group. The profile installs a Valkey systemd
+drop-in so the service can create that group-owned socket with mode `770`.
 
 The Fedora Mise configuration pins Herdr to `0.8.2`. Its configuration is managed at
 `~/.config/herdr/config.toml` with Windows Terminal-compatible pane and tab bindings derived from

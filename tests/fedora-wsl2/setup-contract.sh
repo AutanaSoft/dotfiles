@@ -56,7 +56,17 @@ fedora_dots_output="$("$SETUP" --profile fedora-wsl2 --dots-only --non-interacti
 [[ "$fedora_dots_output" == *"Installing LazyVim starter"* ]] || fail "Fedora --dots-only did not preview LazyVim installation"
 [[ "$fedora_dots_output" != *"Copying Neovim bootstrap"* ]] || fail "Fedora --dots-only retained the Neovim bootstrap copy"
 [[ "$fedora_dots_output" != *"[setup-services]"* ]] || fail "Fedora --dots-only dispatched services"
+[[ "$fedora_dots_output" == *"Installing DNF COPR support if needed"* ]] || fail "Fedora --dots-only did not preview the Mise COPR prerequisite"
+[[ "$fedora_dots_output" == *"Enabling jdxcode/mise COPR"* ]] || fail "Fedora --dots-only did not preview the Mise COPR"
+[[ "$fedora_dots_output" == *"Installing Mise with DNF"* ]] || fail "Fedora --dots-only did not preview the DNF Mise installation"
+[[ "$fedora_dots_output" != *"Installing Mise at"* ]] || fail "Fedora --dots-only retained the standalone Mise installer"
 [[ "$fedora_dots_output" == *"Installing OpenCode at"* ]] || fail "Fedora --dots-only did not preview OpenCode installation"
+
+mkdir -p "$HOME/.local/bin"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$HOME/.local/bin/mise"
+chmod +x "$HOME/.local/bin/mise"
+standalone_mise_output="$(PATH="$HOME/.local/bin:$PATH" "$SETUP" --profile fedora-wsl2 --dots-only --non-interactive --dry-run)"
+[[ "$standalone_mise_output" == *"Installing Mise with DNF"* ]] || fail "Fedora standalone Mise bypassed the RPM installation"
 
 mkdir -p "$HOME/.config/nvim"
 fedora_existing_nvim_output="$("$SETUP" --profile fedora-wsl2 --dots-only --non-interactive --dry-run)"
@@ -239,6 +249,10 @@ tmux_functions="$(<"$ROOT_DIR/fedora-wsl2/home/config/bash/functions")"
 [[ "$tmux_functions" == *'run this command inside the %s tmux session'* ]] || fail "tdl does not protect other Tmux sessions"
 
 [[ "$(<"$ROOT_DIR/fedora-wsl2/home/bashrc")" == *"/etc/bashrc"* ]] || fail "Fedora bashrc does not source /etc/bashrc"
+bash_init="$(<"$ROOT_DIR/fedora-wsl2/home/config/bash/init")"
+[[ "$bash_init" == *'command -v mise >/dev/null 2>&1'* ]] || fail "Fedora Bash does not resolve Mise from PATH"
+[[ "$bash_init" == *'eval "$(mise activate bash)"'* ]] || fail "Fedora Bash does not activate the PATH Mise executable"
+[[ "$bash_init" != *'.local/bin/mise'* ]] || fail "Fedora Bash hardcodes the standalone Mise executable"
 
 bash_home="$TEST_TMP_DIR/bash-home"
 mkdir -p "$bash_home/.bashrc.d" "$bash_home/.config"
