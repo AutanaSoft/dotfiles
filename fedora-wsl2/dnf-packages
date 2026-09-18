@@ -37,6 +37,7 @@ hunspell
 hunspell-en-US
 hunspell-es
 trash-cli
+pulseaudio-utils
 
 # Local development services
 postgresql

@@ -43,6 +43,7 @@ fedora_deps_output="$("$SETUP" --profile fedora-wsl2 --deps --non-interactive --
 [[ "$fedora_deps_output" != *"would initialize PostgreSQL"* ]] || fail "Fedora --deps previewed PostgreSQL initialization"
 [[ "$fedora_deps_output" != *"would enable postgresql"* ]] || fail "Fedora --deps previewed service management"
 [[ "$fedora_deps_output" == *"google-chrome-stable"* ]] || fail "Fedora --deps did not check Google Chrome"
+[[ "$fedora_deps_output" == *"pulseaudio-utils"* ]] || fail "Fedora --deps did not include Herdr audio playback support"
 
 fedora_dots_output="$("$SETUP" --profile fedora-wsl2 --dots-only --non-interactive --dry-run)"
 [[ "$fedora_dots_output" == *"[setup-dots]"* ]] || fail "Fedora --dots-only did not dispatch to setup-dots"
