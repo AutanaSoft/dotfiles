@@ -10,8 +10,6 @@ package	hunspell-en_us
 package	hunspell-es_any
 package	trash-cli
 package	keyd
-package	piper
-package	libratbag
 package	postgresql
 package	valkey
 package	discord

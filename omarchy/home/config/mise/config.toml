@@ -13,7 +13,7 @@ zellij = "latest"
 gh = "latest"
 pi = "latest"
 markdownlint-cli2 = "latest"
-gentle-ai = "latest"
+herdr = "latest"
 
 [settings.upgrade]
 auto_prune = false
