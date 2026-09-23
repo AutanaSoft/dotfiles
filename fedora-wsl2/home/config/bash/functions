@@ -1,5 +1,57 @@
 # Custom Bash functions.
 
+# Prepare the private development directory without replacing unrelated auth state.
+__pi_prepare_dev() {
+  local dev_dir="$HOME/.pi/dev"
+  local main_auth="$HOME/.pi/agent/auth.json"
+  local dev_auth="$dev_dir/auth.json"
+  local auth_target
+
+  if [[ ! -f "$main_auth" ]]; then
+    printf 'pi: shared auth file does not exist: %s\n' "$main_auth" >&2
+    return 1
+  fi
+  if [[ -L "$dev_dir" ]]; then
+    printf 'pi: development agent path must not be a symlink: %s\n' "$dev_dir" >&2
+    return 1
+  fi
+
+  mkdir -p -m 700 -- "$dev_dir" || return $?
+  chmod 700 -- "$dev_dir" || return $?
+
+  if [[ -L "$dev_auth" ]]; then
+    auth_target=$(readlink -- "$dev_auth") || return $?
+    if [[ "$auth_target" != "$main_auth" ]]; then
+      printf 'pi: refusing to use a development auth link to another path: %s\n' "$dev_auth" >&2
+      return 1
+    fi
+  elif [[ -e "$dev_auth" ]]; then
+    printf 'pi: refusing to replace existing development auth path: %s\n' "$dev_auth" >&2
+    return 1
+  else
+    ln -s -- "$main_auth" "$dev_auth" || return $?
+  fi
+}
+
+# Start Pi with an isolated development agent directory and shared sessions.
+pi-dev() {
+  __pi_prepare_dev || return $?
+  PI_CODING_AGENT_DIR="$HOME/.pi/dev" PI_CODING_AGENT_SESSION_DIR="$HOME/.pi/agent/sessions" command pi "$@"
+}
+
+# Start Pi with only the requested extension, forwarding all remaining arguments.
+pi-ext() {
+  if (($# == 0)) || [[ -z "$1" ]]; then
+    printf 'Usage: pi-ext <extension-path> [pi-args...]\n' >&2
+    return 2
+  fi
+
+  local extension_path="$1"
+  shift
+  __pi_prepare_dev || return $?
+  PI_CODING_AGENT_DIR="$HOME/.pi/dev" PI_CODING_AGENT_SESSION_DIR="$HOME/.pi/agent/sessions" command pi --no-extensions -e "$extension_path" "$@"
+}
+
 # Create or attach the default development session when Tmux has no arguments.
 tmux() {
   if (($# == 0)); then
