@@ -16,7 +16,8 @@ panel_bg = "black"
 new_cwd = "follow"
 
 [keys]
-prefix = "ctrl+space"
+# prefix = "ctrl+space"
+prefix = "ctrl+a"
 
 # Config and help
 reload_config = "prefix+q"
@@ -50,9 +51,9 @@ resize_pane_right = "alt+shift+right"
 rename_pane = "prefix+shift+o"
 
 # Windows -> tabs
-new_tab = "prefix+c"
-rename_tab = "prefix+r"
-close_tab = "prefix+k"
+new_tab = "alt+t"
+rename_tab = "alt+r"
+# close_tab = "prefix+k"
 switch_tab = ["prefix+1..9", "alt+1..9"]
 previous_tab = ["prefix+p", "ctrl+alt+left"]
 next_tab = ["prefix+n", "ctrl+alt+right"]
@@ -67,6 +68,11 @@ rename_workspace = "prefix+shift+r"
 close_workspace = "prefix+shift+k"
 previous_workspace = "prefix+shift+p"
 next_workspace = "prefix+shift+n"
+# Move between agents in the sidebar.
+
+# Avoid Herdr's built-in prefix+shift+j/k pane-swap bindings.
+previous_agent = "prefix+k"
+next_agent = "prefix+j"
 
 [ui]
 accent = "blue"
