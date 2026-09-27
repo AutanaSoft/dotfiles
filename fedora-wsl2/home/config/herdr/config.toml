@@ -54,8 +54,8 @@ accent = "blue"
 host_cursor = "native"
 
 # tmux drew single-line dividers between adjacent panes and no outer frame
-# pane_gaps = false
-# pane_outer_borders = false
+pane_gaps = false
+pane_outer_borders = false
 
 # tmux had no scrollbar column beside its panes
 # pane_scrollbars = false
