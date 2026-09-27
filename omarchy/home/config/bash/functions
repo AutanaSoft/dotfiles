@@ -2,7 +2,7 @@
 
 # Run Pi with an isolated development profile and session history.
 pi-dev() {
-  PI_CODING_AGENT_DIR="$HOME/.pi/dev/agent" command pi "$@"
+  PI_CODING_AGENT_DIR="$HOME/.pi/dev" command pi "$@"
 }
 
 # Create a Tmux Dev Layout with editor, ai, and terminal
