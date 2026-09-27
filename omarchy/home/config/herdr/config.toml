@@ -1,45 +1,32 @@
 onboarding = false
-# Mirrors the Omarchy tmux config in config/tmux/tmux.conf
-# tmux session -> herdr workspace, tmux window -> herdr tab, tmux pane -> herdr pane
 
 [theme]
-# tmux ran on the terminal's own palette (bg=default, fg=default, ANSI blue accents)
 name = "terminal"
 
 [theme.custom]
-# The active tab is drawn as panel_bg text on an accent background, so panel_bg
-# has to be dark for it to read - same colors as status-left's "#[fg=black,bg=blue]"
 panel_bg = "black"
 
 [terminal]
-# Matches -c "#{pane_current_path}" on every split, window, and session
 new_cwd = "follow"
 
 [keys]
-# prefix = "ctrl+space"
+# Prefix
 prefix = "ctrl+a"
 
-# Config and help
+# General
 reload_config = "prefix+q"
 help = "prefix+?"
 detach = "prefix+d"
 
-# Copy mode
-copy_mode = "prefix+["
-
 # Panes
-split_horizontal = ["prefix+h", "alt+shift+enter"]
-split_vertical = ["prefix+v", "alt+enter"]
-close_pane = ["prefix+x", "alt+esc"]
-zoom = "prefix+z"
-last_pane = "prefix+;"
+split_horizontal = "alt+shift+enter"
+split_vertical = "alt+enter"
+close_pane = "alt+esc"
 
 focus_pane_left = "alt+left"
 focus_pane_down = "alt+down"
 focus_pane_up = "alt+up"
 focus_pane_right = "alt+right"
-
-resize_mode = ["prefix+ctrl+left", "prefix+ctrl+down", "prefix+ctrl+up", "prefix+ctrl+right"]
 
 # Like resize-pane on M-S-arrows
 resize_pane_left = "alt+shift+left"
@@ -47,25 +34,21 @@ resize_pane_down = "alt+shift+down"
 resize_pane_up = "alt+shift+up"
 resize_pane_right = "alt+shift+right"
 
-# No tmux equivalent; herdr's default prefix+shift+p is taken by previous session
-rename_pane = "prefix+shift+o"
-
-# Windows -> tabs
+# Tabs
 new_tab = "alt+t"
 rename_tab = "alt+r"
-# close_tab = "prefix+k"
+previous_tab = "ctrl+alt+left"
+next_tab = "ctrl+alt+right"
 switch_tab = ["prefix+1..9", "alt+1..9"]
-previous_tab = ["prefix+p", "ctrl+alt+left"]
-next_tab = ["prefix+n", "ctrl+alt+right"]
 
 # Like swap-window -t -1/+1 on C-M-S-Left/Right
 move_tab_previous = "ctrl+alt+shift+left"
 move_tab_next = "ctrl+alt+shift+right"
 
-# Sessions -> workspaces
-new_workspace = "prefix+shift+c"
+# workspaces
+new_workspace = "prefix+w"
 rename_workspace = "prefix+shift+r"
-close_workspace = "prefix+shift+k"
+close_workspace = "prefix+c"
 previous_workspace = "prefix+shift+p"
 next_workspace = "prefix+shift+n"
 # Move between agents in the sidebar.
@@ -76,9 +59,6 @@ next_agent = "prefix+j"
 
 [ui]
 accent = "blue"
-sidebar_width = 20
-sidebar_min_width = 18
-sidebar_max_width = 36
 
 # tmux drew single-line dividers between adjacent panes and no outer frame
 pane_gaps = false
