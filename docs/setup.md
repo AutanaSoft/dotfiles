@@ -76,9 +76,19 @@ When needed, it installs DNF COPR support, enables `jdxcode/mise`, and installs 
 `/run/valkey/valkey.sock` for users in the `wheel` group. The profile installs a Valkey systemd
 drop-in so the service can create that group-owned socket with mode `770`.
 
-The Fedora Mise configuration pins Herdr to `0.8.2`. Its configuration is managed at
+The Fedora Mise configuration selects the latest Herdr release. Its configuration is managed at
 `~/.config/herdr/config.toml` with Windows Terminal-compatible pane and tab bindings derived from
 the Fedora WSL2 tmux profile.
+
+Fedora's Bash functions provide `pi-dev` for launching Pi with `PI_CODING_AGENT_DIR` set to
+`$HOME/.pi/dev` (the `~/.pi/dev` development configuration), forwarding all arguments:
+
+```bash
+pi-dev --help
+```
+
+The function does not define `pi-ext`, link authentication files, or explicitly share sessions. It
+leaves a caller-provided `PI_CODING_AGENT_SESSION_DIR` override unchanged.
 
 `--non-interactive` requires `--profile`, runs only requested phases, and supplies DNF automatic
 confirmation for every Fedora package mutation. `--dry-run` invokes neither `sudo` nor DNF; it

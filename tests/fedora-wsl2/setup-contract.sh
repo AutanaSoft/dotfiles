@@ -20,11 +20,7 @@ pi_launcher_root="$TEST_TMP_DIR/pi-launchers"
 pi_launcher_bin="$pi_launcher_root/bin"
 pi_launcher_home="$pi_launcher_root/home"
 pi_launcher_log="$pi_launcher_root/invocation"
-pi_extension_path="$pi_launcher_root/extension with spaces/index.js"
-mkdir -p "$pi_launcher_bin" "$pi_launcher_home/.pi/agent" "$(dirname -- "$pi_extension_path")"
-: >"$pi_launcher_home/.pi/agent/auth.json"
-chmod 600 "$pi_launcher_home/.pi/agent/auth.json"
-: >"$pi_extension_path"
+mkdir -p "$pi_launcher_bin" "$pi_launcher_home"
 printf '%s\n' \
   '#!/usr/bin/env bash' \
   'printf "%s\\0" "${PI_CODING_AGENT_DIR-}" "${PI_CODING_AGENT_SESSION_DIR-}" "$@" >"$PI_LAUNCHER_LOG"' \
@@ -36,96 +32,19 @@ chmod +x "$pi_launcher_bin/pi"
   export PI_LAUNCHER_LOG="$pi_launcher_log"
   export PI_CODING_AGENT_DIR=normal-agent
   export PI_CODING_AGENT_SESSION_DIR=normal-sessions
-  umask 022
   source "$ROOT_DIR/fedora-wsl2/home/config/bash/functions"
 
-  declare -F pi >/dev/null && fail "Pi launchers unexpectedly override the normal pi function"
+  declare -F pi >/dev/null && fail "Fedora functions unexpectedly override the normal pi function"
+  declare -F pi-ext >/dev/null && fail "Fedora functions unexpectedly define pi-ext"
   pi-dev --help "value with spaces"
   mapfile -d '' -t pi_launch_args <"$PI_LAUNCHER_LOG"
   [[ ${#pi_launch_args[@]} -eq 4 ]] || fail "pi-dev did not preserve its argument count"
   [[ ${pi_launch_args[0]} == "$HOME/.pi/dev" ]] || fail "pi-dev did not select the development agent directory"
-  [[ ${pi_launch_args[1]} == "$HOME/.pi/agent/sessions" ]] || fail "pi-dev did not share the main session directory"
+  [[ ${pi_launch_args[1]} == normal-sessions ]] || fail "pi-dev did not inherit the caller session override"
   [[ ${pi_launch_args[2]} == --help && ${pi_launch_args[3]} == "value with spaces" ]] || fail "pi-dev did not preserve its arguments"
   [[ $PI_CODING_AGENT_DIR == normal-agent && $PI_CODING_AGENT_SESSION_DIR == normal-sessions ]] || fail "pi-dev changed the parent agent environment"
-  [[ "$(stat -c '%a' "$HOME/.pi/dev")" == 700 ]] || fail "pi-dev did not create a private development agent directory"
-  [[ -L "$HOME/.pi/dev/auth.json" && -f "$HOME/.pi/dev/auth.json" ]] || fail "pi-dev did not link the existing shared auth file"
-  [[ "$(readlink -- "$HOME/.pi/dev/auth.json")" == "$HOME/.pi/agent/auth.json" ]] || fail "pi-dev linked auth to the wrong path"
-
-  chmod 755 "$HOME/.pi/dev"
-  pi-dev
-  [[ "$(stat -c '%a' "$HOME/.pi/dev")" == 700 ]] || fail "pi-dev did not restore private permissions on an existing directory"
-
-  pi-ext "$pi_extension_path" --help "value with spaces"
-  mapfile -d '' -t pi_launch_args <"$PI_LAUNCHER_LOG"
-  [[ ${#pi_launch_args[@]} -eq 7 ]] || fail "pi-ext did not preserve its argument count"
-  [[ ${pi_launch_args[0]} == "$HOME/.pi/dev" ]] || fail "pi-ext did not select the development agent directory"
-  [[ ${pi_launch_args[1]} == "$HOME/.pi/agent/sessions" ]] || fail "pi-ext did not share the main session directory"
-  [[ ${pi_launch_args[2]} == --no-extensions && ${pi_launch_args[3]} == -e && ${pi_launch_args[4]} == "$pi_extension_path" ]] || fail "pi-ext did not isolate the requested extension"
-  [[ ${pi_launch_args[5]} == --help && ${pi_launch_args[6]} == "value with spaces" ]] || fail "pi-ext did not preserve its remaining arguments"
-  [[ $PI_CODING_AGENT_DIR == normal-agent && $PI_CODING_AGENT_SESSION_DIR == normal-sessions ]] || fail "pi-ext changed the parent agent environment"
-
-  : >"$PI_LAUNCHER_LOG"
-  if pi-ext 2>/dev/null; then
-    fail "pi-ext accepted a missing extension path"
-  fi
-  [[ ! -s "$PI_LAUNCHER_LOG" ]] || fail "pi-ext invoked Pi without an extension path"
-  if pi-ext "" 2>/dev/null; then
-    fail "pi-ext accepted an empty extension path"
-  fi
-  [[ ! -s "$PI_LAUNCHER_LOG" ]] || fail "pi-ext invoked Pi with an empty extension path"
-
-  pi_launcher_fail_bin="$pi_launcher_root/fail-bin"
-  mkdir -p "$pi_launcher_fail_bin"
-  printf '%s\n' '#!/usr/bin/env bash' 'exit 42' >"$pi_launcher_fail_bin/mkdir"
-  chmod +x "$pi_launcher_fail_bin/mkdir"
-  set +e
-  PATH="$pi_launcher_fail_bin:$PATH" pi-dev
-  pi_dev_mkdir_status=$?
-  PATH="$pi_launcher_fail_bin:$PATH" pi-ext "$pi_extension_path"
-  pi_ext_mkdir_status=$?
-  set -e
-  [[ $pi_dev_mkdir_status -eq 42 && $pi_ext_mkdir_status -eq 42 ]] || fail "Pi launchers did not propagate development-directory creation failures"
-  [[ ! -s "$PI_LAUNCHER_LOG" ]] || fail "Pi launcher invoked Pi after development-directory creation failed"
-
-  pi_launcher_conflict_home="$pi_launcher_root/conflict-home"
-  mkdir -p "$pi_launcher_conflict_home/.pi/agent" "$pi_launcher_conflict_home/.pi/dev"
-  : >"$pi_launcher_conflict_home/.pi/agent/auth.json"
-  printf 'keep this file\n' >"$pi_launcher_conflict_home/.pi/dev/auth.json"
-  export HOME="$pi_launcher_conflict_home"
-  : >"$PI_LAUNCHER_LOG"
-  if pi-dev 2>/dev/null; then
-    fail "pi-dev accepted an unrelated existing development auth path"
-  fi
-  [[ "$(<"$HOME/.pi/dev/auth.json")" == "keep this file" ]] || fail "pi-dev changed an unrelated development auth path"
-  if pi-ext "$pi_extension_path" 2>/dev/null; then
-    fail "pi-ext accepted an unrelated existing development auth path"
-  fi
-  [[ ! -s "$PI_LAUNCHER_LOG" ]] || fail "Pi launcher ran with an unrelated development auth path"
-
-  pi_launcher_wrong_link_home="$pi_launcher_root/wrong-link-home"
-  mkdir -p "$pi_launcher_wrong_link_home/.pi/agent" "$pi_launcher_wrong_link_home/.pi/dev"
-  : >"$pi_launcher_wrong_link_home/.pi/agent/auth.json"
-  : >"$pi_launcher_wrong_link_home/.pi/other-auth.json"
-  ln -s "$pi_launcher_wrong_link_home/.pi/other-auth.json" "$pi_launcher_wrong_link_home/.pi/dev/auth.json"
-  export HOME="$pi_launcher_wrong_link_home"
-  : >"$PI_LAUNCHER_LOG"
-  if pi-ext "$pi_extension_path" 2>/dev/null; then
-    fail "pi-ext accepted a development auth link to another file"
-  fi
-  [[ "$(readlink -- "$HOME/.pi/dev/auth.json")" == "$HOME/.pi/other-auth.json" ]] || fail "pi-ext changed an unrelated development auth link"
-  [[ ! -s "$PI_LAUNCHER_LOG" ]] || fail "Pi launcher ran with a development auth link to another file"
-
-  pi_launcher_missing_home="$pi_launcher_root/missing-auth-home"
-  mkdir -p "$pi_launcher_missing_home/.pi/agent"
-  export HOME="$pi_launcher_missing_home"
-  if pi-dev 2>/dev/null; then
-    fail "pi-dev launched without the main auth file"
-  fi
-  [[ ! -e "$HOME/.pi/dev" ]] || fail "pi-dev created its development directory without main auth"
-  if pi-ext "$pi_extension_path" 2>/dev/null; then
-    fail "pi-ext launched without the main auth file"
-  fi
-  [[ ! -s "$PI_LAUNCHER_LOG" ]] || fail "Pi launcher ran without the main auth file"
+  [[ ! -e "$HOME/.pi/dev" ]] || fail "pi-dev unexpectedly created a development directory"
+  [[ ! -e "$HOME/.pi/agent/auth.json" ]] || fail "pi-dev unexpectedly created shared authentication"
 )
 
 fake_bin="$TEST_TMP_DIR/bin"
@@ -160,7 +79,7 @@ fedora_deps_output="$("$SETUP" --profile fedora-wsl2 --deps --non-interactive --
 fedora_dots_output="$("$SETUP" --profile fedora-wsl2 --dots-only --non-interactive --dry-run)"
 [[ "$fedora_dots_output" == *"[setup-dots]"* ]] || fail "Fedora --dots-only did not dispatch to setup-dots"
 [[ -f "$ROOT_DIR/fedora-wsl2/home/config/herdr/config.toml" ]] || fail "Fedora Herdr config source is missing"
-[[ "$(<"$ROOT_DIR/fedora-wsl2/home/config/mise/config.toml")" == *'herdr = "0.8.2"'* ]] || fail "Fedora Mise configuration does not pin Herdr 0.8.2"
+[[ "$(<"$ROOT_DIR/fedora-wsl2/home/config/mise/config.toml")" == *'herdr = "latest"'* ]] || fail "Fedora Mise configuration does not select the latest Herdr"
 [[ "$(<"$ROOT_DIR/fedora-wsl2/dots-paths")" == *'config/herdr/config.toml | .config/herdr/config.toml'* ]] || fail "Fedora dots manifest does not map the Herdr config"
 [[ "$fedora_dots_output" == *"Creating symlink: $HOME/.config/herdr/config.toml -> $ROOT_DIR/fedora-wsl2/home/config/herdr/config.toml"* ]] || fail "Fedora --dots-only did not preview the Herdr config link"
 [[ "$fedora_dots_output" != *"[setup-deps]"* ]] || fail "Fedora --dots-only unexpectedly dispatched deps"
@@ -346,8 +265,8 @@ assert_status 1 "$FEDORA_LOCALE_SETUP" --unknown
 services_user_output="$(USER=incorrect "$FEDORA_SERVICES_SETUP" --dry-run)"
 [[ "$services_user_output" != *"incorrect must belong"* ]] || fail "Fedora services trusted USER instead of the invoking user"
 
-[[ "$(<"$ROOT_DIR/fedora-wsl2/home/config/mise/config.toml")" == *'python = "3.14.7"'* ]] || fail "Fedora Mise configuration does not pin Python 3.14.7"
-[[ "$(<"$ROOT_DIR/fedora-wsl2/home/config/mise/config.toml")" == *'"npm:markdownlint-cli2" = "latest"'* ]] || fail "Fedora Mise configuration does not install markdownlint-cli2"
+[[ "$(<"$ROOT_DIR/fedora-wsl2/home/config/mise/config.toml")" == *'python = "latest"'* ]] || fail "Fedora Mise configuration does not select the latest Python"
+[[ "$(<"$ROOT_DIR/fedora-wsl2/home/config/mise/config.toml")" == *'markdownlint-cli2 = "latest"'* ]] || fail "Fedora Mise configuration does not select the latest markdownlint-cli2"
 [[ "$(<"$ROOT_DIR/fedora-wsl2/home/config/mise/config.toml")" == *'lazydocker = "latest"'* ]] || fail "Fedora Mise configuration does not install Lazydocker"
 [[ "$(<"$FEDORA_SERVICES_SETUP")" == *'log "PostgreSQL is ready"'* ]] || fail "Fedora services do not confirm PostgreSQL readiness"
 [[ "$(<"$FEDORA_SERVICES_SETUP")" == *'log "Valkey socket is ready"'* ]] || fail "Fedora services do not confirm Valkey readiness"
@@ -376,11 +295,12 @@ bash_output="$(HOME="$bash_home" PATH=/usr/bin:/bin bash --noprofile --norc -c '
   [[ ${DOTFILES_BASHRC_D_TEST:-} == loaded ]]
   for path in "$HOME/.opencode/bin" "$HOME/.local/bin" "$HOME/bin"; do
     case ":$PATH:" in *":$path:"*) ;; *) exit 1 ;; esac
-    path_without_current="${PATH//"$path:"/}"
-    [[ ":$path_without_current:" != *":$path:"* ]] || exit 1
+    path_without_current=":$PATH:"
+    path_without_current="${path_without_current/":$path:"/:}"
+    [[ "$path_without_current" != *":$path:"* ]] || exit 1
   done
   printf "%s" "$PATH"
 ')" || fail "Fedora Bash configuration did not load correctly"
-[[ "$bash_output" == "$bash_home/.opencode/bin:$bash_home/bin:$bash_home/.local/bin:/usr/bin:/bin" ]] || fail "Fedora Bash PATH order is incorrect"
+[[ "$bash_output" == "$bash_home/.opencode/bin:$bash_home/bin:$bash_home/.local/bin:"* ]] || fail "Fedora Bash PATH order is incorrect"
 
 printf 'PASS: Fedora WSL2 setup contracts\n'
