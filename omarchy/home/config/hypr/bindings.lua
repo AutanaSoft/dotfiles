@@ -8,10 +8,14 @@ for _, keys in ipairs({
   "SUPER + SHIFT + S",
   "SUPER + SHIFT + W",
   "SUPER + SHIFT + Y",
-  "SUPER + ALT + RETURN"
+  "SUPER + ALT + RETURN",
+  "F9"
 }) do
   hl.unbind(keys)
 end
+
+o.bind("F8", "Start dictation (push-to-talk)", "voxtype record start")
+o.bind("F8", "Stop dictation (push-to-talk)", "voxtype record stop", { release = true })
 
 o.bind("SUPER + SHIFT + T", "Tmux", { omarchy = "terminal-tmux" })
 o.bind("SUPER + ALT + RETURN", "Zellij", 'omarchy-launch-terminal bash -c "exec zellij attach --create AutanaSoft"')
