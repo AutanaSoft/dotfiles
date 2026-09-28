@@ -114,8 +114,55 @@ apply_manifest() {
     done < "$manifest"
 }
 
+activate_monitor_plugin() {
+    local plugins monitor_enabled power_enabled attempt
+    if (( DRY_RUN )); then
+        log "Would rescan plugins with omarchy-shell shell rescanPlugins"
+        log "Would check enabled plugins and enable lcardenas.monitor on right before omarchy.power (or on right if absent)"
+        return 0
+    fi
+
+    command -v omarchy-shell >/dev/null 2>&1 || fail "omarchy-shell is required; start the graphical shell and rerun setup-dots"
+    omarchy-shell shell ping >/dev/null || fail "Omarchy shell unavailable; start the graphical shell and rerun setup-dots"
+    omarchy-shell shell rescanPlugins || fail "Could not rescan Omarchy plugins; start the graphical shell and rerun setup-dots"
+    # The rescan IPC returns before the registry's scan Process exits.
+    for ((attempt = 1; attempt <= 15; attempt++)); do
+        plugins="$(omarchy-shell shell listPlugins)" || fail "Could not list Omarchy plugins; start the graphical shell and rerun setup-dots"
+        if jq -e 'type == "array" and any(.[]; .id == "lcardenas.monitor")' <<<"$plugins" >/dev/null; then
+            break
+        fi
+        (( attempt < 15 )) || fail "lcardenas.monitor not discovered; verify its manifest and rerun setup-dots with the shell running"
+        sleep 0.1
+    done
+    monitor_enabled="$(jq -r 'any(.[]; .id == "lcardenas.monitor" and .enabled == true)' <<<"$plugins")"
+    if [[ "$monitor_enabled" == true ]]; then
+        log "lcardenas.monitor already enabled; preserving layout"
+        return 0
+    fi
+    power_enabled="$(jq -r 'any(.[]; .id == "omarchy.power" and .enabled == true)' <<<"$plugins")"
+    if [[ "$power_enabled" == true ]]; then
+        omarchy plugin enable lcardenas.monitor --section right --before omarchy.power ||
+            fail "Could not enable lcardenas.monitor before omarchy.power; check the shell layout and rerun setup-dots"
+    else
+        log "omarchy.power absent; adding monitor to the right section"
+        omarchy plugin enable lcardenas.monitor --section right ||
+            fail "Could not enable lcardenas.monitor on right; check the shell and rerun setup-dots"
+    fi
+}
+
+remove_obsolete_monitor_link() {
+    local target="$HOME/.local/bin/monitor" obsolete="$REPO_ROOT/omarchy/home/local/bin/monitor"
+    if [[ -L "$target" && "$(readlink -- "$target")" == "$obsolete" ]]; then
+        log "Removing obsolete monitor symlink: $target"
+        if (( !DRY_RUN )); then rm -- "$target"; fi
+    fi
+    return 0
+}
+
 require_omarchy_4
 log "Repo root: $REPO_ROOT"
 (( DRY_RUN )) && log "Mode: DRY-RUN (no user changes)"
 apply_manifest
+activate_monitor_plugin
+remove_obsolete_monitor_link
 log "User dotfiles complete."

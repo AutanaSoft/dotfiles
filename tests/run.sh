@@ -17,6 +17,9 @@ run_suite() {
 
   printf '==> %s\n' "$profile"
   "$ROOT_DIR/tests/$profile/setup-contract.sh"
+  if [[ "$profile" == omarchy ]]; then
+    bash "$ROOT_DIR/tests/omarchy/setup-dots-monitor-plugin.sh"
+  fi
 }
 
 case "${1:-all}" in

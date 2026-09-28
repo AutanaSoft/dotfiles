@@ -68,8 +68,17 @@ hyprctl clients
 ## Shell de Omarchy
 
 Waybar, hypridle y hyprlock no forman parte de Omarchy 4. La barra, bloqueo, inactividad, fondos y
-OSD pertenecen al shell Quickshell de Omarchy. Este perfil no administra un layout del shell ni
-temas personalizados; utiliza los valores y temas oficiales.
+OSD pertenecen al shell Quickshell de Omarchy. Este perfil administra el código del plugin
+`lcardenas.monitor` en `omarchy/home/config/omarchy/plugins/lcardenas.monitor/`, no el archivo
+completo `~/.config/omarchy/shell.json` ni los temas. El indicador usa el monitor HDMI-A-1: es una
+configuración específica de este equipo.
+
+`setup-dots` enlaza el directorio del plugin en `~/.config/omarchy/plugins/` y, con el shell activo,
+lo detecta y habilita mediante el IPC de Omarchy. Si ya está habilitado, conserva su posición y
+ajustes; si no, lo añade a la sección derecha antes de `omarchy.power` cuando este está habilitado.
+Sin un shell activo, hay que iniciarlo y volver a ejecutar `setup-dots` para completar la
+activación. El antiguo script `monitor` se eliminó; la instalación solo retira su enlace obsoleto en
+`~/.local/bin/monitor` cuando apunta exactamente a la antigua ruta del repositorio.
 
 ## Véase también
 

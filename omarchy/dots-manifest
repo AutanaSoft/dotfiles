@@ -57,5 +57,5 @@ dir	omarchy/home/config/zellij	.config/zellij
 dir	omarchy/home/config/backup	.config/backup
 file	omarchy/home/local/bin/backup	.local/bin/backup
 
-# --- Explicit exclusions ---
-file	omarchy/home/local/bin/monitor	.local/bin/monitor
+# --- Omarchy shell plugins ---
+dir	omarchy/home/config/omarchy/plugins/lcardenas.monitor	.config/omarchy/plugins/lcardenas.monitor
