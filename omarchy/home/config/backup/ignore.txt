@@ -9,7 +9,11 @@ tmp/
 out/
 .turbo/
 backup/
+coverage
 
 # gentle-ai folders
 .atl/
 .codegraph/
+npm
+.git/gentle-ai/
+.git/worktrees/
