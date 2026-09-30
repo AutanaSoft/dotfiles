@@ -8,5 +8,3 @@ Pictures
 Videos
 Work
 Projects
-.pi
-.engram
