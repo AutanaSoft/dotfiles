@@ -19,6 +19,7 @@ run_suite() {
   "$ROOT_DIR/tests/$profile/setup-contract.sh"
   if [[ "$profile" == omarchy ]]; then
     bash "$ROOT_DIR/tests/omarchy/setup-dots-monitor-plugin.sh"
+    bash "$ROOT_DIR/tests/omarchy/backup-mirror.sh"
   fi
 }
 
