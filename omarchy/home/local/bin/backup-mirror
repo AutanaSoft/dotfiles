@@ -1,0 +1,249 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+DEFAULT_CONFIG="${BACKUP_MIRROR_CONFIG:-$HOME/.config/backup/mirror.conf}"
+EXPECTED_UUID='7AA6431BA642D6F3'
+
+usage() {
+  cat <<'EOF'
+Usage: backup-mirror [--dry-run | --apply] [--config PATH] [--help]
+
+Preview the configured folder mirror by default. Use --apply to update the mounted
+backup volume, including deletions limited to each selected folder destination.
+The volume is never mounted by this command.
+EOF
+}
+
+error() {
+  printf 'backup-mirror: %s\n' "$*" >&2
+  exit 1
+}
+
+mode=dry-run
+config=$DEFAULT_CONFIG
+mode_seen=false
+config_seen=false
+while (($#)); do
+  case "$1" in
+    --dry-run|--apply)
+      [[ "$mode_seen" == false ]] || error 'choose only one of --dry-run and --apply'
+      mode_seen=true
+      [[ "$1" == --apply ]] && mode=apply
+      shift
+      ;;
+    --config)
+      [[ "$config_seen" == false ]] || error '--config may be specified only once'
+      (($# >= 2)) || error '--config requires a path'
+      [[ -n "$2" && "$2" != -* ]] || error '--config requires a path'
+      config=$2
+      config_seen=true
+      shift 2
+      ;;
+    --help|-h)
+      (($# == 1)) || error '--help cannot be combined with other arguments'
+      usage
+      exit 0
+      ;;
+    *) error "unknown or ambiguous argument: $1" ;;
+  esac
+done
+
+[[ "$UID" != 0 && "$EUID" != 0 ]] || error 'must not run as root'
+
+required_commands=(cat realpath findmnt mountpoint stat dirname cksum mkdir flock rsync)
+for command_name in "${required_commands[@]}"; do
+  command -v "$command_name" >/dev/null 2>&1 || error "required command is unavailable: $command_name"
+done
+rsync_help=$(rsync --help 2>&1) || error 'cannot inspect rsync capabilities'
+[[ "$rsync_help" == *--mkpath* ]] || error 'rsync must support --mkpath'
+
+[[ -f "$config" && ! -L "$config" && -r "$config" ]] || error "config is not a readable regular file: $config"
+
+declare -A seen=() folder_seen=() exclusions_seen=()
+declare -a folders=() exclusion_entries=()
+section=''
+mount_path=''
+uuid=''
+line_number=0
+while IFS= read -r line || [[ -n "$line" ]]; do
+  ((line_number += 1))
+  line="${line%%#*}"
+  line="${line#"${line%%[!$' \t\r\n']*}"}"
+  line="${line%"${line##*[!$' \t\r\n']}"}"
+  [[ -z "$line" ]] && continue
+  if [[ "$line" =~ ^\[([a-z]+)\]$ ]]; then
+    section=${BASH_REMATCH[1]}
+    case "$section" in destination|folders|exclusions) ;; *) error "unknown section at $config:$line_number" ;; esac
+    [[ -z "${seen[section:$section]+x}" ]] || error "repeated section [$section] at $config:$line_number"
+    seen[section:$section]=1
+    continue
+  fi
+  [[ -n "$section" ]] || error "setting outside a section at $config:$line_number"
+  case "$section" in
+    destination)
+      [[ "$line" =~ ^([^=]+)=(.*)$ ]] || error "malformed destination setting at $config:$line_number"
+      key="${BASH_REMATCH[1]}"
+      value="${BASH_REMATCH[2]}"
+      key="${key%"${key##*[!$' \t']}"}"
+      value="${value#"${value%%[!$' \t']*}"}"
+      value="${value%"${value##*[!$' \t']}"}"
+      [[ -n "$key" && -n "$value" ]] || error "malformed destination setting at $config:$line_number"
+      [[ "$key" == mount_path || "$key" == uuid ]] || error "unknown destination key '$key'"
+      [[ -z "${seen[destination:$key]+x}" ]] || error "repeated destination key '$key'"
+      seen[destination:$key]=1
+      case "$key" in mount_path) mount_path=$value ;; uuid) uuid=$value ;; esac
+      ;;
+    folders)
+      [[ "$line" != *=* ]] || error "folder entries must be bare paths at $config:$line_number"
+      key=$line
+      [[ -z "${folder_seen[$key]+x}" ]] || error "repeated folder '$key'"
+      folder_seen[$key]=1
+      folders+=("$key")
+      ;;
+    exclusions)
+      [[ "$line" != *=* ]] || error "exclusion entries must be bare Folder:pattern values at $config:$line_number"
+      [[ "$line" == *:* ]] || error "exclusion must use Folder:pattern syntax: $line"
+      key=$line
+      [[ -z "${exclusions_seen[$key]+x}" ]] || error "repeated exclusion '$key'"
+      exclusions_seen[$key]=1
+      exclusion_entries+=("$key")
+      ;;
+  esac
+done < "$config"
+[[ -n "${seen[section:destination]+x}" && -n "$mount_path" && -n "$uuid" ]] || error 'destination section requires mount_path and uuid'
+[[ -n "${seen[section:folders]+x}" && ${#folders[@]} -gt 0 ]] || error 'at least one folder is required'
+[[ -n "${seen[section:exclusions]+x}" ]] || error 'an exclusions section is required'
+[[ "$uuid" == "$EXPECTED_UUID" ]] || error "configured UUID must be $EXPECTED_UUID"
+[[ "$mount_path" == /* && "$mount_path" != / && "$mount_path" != *'/../'* && "$mount_path" != */.. ]] || error 'mount_path must be a safe absolute path'
+
+validate_relative() {
+  local value=$1 component
+  [[ -n "$value" && "$value" != /* && "$value" != *$'\n'* && "$value" != *$'\r'* ]] || return 1
+  IFS='/' read -r -a parts <<< "$value"
+  for component in "${parts[@]}"; do
+    [[ -n "$component" && "$component" != . && "$component" != .. ]] || return 1
+  done
+}
+
+for ((i = 0; i < ${#folders[@]}; i++)); do
+  validate_relative "${folders[i]}" || error "unsafe source folder: ${folders[i]}"
+  for ((j = i + 1; j < ${#folders[@]}; j++)); do
+    [[ "${folders[i]}" != "${folders[j]}"/* && "${folders[j]}" != "${folders[i]}"/* ]] || error "overlapping source folders: ${folders[i]} and ${folders[j]}"
+  done
+done
+for entry in "${exclusion_entries[@]}"; do
+  [[ "$entry" == *:* ]] || error "exclusion must use Folder:pattern syntax: $entry"
+  folder=${entry%%:*}
+  pattern=${entry#*:}
+  [[ -n "${folder_seen[$folder]+x}" ]] || error "exclusion references unknown folder: $folder"
+  [[ "$pattern" == /* ]] && pattern=${pattern#/}
+  validate_relative "$pattern" || error "unsafe exclusion pattern: $entry"
+done
+
+[[ -d "$HOME" && ! -L "$HOME" ]] || error 'HOME must be a real directory'
+home_real=$(realpath -e -- "$HOME") || error 'cannot resolve HOME'
+[[ "$home_real" == "$HOME" ]] || error 'HOME must not contain symlinked path components'
+
+# Resolve every source and target and complete all checks before the first rsync.
+mount_real=$(realpath -e -- "$mount_path" 2>/dev/null) || error "destination does not exist: $mount_path"
+[[ "$mount_real" == "$mount_path" && -d "$mount_real" && ! -L "$mount_real" ]] || error 'destination path must be canonical and not a symlink'
+
+check_mount() {
+  local target mounted_uuid mounted_target
+  target=$1
+  mountpoint -q -- "$target" || error "destination is not an exact mountpoint: $target"
+  mounted_target=$(findmnt -rn --mountpoint "$target" --output TARGET --raw) || error 'cannot verify destination mountpoint'
+  printf -v mounted_target '%b' "$mounted_target"
+  [[ "$mounted_target" == "$target" ]] || error 'findmnt did not confirm the exact destination mountpoint'
+  mounted_uuid=$(findmnt -rn --mountpoint "$target" --output UUID) || error 'cannot read mounted volume UUID'
+  [[ "$mounted_uuid" == "$EXPECTED_UUID" ]] || error "wrong or missing mounted UUID at $target"
+}
+
+check_mount "$mount_real"
+[[ "$mode" != apply || -w "$mount_real" ]] || error 'destination is not writable'
+
+source_paths=()
+destination_paths=()
+for folder in "${folders[@]}"; do
+  source="$home_real/$folder"
+  [[ -d "$source" && ! -L "$source" ]] || error "Missing source folder or symlink: $source"
+  source_real=$(realpath -e -- "$source") || error "cannot resolve source: $source"
+  [[ "$source_real" == "$source" ]] || error "source has a symlinked path component: $source"
+  target="$mount_real/$folder"
+  probe=$target
+  while [[ ! -e "$probe" && ! -L "$probe" ]]; do
+    parent=$(dirname -- "$probe")
+    [[ "$parent" != "$probe" ]] || error "cannot find a real destination ancestor for $target"
+    probe=$parent
+  done
+  [[ -d "$probe" && ! -L "$probe" ]] || error "destination ancestor is not a real directory: $probe"
+  probe_real=$(realpath -e -- "$probe") || error "cannot resolve destination ancestor: $probe"
+  [[ "$probe_real" == "$probe" ]] || error "destination ancestor has a symlinked path component: $probe"
+  if [[ -e "$target" ]]; then
+    [[ -d "$target" && ! -L "$target" ]] || error "destination folder is not a real directory: $target"
+    target_real=$(realpath -e -- "$target") || error "cannot resolve destination folder: $target"
+    [[ "$target_real" == "$target" ]] || error "destination folder has a symlinked path component: $target"
+  fi
+  [[ "$mount_real" != "$source" && "$mount_real" != "$source"/* && "$source" != "$mount_real"/* ]] || error "source and destination overlap: $source and $mount_real"
+  source_paths+=("$source")
+  destination_paths+=("$target")
+done
+
+# Reject additional mountpoints below any transfer root; paths are emitted raw by findmnt.
+for path in "${source_paths[@]}" "$mount_real"; do
+  mount_entries=$(findmnt -rn --submounts --target "$path" --output TARGET --raw) || error "cannot inspect mounts below $path"
+  while IFS= read -r mount_entry; do
+    [[ -n "$mount_entry" ]] || error "findmnt returned an empty mount target for $path"
+    printf -v mount_entry '%b' "$mount_entry"
+    [[ "$mount_entry" != "$path"/* ]] || error "nested mountpoint below transfer tree: $mount_entry"
+  done <<< "$mount_entries"
+done
+
+runtime_dir="/run/user/$UID"
+[[ -d "$runtime_dir" && ! -L "$runtime_dir" ]] || error "secure runtime directory unavailable: $runtime_dir"
+runtime_real=$(realpath -e -- "$runtime_dir") || error 'cannot resolve secure runtime directory'
+[[ "$runtime_real" == "$runtime_dir" ]] || error 'runtime directory path must be canonical'
+[[ "$(stat -c '%u:%a' -- "$runtime_dir")" == "$UID:700" ]] || error 'runtime directory must be owned by this user and mode 0700'
+lock_dir="$runtime_dir/backup-mirror"
+if [[ ! -e "$lock_dir" ]]; then mkdir -m 700 -- "$lock_dir" || error 'cannot create lock directory'; fi
+[[ -d "$lock_dir" && ! -L "$lock_dir" && "$(stat -c '%u:%a' -- "$lock_dir")" == "$UID:700" ]] || error 'unsafe lock directory'
+lock_hash=$(printf '%s' "$EXPECTED_UUID" | cksum | { read -r sum _; printf '%s' "$sum"; })
+lock_file="$lock_dir/$lock_hash.lock"
+[[ ! -L "$lock_file" ]] || error 'lock file must not be a symlink'
+exec {lock_fd}>>"$lock_file" || error 'cannot open lock file'
+flock -n "$lock_fd" || error 'another mirror preview or transfer is already running for this destination'
+
+cleanup() {
+  flock -u "$lock_fd" 2>/dev/null || true
+}
+trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+for ((i = 0; i < ${#folders[@]}; i++)); do
+  check_mount "$mount_real"
+  source=${source_paths[i]}
+  target=${destination_paths[i]}
+  if [[ "$mode" == apply && ! -d "$target" ]]; then
+    mkdir -p -- "$target" || error "cannot create destination folder: $target"
+  fi
+  args=(-r -t --mkpath --itemize-changes --delete)
+  [[ "$mode" == apply ]] || args+=(--dry-run)
+  for entry in "${exclusion_entries[@]}"; do
+    [[ "${entry%%:*}" == "${folders[i]}" ]] || continue
+    pattern=${entry#*:}
+    pattern=${pattern#/}
+    args+=("--exclude=/$pattern")
+  done
+  printf '%s %s -> %s\n' "$mode" "$source" "$target"
+  if ! rsync "${args[@]}" -- "$source/" "$target/"; then
+    error "rsync failed for '${folders[i]}'; that folder may be partial and earlier folders may have changed"
+  fi
+done
+if [[ "$mode" == dry-run ]]; then
+  printf 'Preview complete; no mirror content was changed. Use --apply to update it.\n'
+else
+  printf 'Mirror complete. Updates are not atomic; inspect any interrupted or failed run.\n'
+fi
