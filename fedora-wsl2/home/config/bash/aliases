@@ -21,7 +21,7 @@ alias ..='cd ..'
 alias ...='cd ../..'
 alias ....='cd ../../..'
 
-alias c='opencode --port'
+alias c='opencode'
 alias zl='zellij'
 alias g='git'
 alias gcm='git commit -m'

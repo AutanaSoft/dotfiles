@@ -19,3 +19,4 @@ markdownlint-cli2 = "latest"
 pi = "latest"
 codegraph = "latest"
 gentle-ai = "latest"
+opencode = { version = "latest", allow_builds = ["@opencode/cli"] }
