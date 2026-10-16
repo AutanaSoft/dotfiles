@@ -21,6 +21,7 @@ config/nvim/lua/config/keymaps.lua | .config/nvim/lua/config/keymaps.lua
 config/nvim/lua/config/options.lua | .config/nvim/lua/config/options.lua
 config/nvim/lua/config/remote_clipboard.lua | .config/nvim/lua/config/remote_clipboard.lua
 config/nvim/lua/plugins/editorconfig.lua | .config/nvim/lua/plugins/editorconfig.lua
+config/nvim/lua/plugins/completion.lua | .config/nvim/lua/plugins/completion.lua
 config/nvim/lua/plugins/opencode.lua | .config/nvim/lua/plugins/opencode.lua
 config/nvim/lua/plugins/render-markdown.lua | .config/nvim/lua/plugins/render-markdown.lua
 config/nvim/lua/plugins/snacks-paths.lua | .config/nvim/lua/plugins/snacks-paths.lua
