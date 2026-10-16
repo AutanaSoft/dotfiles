@@ -25,7 +25,9 @@ CachyOS
 api
 apps
 apps
-AutanaSoft
-sublicense
-NONINFRINGEMENT
-MERCHANTABILITY
+config
+NestJS
+SWC
+swc
+cli
+nestjs

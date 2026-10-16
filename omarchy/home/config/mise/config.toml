@@ -14,7 +14,6 @@ gh = "latest"
 pi = "latest"
 markdownlint-cli2 = "latest"
 herdr = "latest"
-gentle-ai = "latest"
 codegraph = "latest"
 "npm:@nestjs/cli" = "latest"
 
