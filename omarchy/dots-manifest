@@ -22,6 +22,7 @@ file	omarchy/home/config/nvim/lazyvim.json	.config/nvim/lazyvim.json
 file	omarchy/home/config/nvim/lua/config/autocmds.lua	.config/nvim/lua/config/autocmds.lua
 file	omarchy/home/config/nvim/lua/config/keymaps.lua	.config/nvim/lua/config/keymaps.lua
 file	omarchy/home/config/nvim/lua/config/options.lua	.config/nvim/lua/config/options.lua
+file	omarchy/home/config/nvim/lua/plugins/completion.lua	.config/nvim/lua/plugins/completion.lua
 file	omarchy/home/config/nvim/lua/plugins/editorconfig.lua	.config/nvim/lua/plugins/editorconfig.lua
 file	omarchy/home/config/nvim/lua/plugins/opencode.lua	.config/nvim/lua/plugins/opencode.lua
 file	omarchy/home/config/nvim/lua/plugins/render-markdown.lua	.config/nvim/lua/plugins/render-markdown.lua
