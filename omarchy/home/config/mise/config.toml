@@ -6,7 +6,7 @@
 codex = "latest"
 go = "latest"
 node = "latest"
-opencode = "latest"
+opencode = { version = "latest", allow_builds = ["@opencode/cli"] }
 pnpm = "latest"
 prettier = "latest"
 zellij = "latest"
