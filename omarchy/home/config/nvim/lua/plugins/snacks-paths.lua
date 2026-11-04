@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Snacks: Picker Paths And Scroll
+-- Snacks: Picker Paths
 -------------------------------------------------------------------------------
 -- Surface project metadata and personal documentation while hiding Git internals.
 local include_paths = { '.atl', 'openspec', 'backup', 'docs/ideas', '.gitignore' }
@@ -21,7 +21,6 @@ return {
           },
         },
       },
-      scroll = { enabled = false },
     },
   },
 }
