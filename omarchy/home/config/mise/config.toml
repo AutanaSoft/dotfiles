@@ -1,21 +1,8 @@
-# ------------------------------------------------------------------------------
-# Mise Config
-# ------------------------------------------------------------------------------
 [tools]
-# Omarchy Default
-codex = "latest"
 go = "latest"
-node = "latest"
-opencode = { version = "latest", allow_builds = ["@opencode/cli"] }
 pnpm = "latest"
 prettier = "latest"
-zellij = "latest"
-gh = "latest"
-pi = "latest"
 markdownlint-cli2 = "latest"
-herdr = "latest"
 codegraph = "latest"
 "npm:@nestjs/cli" = "latest"
-
-[settings.upgrade]
-auto_prune = false
+gentle-ai = "latest"
