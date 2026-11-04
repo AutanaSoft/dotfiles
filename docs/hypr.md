@@ -40,9 +40,9 @@ sin copiar la configuración empaquetada.
 
 ## Personalizaciones
 
-Las reglas de `windows.lua` conservan las ventanas flotantes en el tamaño 16:9 personal de 1043×587
-para Nautilus, Spotify, Cliamp, Neovim, Alacritty, Discord y las webapps configuradas. Las reglas
-PiP amplían el título en español y sobrescriben el tamaño y borde del valor por defecto de Omarchy.
+La regla de `windows.lua` desactiva la flotación y el anclaje de las ventanas que Omarchy identifica
+con la etiqueta `pip`, para que se integren en el layout normal. La opacidad se deja a cargo de
+Omarchy.
 
 El workspace `1` usa el layout `master`: la ventana principal ocupa el 62 % izquierdo y las ventanas
 posteriores se apilan equitativamente en el 38 % derecho. Hyprland solo admite `orientation` en las
