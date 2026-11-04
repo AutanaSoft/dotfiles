@@ -27,16 +27,16 @@ Empty or negative answers leave a phase disabled.
 | `--fonts`           | Install user-local fonts under `$HOME/.local/share/fonts/<family>/`.                                                  |
 | `--services`        | Configure keyd/ratbagd plus local PostgreSQL and Valkey services.                                                     |
 | `--containers`      | Install Docker Engine on Fedora WSL2. Unsupported by Omarchy.                                                         |
-| `--locale`          | Opt in to the locale declared by `omarchy/etc/locale.conf`.                                                           |
+| `--locale`          | Install Spanish locale data and set `LANG=es_VE.UTF-8` on Fedora WSL2.                                                |
 | `--no-validate`     | Skip the final validation of a `--dots` run.                                                                          |
 | `--non-interactive` | Require `--profile`, run only explicitly declared phases, and enable DNF automatic confirmation for Fedora mutations. |
 | `--dry-run`         | Show actions without downloads, writes, sudo, DNF, service changes, or graphical changes.                             |
 | `--help`, `-h`      | Show usage.                                                                                                           |
 
-Without `--non-interactive`, `--dots` asks separately about `deps`, `fonts`, `services`, and
-`locale`. In non-interactive mode, no optional phase is inferred. A request such as
-`--profile omarchy --deps --dry-run` runs only the dependency phase; it does not apply dotfiles or
-validation.
+Without `--non-interactive`, Omarchy `--dots` asks separately about `deps`, `fonts`, and `services`;
+Fedora WSL2 additionally offers `containers` and `locale`. In non-interactive mode, no optional
+phase is inferred. A request such as `--profile omarchy --deps --dry-run` runs only the dependency
+phase; it does not apply dotfiles or validation.
 
 For Omarchy, `--services` preserves the keyd and ratbagd setup, initializes PostgreSQL only when
 `/var/lib/postgres/data` is absent or empty, and configures peer authentication for local sockets
@@ -135,7 +135,6 @@ the complete phase without `sudo`, downloads, writes, or service changes:
 - `omarchy/utils/bash/setup-services-postgresql` — local PostgreSQL cluster and authentication.
 - `omarchy/utils/bash/setup-services-valkey` — local TCP and Unix-socket Valkey configuration.
 - `omarchy/utils/bash/setup-validate` — Omarchy 4, Hyprland, and Herdr configuration validation.
-- `omarchy/utils/bash/setup-locale` — opt-in locale installer.
 - `fedora-wsl2/utils/bash/setup-fedora-wsl2` — Fedora WSL2 phase orchestrator.
 - `fedora-wsl2/utils/bash/setup-dots` — Mise bootstrap, dotfiles, and tools.
 - `fedora-wsl2/utils/bash/setup-deps` — DNF group and package setup.

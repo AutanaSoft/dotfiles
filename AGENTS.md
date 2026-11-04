@@ -52,11 +52,6 @@ limits.
   files, and steps, then wait for developer approval. An explicit request to implement a clearly
   scoped change counts as approval. Read-only operations and approved mechanical changes do not
   require an additional plan.
-- Before starting an RDD review, prepare the intended commit files and run the project's configured
-  `lint-staged` workflow, including all source-mutating formatters and linters normally executed by
-  the pre-commit hook. Start the review only after rerunning that workflow produces no further
-  changes. After the review starts, the actual pre-commit hook must be a no-op for file content and
-  modes; any mutation invalidates the review and requires a new candidate.
 - Do not invent APIs, conventions, or behaviors. Verify against official documentation, cite the URL
   and version, or ask the developer. Memory and "probably" are not evidence.
 - Do not modify files outside the agreed scope without reporting the reason.

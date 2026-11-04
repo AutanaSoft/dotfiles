@@ -9,7 +9,6 @@ DOTS_ONLY=0
 DEPS=0
 FONTS=0
 SERVICES=0
-LOCALE=0
 VALIDATE=0
 NON_INTERACTIVE=0
 
@@ -31,7 +30,6 @@ while [[ $# -gt 0 ]]; do
         --deps) DEPS=1; shift ;;
         --fonts) FONTS=1; shift ;;
         --services) SERVICES=1; shift ;;
-        --locale) LOCALE=1; shift ;;
         --final-validation) VALIDATE=1; shift ;;
         --dry-run) DRY_RUN=1; shift ;;
         --non-interactive) NON_INTERACTIVE=1; shift ;;
@@ -40,8 +38,8 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-(( DOTS_ONLY && (DEPS || FONTS || SERVICES || LOCALE || VALIDATE) )) && fail "dots-only cannot include other phases"
-(( !DOTS && !DOTS_ONLY && !DEPS && !FONTS && !SERVICES && !LOCALE )) && fail "no phase selected"
+(( DOTS_ONLY && (DEPS || FONTS || SERVICES || VALIDATE) )) && fail "dots-only cannot include other phases"
+(( !DOTS && !DOTS_ONLY && !DEPS && !FONTS && !SERVICES )) && fail "no phase selected"
 
 run_helper() {
     local name="$1"; shift
@@ -57,5 +55,4 @@ if (( DEPS )); then run_helper setup-deps --omarchy "${helper_args[@]}"; fi
 if (( FONTS )); then run_helper setup-fonts "${helper_args[@]}"; fi
 if (( DOTS || DOTS_ONLY )); then run_helper setup-dots "${helper_args[@]}"; fi
 if (( SERVICES )); then run_helper setup-services "${helper_args[@]}"; fi
-if (( LOCALE )); then run_helper setup-locale "${helper_args[@]}"; fi
 if (( VALIDATE )); then run_helper setup-validate "${helper_args[@]}"; fi

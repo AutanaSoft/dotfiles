@@ -30,7 +30,6 @@ file	omarchy/home/config/nvim/lua/plugins/snacks-paths.lua	.config/nvim/lua/plug
 file	omarchy/home/config/nvim/spell/custom.utf-8.add	.config/nvim/spell/custom.utf-8.add
 
 # --- Bash ---
-dir	omarchy/home/config/bash	.config/bash
 file	omarchy/home/bashrc	.bashrc
 
 # --- Starship ---
@@ -39,25 +38,5 @@ file	omarchy/home/config/starship.toml	.config/starship.toml
 # --- Mise ---
 file	omarchy/home/config/mise/config.toml	.config/mise/config.toml
 
-# --- Alacritty ---
-# file	omarchy/home/config/alacritty/alacritty.toml	.config/alacritty/alacritty.toml
-
-# --- Tmux ---
-dir	omarchy/home/config/tmux	.config/tmux
-
 # --- Herdr ---
 file	omarchy/home/config/herdr/config.toml	.config/herdr/config.toml
-
-# --- Zellij ---
-dir	omarchy/home/config/zellij	.config/zellij
-
-# --- SSH ---
-# copy	omarchy/home/ssh/config	.ssh/config
-
-# Personal Backup
-dir	omarchy/home/config/backup	.config/backup
-file	omarchy/home/local/bin/backup	.local/bin/backup
-file	omarchy/home/local/bin/backup-mirror	.local/bin/backup-mirror
-
-# --- Omarchy shell plugins ---
-dir	omarchy/home/config/omarchy/plugins/lcardenas.monitor	.config/omarchy/plugins/lcardenas.monitor

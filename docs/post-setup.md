@@ -43,11 +43,9 @@ Use `nofail` for any drive that may be detached, so a missing disk does not bloc
 
 ## SSH
 
-Setup copies the safe template at `omarchy/home/ssh/config` to `~/.ssh/config` the first time. Edit
-the placeholders (`your.server.ip.or.domain`, `your-user`, key paths) with your real values. This
-workflow uses direct key files, not ssh-agent/ssh-add.
-
-The referenced key files must have the right permissions:
+The Omarchy manifest does not currently manage `~/.ssh/config`; create and maintain that file
+locally so host names and key paths stay machine-specific. This repository does not provide an SSH
+template. If you use direct key files, the files should have the right permissions:
 
 ```bash
 chmod 700 ~/.ssh

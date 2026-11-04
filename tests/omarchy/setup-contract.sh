@@ -27,6 +27,10 @@ trap cleanup_test_environment EXIT
 assert_status 2 "$SETUP" --profile omarchy --dots-only --services --dry-run
 assert_status 2 "$SETUP" --profile omarchy --dots --dots-only --dry-run
 assert_status 2 "$SETUP" --profile omarchy --no-validate --dry-run
+assert_status 2 "$SETUP" --profile omarchy --locale --dry-run
+help_output="$("$SETUP" --help)"
+[[ "$help_output" == *"--locale"*"Install the Fedora WSL2 locale."* ]] || fail "shared help does not identify --locale as Fedora WSL2-only"
+[[ ! -e "$ROOT_DIR/omarchy/utils/bash/setup-locale" ]] || fail "obsolete Omarchy locale helper still exists"
 
 omarchy_3_bin="$TEST_TMP_DIR/omarchy-3-bin"
 mkdir -p "$omarchy_3_bin"
@@ -51,6 +55,17 @@ for excluded in setup-deps setup-fonts setup-services setup-locale setup-validat
 done
 [[ "$dots_output" == *"hyprland.lua"* ]] || fail "--dots-only did not preview the Omarchy 4 Hyprland entry point"
 [[ "$dots_output" != *"waybar"* ]] || fail "--dots-only previewed retired Waybar configuration"
+
+hypr_entry="$ROOT_DIR/omarchy/home/config/hypr/hyprland.lua"
+hypr_entry_content="$(<"$hypr_entry")"
+[[ "$hypr_entry_content" == *'require("hypr.windows")'* ]] || fail "Hyprland entry point does not explicitly load windows.lua"
+[[ "$hypr_entry_content" == *'require("hypr.autostart")'*$'\n\n-- Toggle config flags dynamically.'*'require("hypr.workspaces")'*'require("hypr.windows")'* ]] || fail "Hyprland module load order changed unexpectedly"
+hypr_docs="$(<"$ROOT_DIR/docs/hypr.md")"
+hypr_docs_flat="$(printf '%s' "$hypr_docs" | tr '\n' ' ')"
+[[ "$hypr_docs_flat" == *'busca primero en `state`, después en `config` y finalmente en las rutas de Omarchy'* ]] || fail "Hyprland docs do not record the confirmed bootstrap search order"
+[[ "$hypr_docs_flat" == *'Los archivos `input` y `autostart` existen en la instalación del usuario, pero son configuraciones personales no administradas por este repositorio'* ]] || fail "Hyprland docs do not distinguish the user's unmanaged input and autostart files"
+[[ "$hypr_docs_flat" == *'no constituye una garantía general de portabilidad'* ]] || fail "Hyprland docs imply an unsupported portability guarantee"
+[[ "$hypr_docs_flat" == *'`hypr.windows` se carga explícitamente'* ]] || fail "Hyprland docs do not state that windows is explicitly loaded"
 
 validate_output="$("$SETUP" --profile omarchy --dots --non-interactive --dry-run)"
 [[ "$validate_output" == *"would verify: Omarchy 4."* ]] || fail "validation did not check Omarchy 4"
@@ -95,7 +110,21 @@ assert_dependency_status 1
 
 herdr_config="$ROOT_DIR/omarchy/home/config/herdr/config.toml"
 [[ -f "$herdr_config" ]] || fail "Herdr configuration is missing"
-[[ "$(<"$ROOT_DIR/omarchy/home/config/bash/functions")" == *"hdl() {"* ]] || fail "Herdr hdl function is missing"
+# Every managed source in the current manifest must exist in this checkout.
+while IFS=$'\t' read -r action source target; do
+  [[ -z "$action" || "$action" =~ ^[[:space:]]*# ]] && continue
+  case "$action" in
+    dir|file|copy) [[ -e "$ROOT_DIR/$source" ]] || fail "manifest source is missing: $source" ;;
+    glob) compgen -G "$ROOT_DIR/$source" >/dev/null || fail "manifest glob has no sources: $source" ;;
+    skip) ;;
+    *) fail "unexpected manifest action in source check: $action" ;;
+  esac
+done < "$ROOT_DIR/omarchy/dots-manifest"
+
+# Interactive consent must describe every service in the Omarchy phase.
+prompt_output="$(script -q -c "$SETUP --profile omarchy --dots --dry-run" /dev/null <<< $'n\nn\nn\n' 2>&1)"
+[[ "$prompt_output" == *"PostgreSQL"* && "$prompt_output" == *"Valkey"* ]] || fail "Omarchy services consent prompt omits PostgreSQL or Valkey"
+[[ "$prompt_output" != *"[setup-services]"* ]] || fail "declined service consent still dispatched services"
 
 # Service orchestrator forwards flags and keeps the documented helper order.
 service_root="$TEST_TMP_DIR/services-root"

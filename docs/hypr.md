@@ -65,20 +65,22 @@ Las clases reales de una aplicación se deben comprobar antes de añadir una reg
 hyprctl clients
 ```
 
-## Shell de Omarchy
+## Resolución del punto de entrada
 
-Waybar, hypridle y hyprlock no forman parte de Omarchy 4. La barra, bloqueo, inactividad, fondos y
-OSD pertenecen al shell Quickshell de Omarchy. Este perfil administra el código del plugin
-`lcardenas.monitor` en `omarchy/home/config/omarchy/plugins/lcardenas.monitor/`, no el archivo
-completo `~/.config/omarchy/shell.json` ni los temas. El indicador usa el monitor HDMI-A-1: es una
-configuración específica de este equipo.
+`hyprland.lua` carga `default.hypr.omarchy` y luego requiere `hypr.monitors`, `hypr.input`,
+`hypr.bindings`, `hypr.looknfeel` y `hypr.autostart`. El manifiesto enlaza los módulos `*.lua`
+existentes en `omarchy/home/config/hypr/`; en este repositorio están `monitors.lua`, `bindings.lua`,
+`looknfeel.lua`, `windows.lua` y `workspaces.lua`, pero no `input.lua` ni `autostart.lua`.
 
-`setup-dots` enlaza el directorio del plugin en `~/.config/omarchy/plugins/` y, con el shell activo,
-lo detecta y habilita mediante el IPC de Omarchy. Si ya está habilitado, conserva su posición y
-ajustes; si no, lo añade a la sección derecha antes de `omarchy.power` cuando este está habilitado.
-Sin un shell activo, hay que iniciarlo y volver a ejecutar `setup-dots` para completar la
-activación. El antiguo script `monitor` se eliminó; la instalación solo retira su enlace obsoleto en
-`~/.local/bin/monitor` cuando apunta exactamente a la antigua ruta del repositorio.
+En la instalación actual, el bootstrap busca primero en `state`, después en `config` y finalmente en
+las rutas de Omarchy. Los archivos `input` y `autostart` existen en la instalación del usuario, pero
+son configuraciones personales no administradas por este repositorio. Ese resultado observado no
+constituye una garantía general de portabilidad. No se crean sustitutos ni se sobrescriben esas
+configuraciones. `windows.lua` sí forma parte del perfil y `hypr.windows` se carga explícitamente
+desde el punto de entrada.
+
+Waybar, hypridle y hyprlock no forman parte de los archivos Omarchy retenidos en este perfil. La
+configuración de esos componentes y de los plugins del shell no se instala mediante este manifiesto.
 
 ## Véase también
 

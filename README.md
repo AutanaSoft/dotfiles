@@ -54,10 +54,9 @@ The `./setup` entrypoint is a dispatcher, not a distribution-neutral installer. 
 - requires the `omarchy` command and `hyprctl` from a running Hyprland session;
 - validates the installed Herdr configuration during final graphical validation;
 - applies user dotfiles by default when `--dots` is selected; and
-- can explicitly run dependencies, fonts, services, locale, and final graphical validation as
-  separate phases. Its services phase preserves keyd/ratbagd setup, configures local PostgreSQL
-  (peer sockets and SCRAM localhost TCP), and configures Valkey through loopback TCP and a Unix
-  socket.
+- can explicitly run dependencies, fonts, services, and final graphical validation as separate
+  phases. Its services phase preserves keyd/ratbagd setup, configures local PostgreSQL (peer sockets
+  and SCRAM localhost TCP), and configures Valkey through loopback TCP and a Unix socket.
 
 It does not install Omarchy. Ubuntu is not supported. `--dots-only` is the non-graphical user
 configuration path. `--dry-run` previews actions without mutating the host.
@@ -69,17 +68,16 @@ configuration. Its dependency phase installs the groups and packages in `dnf-pac
 Chrome Stable from Google's official RPM. Its containers phase requires Fedora 44 under WSL2 with
 systemd running, installs Docker Engine from Docker's official repository, and grants the invoking
 user Docker-group access. Its services phase initializes, configures, and validates PostgreSQL and
-Valkey. Its locale phase installs Spanish locale data and sets `LANG=es_VE.UTF-8`.
+Valkey. Its `--locale` phase installs Spanish locale data and sets `LANG=es_VE.UTF-8`.
 
 Use `--non-interactive` with an explicit `--profile`; it runs only selected phases and passes DNF
 automatic confirmation to Fedora package mutations. Use `--dry-run` to preview without invoking
 `sudo`, DNF, downloads, writes, or service mutations. Dependency dry-runs report declared DNF groups
 without claiming whether they are installed because they do not query DNF group state.
 
-The `--deps`, `--fonts`, `--services`, and `--locale` flags are explicit phases for the same current
-profile; they do not add support for another platform. The dependency phase installs the packages
-declared in the TSV manifest, and the font phase installs each family directly under
-`$HOME/.local/share/fonts/<family>/`.
+The `--deps`, `--fonts`, and `--services` flags are explicit Omarchy phases. The Fedora WSL2 profile
+also supports `--locale`. The dependency phase installs the packages declared in the TSV manifest,
+and the font phase installs each family directly under `$HOME/.local/share/fonts/<family>/`.
 
 ## Configuration boundaries
 
@@ -97,12 +95,12 @@ it is not a reason to split the repository before a second profile requires that
 ## Safety rules
 
 - Review scripts and use `./setup --profile omarchy --dots-only --dry-run` before a real run.
-- Never commit secrets, private keys, passwords, or real SSH host values. `omarchy/home/ssh/config`
-  is a safe template and is copied only when the local SSH config does not already exist.
+- Never commit secrets, private keys, passwords, or real SSH host values. SSH configuration is not
+  currently managed by the Omarchy manifest; keep host-specific values local.
 - Existing targets are moved to a timestamped `backup/` path before symlinks replace them. Inspect
   those backups before deleting anything.
-- Treat `omarchy/etc/` as privileged, host-specific configuration. Keyd and locale installation are
-  opt-in through `--services` and `--locale`.
+- Treat `omarchy/etc/` as privileged, host-specific configuration. Keyd installation is opt-in
+  through `--services`.
 - Never edit `/usr/share/omarchy/`; Omarchy owns that tree and package updates overwrite it. Put
   personal Hyprland changes in the tracked Lua modules.
 - Do not apply `omarchy/etc/fstab` automatically. Review and install host mount configuration
@@ -112,8 +110,8 @@ it is not a reason to split the repository before a second profile requires that
 
 - `omarchy/` — Omarchy profile.
 - `fedora-wsl2/` — Fedora WSL2 development profile.
-- `omarchy/home/` — files linked or copied into the user's home directory, including Herdr, Tmux,
-  Zellij, and shell functions.
+- `omarchy/home/` — files linked or copied into the user's home directory, including Bash, Hyprland
+  Lua modules, Neovim, Starship, Mise, and Herdr configuration.
 - `omarchy/etc/` — privileged or host-specific files requiring explicit care.
 - `omarchy/utils/bash/` — profile helpers dispatched by `setup`.
 - `setup` — the profile dispatcher and shared dry-run interface.

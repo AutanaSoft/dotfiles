@@ -29,3 +29,4 @@ require("default.hypr.toggles")
 -- o.window("qemu", { workspace = "5" })
 
 require("hypr.workspaces")
+require("hypr.windows")

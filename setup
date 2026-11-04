@@ -30,7 +30,7 @@ Actions:
   --fonts            Install Omarchy user-local fonts.
   --services         Configure profile-specific services.
   --containers       Install and configure Docker Engine on Fedora WSL2.
-  --locale           Install the selected profile's locale.
+  --locale           Install the Fedora WSL2 locale.
 
 Options:
   --profile NAME     Select omarchy or fedora-wsl2.
@@ -42,7 +42,7 @@ Options:
 Examples:
   $0 --dots
   $0 --profile omarchy --dots-only --dry-run
-  $0 --profile omarchy --dots --deps --fonts --services --locale
+  $0 --profile omarchy --dots --deps --fonts --services
   $0 --profile fedora-wsl2 --dots --deps --containers --services --locale
 EOF
 }
@@ -109,6 +109,9 @@ esac
 if [[ "$PROFILE" == omarchy ]] && (( CONTAINERS )); then
     fail "--containers is unsupported for omarchy."
 fi
+if [[ "$PROFILE" == omarchy ]] && (( LOCALE )); then
+    fail "--locale is unsupported for omarchy."
+fi
 if [[ "$PROFILE" == fedora-wsl2 ]] && (( FONTS || NO_VALIDATE )); then
     fail "--fonts and --no-validate are unsupported for fedora-wsl2."
 fi
@@ -119,7 +122,7 @@ fi
 
 if (( DOTS )); then
     if (( !NON_INTERACTIVE )); then
-        phases=(deps fonts services locale)
+        phases=(deps fonts services)
         [[ "$PROFILE" == fedora-wsl2 ]] && phases=(deps containers services locale)
         for phase in "${phases[@]}"; do
             case "$phase" in
@@ -137,7 +140,7 @@ if (( DOTS )); then
                         if [[ "$PROFILE" == fedora-wsl2 ]]; then
                             prompt="Run services? This uses sudo, configures PostgreSQL and Valkey, and enables/restarts both services. [y/N] "
                         else
-                            prompt="Run services? This uses sudo, overwrites/backups keyd configuration, and enables/reloads keyd/ratbagd. [y/N] "
+                            prompt="Run services? This uses sudo, configures keyd/ratbagd, and enables/reloads keyd/ratbagd, PostgreSQL, and Valkey. [y/N] "
                         fi
                         ;;
                     containers) prompt="Run containers? This uses sudo and installs Docker Engine with root-equivalent group access. [y/N] " ;;
