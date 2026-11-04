@@ -13,4 +13,4 @@ package	keyd
 package	postgresql
 package	valkey
 package	discord
-package	anydesk-bin
+# package	anydesk-bin

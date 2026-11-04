@@ -140,7 +140,7 @@ if (( DOTS )); then
                         if [[ "$PROFILE" == fedora-wsl2 ]]; then
                             prompt="Run services? This uses sudo, configures PostgreSQL and Valkey, and enables/restarts both services. [y/N] "
                         else
-                            prompt="Run services? This uses sudo, configures keyd/ratbagd, and enables/reloads keyd/ratbagd, PostgreSQL, and Valkey. [y/N] "
+                            prompt="Run services? This uses sudo, configures and enables/reloads keyd, PostgreSQL, and Valkey. [y/N] "
                         fi
                         ;;
                     containers) prompt="Run containers? This uses sudo and installs Docker Engine with root-equivalent group access. [y/N] " ;;

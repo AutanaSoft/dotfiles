@@ -123,7 +123,8 @@ done < "$ROOT_DIR/omarchy/dots-manifest"
 
 # Interactive consent must describe every service in the Omarchy phase.
 prompt_output="$(script -q -c "$SETUP --profile omarchy --dots --dry-run" /dev/null <<< $'n\nn\nn\n' 2>&1)"
-[[ "$prompt_output" == *"PostgreSQL"* && "$prompt_output" == *"Valkey"* ]] || fail "Omarchy services consent prompt omits PostgreSQL or Valkey"
+[[ "$prompt_output" == *"keyd"* && "$prompt_output" == *"PostgreSQL"* && "$prompt_output" == *"Valkey"* ]] || fail "Omarchy services consent prompt omits a configured service"
+[[ "$prompt_output" != *"ratbagd"* ]] || fail "Omarchy services consent prompt still names ratbagd"
 [[ "$prompt_output" != *"[setup-services]"* ]] || fail "declined service consent still dispatched services"
 
 # Service orchestrator forwards flags and keeps the documented helper order.
@@ -159,7 +160,127 @@ valkey_config="$ROOT_DIR/omarchy/etc/valkey/valkey.conf"
 [[ "$(<"$valkey_config")" == *$'unixsocketperm 770'* ]] || fail "Valkey socket permissions are wrong"
 [[ ! -e "$ROOT_DIR/omarchy/etc/systemd/system/valkey.service.d/socket-group.conf" ]] || fail "Valkey still has a SupplementaryGroups drop-in"
 
-# PostgreSQL and Valkey helpers use temporary roots and command shims; no host service is touched.
+# keyd readiness and rollback contracts use shims and a temporary target; no host service is touched.
+input_bin="$TEST_TMP_DIR/input-bin"
+input_state="$TEST_TMP_DIR/input-state"
+input_target="$TEST_TMP_DIR/input-keyd.conf"
+input_log="$TEST_TMP_DIR/input-commands.log"
+mkdir -p "$input_bin" "$input_state"
+cat >"$input_bin/sudo" <<'EOF'
+#!/usr/bin/env bash
+set -e
+case "$1" in
+  cp|install|rm|test|bash)
+    command="$1"; shift
+    if [[ "$command" == bash && "${INPUT_FAIL_TARGET_INSPECTION:-0}" == 1 ]]; then
+      printf 'simulated privileged inspection failure\n' >&2
+      exit 2
+    fi
+    args=()
+    for arg in "$@"; do
+      case "$arg" in
+        /etc/keyd/default.conf*) arg="${INPUT_TARGET}${arg#/etc/keyd/default.conf}" ;;
+      esac
+      args+=("$arg")
+    done
+    exec "$command" "${args[@]}"
+    ;;
+  *) exec "$@" ;;
+esac
+EOF
+cat >"$input_bin/systemctl" <<'EOF'
+#!/usr/bin/env bash
+set -e
+state="${INPUT_STATE:?}"
+log="${INPUT_LOG:?}"
+printf 'systemctl %s\n' "$*" >>"$log"
+command="$1"; shift
+case "$command" in
+  is-enabled) [[ "$1" == --quiet ]] && shift; [[ -f "$state/${1}.enabled" ]] ;;
+  is-active) [[ "$1" == --quiet ]] && shift; [[ -f "$state/${1}.active" ]] ;;
+  enable)
+    [[ " $* " != *' ratbagd '* ]] || { printf 'Failed to enable unit: Unit ratbagd.service does not exist\n' >&2; exit 1; }
+    for unit in "$@"; do touch "$state/${unit}.enabled" "$state/${unit}.active"; done
+    ;;
+  disable) rm -f "$state/${1}.enabled" ;;
+  start) touch "$state/${1}.active" ;;
+  stop) rm -f "$state/${1}.active" ;;
+  *) exit 0 ;;
+esac
+EOF
+cat >"$input_bin/keyd" <<'EOF'
+#!/usr/bin/env bash
+printf 'keyd %s\n' "$*" >>"${INPUT_LOG:?}"
+[[ "$1" == reload ]] || exit 0
+count_file="${INPUT_STATE:?}/reload-count"
+count=0
+[[ -f "$count_file" ]] && count="$(<"$count_file")"
+count=$((count + 1))
+printf '%s\n' "$count" >"$count_file"
+[[ "${FAIL_KEYD_RELOAD:-0}" != 1 ]] || { printf 'simulated keyd failure\n' >&2; exit 1; }
+(( count > ${KEYD_TRANSIENT_FAILURES:-0} )) || { printf 'keyd socket not ready\n' >&2; exit 1; }
+EOF
+chmod +x "$input_bin"/*
+: >"$input_log"
+set +e
+PATH="$input_bin:$PATH" INPUT_STATE="$input_state" INPUT_TARGET="$input_target" INPUT_LOG="$input_log" systemctl enable --now keyd ratbagd >"$TEST_STDOUT" 2>"$TEST_STDERR"
+missing_ratbagd_status=$?
+set -e
+[[ "$missing_ratbagd_status" -ne 0 ]] || fail "missing-ratbagd shim did not reproduce the service enablement failure"
+[[ "$(<"$TEST_STDERR")" == 'Failed to enable unit: Unit ratbagd.service does not exist' ]] || fail "missing-ratbagd shim did not report the original failure"
+
+: >"$input_log"
+set +e
+PATH="$input_bin:$PATH" INPUT_STATE="$input_state" INPUT_TARGET="$input_target" INPUT_LOG="$input_log" "$ROOT_DIR/omarchy/utils/bash/setup-services-input" >"$TEST_STDOUT" 2>"$TEST_STDERR"
+keyd_without_ratbagd_status=$?
+set -e
+[[ "$keyd_without_ratbagd_status" -eq 0 ]] || fail "keyd setup failed when ratbagd is absent: $(<"$TEST_STDERR")"
+[[ "$(<"$input_log")" == *'systemctl enable --now keyd'* ]] || fail "keyd was not enabled without ratbagd"
+[[ "$(<"$input_log")" != *ratbagd* ]] || fail "keyd setup attempted to manage ratbagd"
+[[ -s "$input_target" ]] || fail "keyd setup did not install its configuration"
+
+rm -f "$input_state"/*.enabled "$input_state"/*.active "$input_state/reload-count"
+: >"$input_log"
+printf 'existing keyd config\n' >"$input_target"
+set +e
+PATH="$input_bin:$PATH" INPUT_STATE="$input_state" INPUT_TARGET="$input_target" INPUT_LOG="$input_log" KEYD_TRANSIENT_FAILURES=2 "$ROOT_DIR/omarchy/utils/bash/setup-services-input" >"$TEST_STDOUT" 2>"$TEST_STDERR"
+keyd_delayed_status=$?
+set -e
+[[ "$keyd_delayed_status" -eq 0 ]] || fail "keyd setup did not recover from delayed readiness: $(<"$TEST_STDERR")"
+[[ "$(<"$input_target")" == "$(<"$ROOT_DIR/omarchy/etc/keyd/default.conf")" ]] || fail "keyd setup did not install its configuration"
+[[ "$(<"$input_state/reload-count")" -eq 3 ]] || fail "keyd readiness was not retried until reload succeeded"
+
+rm -f "$input_state"/*.enabled "$input_state"/*.active "$input_state/reload-count"
+: >"$input_log"
+printf 'preserve this config\n' >"$input_target"
+touch "$input_state/keyd.enabled" "$input_state/keyd.active"
+set +e
+PATH="$input_bin:$PATH" INPUT_STATE="$input_state" INPUT_TARGET="$input_target" INPUT_LOG="$input_log" FAIL_KEYD_RELOAD=1 "$ROOT_DIR/omarchy/utils/bash/setup-services-input" >"$TEST_STDOUT" 2>"$TEST_STDERR"
+keyd_rollback_status=$?
+set -e
+[[ "$keyd_rollback_status" -ne 0 ]] || fail "genuine keyd reload failure did not fail setup"
+[[ "$(<"$input_target")" == 'preserve this config' ]] || fail "keyd failure did not restore the existing configuration"
+[[ -e "$input_state/keyd.enabled" && -e "$input_state/keyd.active" ]] || fail "keyd failure did not preserve prior service state"
+[[ "$(<"$input_state/reload-count")" -eq 11 ]] || fail "keyd reload failure did not stop after ten attempts plus recovery reload"
+[[ "$(<"$input_log")" != *ratbagd* ]] || fail "keyd rollback attempted to manage ratbagd"
+
+input_referent="$TEST_TMP_DIR/input-keyd-referent.conf"
+printf 'symlink referent must survive\n' >"$input_referent"
+rm -f "$input_target"
+ln -s "$input_referent" "$input_target"
+: >"$input_log"
+: >"$TEST_STDOUT"
+set +e
+PATH="$input_bin:$PATH" INPUT_STATE="$input_state" INPUT_TARGET="$input_target" INPUT_LOG="$input_log" INPUT_FAIL_TARGET_INSPECTION=1 "$ROOT_DIR/omarchy/utils/bash/setup-services-input" >"$TEST_STDOUT" 2>"$TEST_STDERR"
+keyd_inspection_status=$?
+set -e
+[[ "$keyd_inspection_status" -ne 0 ]] || fail "keyd setup continued after privileged target inspection failed"
+[[ -L "$input_target" && "$(readlink "$input_target")" == "$input_referent" ]] || fail "inspection failure replaced the existing keyd symlink"
+[[ "$(<"$input_referent")" == 'symlink referent must survive' ]] || fail "inspection failure changed the symlink referent"
+[[ ! -s "$input_log" ]] || fail "inspection failure changed service state"
+[[ "$(<"$TEST_STDERR")" == *"existing keyd configuration"* ]] || fail "inspection failure was not reported"
+
+# Omarchy setup contracts continue with PostgreSQL and Valkey using temporary roots and shims.
 service_bin="$TEST_TMP_DIR/service-bin"
 service_state="$TEST_TMP_DIR/service-state"
 service_log="$TEST_TMP_DIR/service-commands.log"

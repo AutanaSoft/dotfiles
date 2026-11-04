@@ -31,3 +31,9 @@
 -- o.bind("SUPER + SHIFT + S", "Spotify", { omarchy = "spotify" })
 -- o.bind("SUPER + SHIFT + W", "WhatsApp", { webapp = "https://web.whatsapp.com/", focus = true })
 -- o.bind("SUPER + SHIFT + Y", "YouTube", { webapp = "https://www.youtube.com/" })
+
+-- Dictation keys from before Alt + Space and Right Alt became the defaults.
+-- Remove these lines to give the keys back to applications.
+if o.dictation_installed and o.dictation_installed() then
+  o.bind("SUPER + CTRL + X", "Toggle dictation", "omarchy-dictation toggle")
+end

@@ -25,7 +25,7 @@ Empty or negative answers leave a phase disabled.
 | `--dots-only`       | Apply only the manifest and permitted user copies. It cannot combine with optional phases and skips validation.       |
 | `--deps`            | Validate and install the packages in `omarchy/deps-manifest` in one batch.                                            |
 | `--fonts`           | Install user-local fonts under `$HOME/.local/share/fonts/<family>/`.                                                  |
-| `--services`        | Configure keyd/ratbagd plus local PostgreSQL and Valkey services.                                                     |
+| `--services`        | Configure and enable keyd, plus local PostgreSQL and Valkey services.                                                 |
 | `--containers`      | Install Docker Engine on Fedora WSL2. Unsupported by Omarchy.                                                         |
 | `--locale`          | Install Spanish locale data and set `LANG=es_VE.UTF-8` on Fedora WSL2.                                                |
 | `--no-validate`     | Skip the final validation of a `--dots` run.                                                                          |
@@ -38,7 +38,9 @@ Fedora WSL2 additionally offers `containers` and `locale`. In non-interactive mo
 phase is inferred. A request such as `--profile omarchy --deps --dry-run` runs only the dependency
 phase; it does not apply dotfiles or validation.
 
-For Omarchy, `--services` preserves the keyd and ratbagd setup, initializes PostgreSQL only when
+For Omarchy, `--services` installs the tracked keyd configuration and enables keyd. It retries a
+failed keyd reload up to ten times with a short delay for service startup; persistent failure
+restores the prior configuration and service state. The phase initializes PostgreSQL only when
 `/var/lib/postgres/data` is absent or empty, and configures peer authentication for local sockets
 and SCRAM authentication for localhost TCP. Interactive runs can optionally update the `postgres`
 role password; dry-run and non-interactive runs never ask for or change it. The phase configures
@@ -131,7 +133,7 @@ the complete phase without `sudo`, downloads, writes, or service changes:
 - `omarchy/utils/bash/setup-deps` — dependency manifest parser and installer.
 - `omarchy/utils/bash/setup-fonts` — user-local Nerd Font installer.
 - `omarchy/utils/bash/setup-services` — ordered input, PostgreSQL, and Valkey service orchestrator.
-- `omarchy/utils/bash/setup-services-input` — keyd and ratbagd configuration.
+- `omarchy/utils/bash/setup-services-input` — keyd configuration and service setup.
 - `omarchy/utils/bash/setup-services-postgresql` — local PostgreSQL cluster and authentication.
 - `omarchy/utils/bash/setup-services-valkey` — local TCP and Unix-socket Valkey configuration.
 - `omarchy/utils/bash/setup-validate` — Omarchy 4, Hyprland, and Herdr configuration validation.
