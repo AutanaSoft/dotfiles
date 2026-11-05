@@ -39,6 +39,10 @@ Options:
   --dry-run          Print actions without mutating the host.
   --help, -h         Show this help.
 
+Omarchy services:
+  --services runs keyd, PostgreSQL, then Valkey and stops at the first failure.
+  Earlier services are not rolled back automatically; recovery is helper-local.
+
 Examples:
   $0 --dots
   $0 --profile omarchy --dots-only --dry-run

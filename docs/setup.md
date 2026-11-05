@@ -18,35 +18,53 @@ Empty or negative answers leave a phase disabled.
 
 ## CLI contract
 
-| Flag                | Meaning                                                                                                               |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `--profile omarchy` | Select the implemented profile. Interactive runs offer `omarchy` when omitted.                                        |
-| `--dots`            | Apply dotfiles, ask interactively about optional phases, then validate unless `--no-validate` is used.                |
-| `--dots-only`       | Apply only the manifest and permitted user copies. It cannot combine with optional phases and skips validation.       |
-| `--deps`            | Validate and install the packages in `omarchy/deps-manifest` in one batch.                                            |
-| `--fonts`           | Install user-local fonts under `$HOME/.local/share/fonts/<family>/`.                                                  |
-| `--services`        | Configure and enable keyd, plus local PostgreSQL and Valkey services.                                                 |
-| `--containers`      | Install Docker Engine on Fedora WSL2. Unsupported by Omarchy.                                                         |
-| `--locale`          | Install Spanish locale data and set `LANG=es_VE.UTF-8` on Fedora WSL2.                                                |
-| `--no-validate`     | Skip the final validation of a `--dots` run.                                                                          |
-| `--non-interactive` | Require `--profile`, run only explicitly declared phases, and enable DNF automatic confirmation for Fedora mutations. |
-| `--dry-run`         | Show actions without downloads, writes, sudo, DNF, service changes, or graphical changes.                             |
-| `--help`, `-h`      | Show usage.                                                                                                           |
+| Flag                | Meaning                                                                                                                                   |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `--profile omarchy` | Select the implemented profile. Interactive runs offer `omarchy` when omitted.                                                            |
+| `--dots`            | Apply dotfiles, ask interactively about optional phases, then validate unless `--no-validate` is used.                                    |
+| `--dots-only`       | Apply only the manifest and permitted user copies. It cannot combine with optional phases and skips validation.                           |
+| `--deps`            | Validate and install the packages in `omarchy/deps-manifest` in one batch.                                                                |
+| `--fonts`           | Install verified, version-pinned user-local fonts under `$HOME/.local/share/fonts/<family>`; unowned or modified files stop installation. |
+| `--services`        | Configure and enable keyd, plus local PostgreSQL and Valkey services.                                                                     |
+| `--containers`      | Install Docker Engine on Fedora WSL2. Unsupported by Omarchy.                                                                             |
+| `--locale`          | Install Spanish locale data and set `LANG=es_VE.UTF-8` on Fedora WSL2.                                                                    |
+| `--no-validate`     | Skip the final validation of a `--dots` run.                                                                                              |
+| `--non-interactive` | Require `--profile`, run only explicitly declared phases, and enable DNF automatic confirmation for Fedora mutations.                     |
+| `--dry-run`         | Show actions without downloads, writes, sudo, DNF, service changes, or graphical changes.                                                 |
+| `--help`, `-h`      | Show usage.                                                                                                                               |
 
 Without `--non-interactive`, Omarchy `--dots` asks separately about `deps`, `fonts`, and `services`;
 Fedora WSL2 additionally offers `containers` and `locale`. In non-interactive mode, no optional
 phase is inferred. A request such as `--profile omarchy --deps --dry-run` runs only the dependency
 phase; it does not apply dotfiles or validation.
 
-For Omarchy, `--services` installs the tracked keyd configuration and enables keyd. It retries a
-failed keyd reload up to ten times with a short delay for service startup; persistent failure
-restores the prior configuration and service state. The phase initializes PostgreSQL only when
-`/var/lib/postgres/data` is absent or empty, and configures peer authentication for local sockets
-and SCRAM authentication for localhost TCP. Interactive runs can optionally update the `postgres`
-role password; dry-run and non-interactive runs never ask for or change it. The phase configures
-Valkey on loopback TCP port 6379 and `/run/valkey/valkey.sock` with group `valkey` and mode `0770`.
-Interactive runs can add the current user to that group; `--non-interactive` never changes group
-membership.
+For Omarchy, `--services` processes keyd, PostgreSQL, and Valkey in that order. It stops at the
+first failure; earlier services are not automatically rolled back. Each helper attempts its own
+configuration and service-state recovery for applicable failures, but recovery is limited to that
+helper and may not reverse every effect.
+
+The phase installs the tracked keyd configuration and enables keyd. It retries a failed keyd reload
+up to ten times with a short delay for service startup; persistent failure restores the prior
+configuration and service state. The phase initializes PostgreSQL only when `/var/lib/postgres/data`
+is absent or empty, and configures peer authentication for local sockets and SCRAM authentication
+for localhost TCP. Interactive runs can optionally update the `postgres` role password; dry-run and
+non-interactive runs never ask for or change it. The phase configures Valkey on loopback TCP port
+6379 and `/run/valkey/valkey.sock` with group `valkey` and mode `0770`. Interactive runs can add the
+current user to that group; `--non-interactive` never changes group membership. If installing either
+service configuration fails after writing part of its destination, setup restores the previous file
+from its backup or removes a newly created partial file, then restores the service's initial
+enabled/active state where possible; recovery failures are reported. Valkey readiness also requires
+`ss` to succeed and report at least one listener, with every listener bound to loopback; failed or
+empty inspection is rejected.
+
+## Omarchy cleanup utility
+
+`omarchy/utils/bash/cleanup` is a standalone selective cleanup utility; it is not part of `./setup`.
+By default it asks for confirmation before removing its predefined Omarchy components and writes a
+TSV audit log under `backup/`. `--yes` skips confirmation. `--dry-run` still asks for confirmation
+unless combined with `--yes`; it writes an audit log recording simulated removals but never removes
+components. `--list` only prints the categorized plan and does not write an audit log. The utility
+invokes the existing Omarchy removal APIs with component names as separate arguments.
 
 ## Fedora WSL2
 
@@ -120,9 +138,26 @@ the complete phase without `sudo`, downloads, writes, or service changes:
   `setup-validate` each own one phase.
 - `--dry-run` never invokes `sudo`, DNF, package downloads, `fc-cache`, service management, or
   Hyprland commands.
-- Existing targets are moved to a timestamped `backup/` path before replacement.
+- Existing Omarchy dotfile targets, including distinct or dangling destination symlinks, are moved
+  to a timestamped `backup/` path before replacement. Backup name collisions receive a numeric
+  suffix. Symlinks themselves are moved, without following or modifying their referents; relative
+  link text is preserved but may not resolve from the backup location. Correct links remain
+  unchanged, and `--dry-run` only previews backups and replacements. This policy does not change
+  stale parent-link handling or obsolete monitor-link cleanup.
 - Herdr's `config.toml` is managed as a symlink from `omarchy/dots-manifest`.
-- Fonts are installed directly under `$HOME/.local/share/fonts/<family>/`.
+- Fonts are installed under `$HOME/.local/share/fonts/<family>/` from Monaspace v1.400 and Nerd
+  Fonts v3.5.1 archives. Download URLs and SHA-256 values are pinned in `setup-fonts` from official
+  release metadata:
+  [Monaspace v1.400](https://api.github.com/repos/githubnext/monaspace/releases/tags/v1.400) and
+  [Nerd Fonts v3.5.1](https://api.github.com/repos/ryanoasis/nerd-fonts/releases/latest). Every
+  archive is checked before any extraction or destination change. The installer records the exact
+  SHA-256 hash and relative path of each file it installs in
+  `.local/share/fonts/.dotfiles-fonts-ownership`. Subsequent runs update only files whose current
+  content still matches that record; unowned collisions, symlinks, and locally modified managed
+  files are preserved and cause a clear stop. The record is replaced with the current release
+  inventory, but files from older releases are never pruned automatically. Existing fonts without
+  safe ownership evidence are not adopted. `--dry-run` only previews pinned URLs and expected
+  hashes.
 
 ## Related files
 

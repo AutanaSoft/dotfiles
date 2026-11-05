@@ -290,7 +290,12 @@ cat >"$service_bin/sudo" <<'EOF'
 #!/usr/bin/env bash
 set -e
 [[ "$1" == -u ]] && shift 2
+if [[ "$1" == cp && "${FAIL_SERVICE_RESTORE:-0}" == 1 && "${4:-}" == "$DOTFILES_BACKUP_DIR"* ]]; then exit 8; fi
 if [[ "$1" == install ]]; then
+  if [[ "${FAIL_SERVICE_INSTALL:-0}" == 1 && "${POSTGRES_DATA_DIR:-}" != "" && "${!#}" == "$POSTGRES_DATA_DIR/pg_hba.conf" ]]; then
+    printf 'partial configuration\n' >"${!#}"
+    exit 9
+  fi
   command=(install)
   shift
   while [[ $# -gt 0 ]]; do
@@ -315,7 +320,7 @@ case "$command" in
   is-active) [[ "$1" == --quiet ]] && shift; [[ -f "$state/${1}.active" ]] ;;
   enable) touch "$state/${1}.enabled" ;;
   disable) rm -f "$state/${1}.enabled" ;;
-  start) touch "$state/${1}.active" ;;
+  start) touch "$state/${1}.active"; [[ "${FAIL_SERVICE_START:-0}" != 1 ]] ;;
   stop) rm -f "$state/${1}.active" ;;
   reload|restart) [[ "${FAIL_SYSTEMCTL:-0}" != 1 ]] || exit 1; touch "$state/${1}.active" ;;
   *) exit 0 ;;
@@ -416,6 +421,60 @@ set -e
 [[ "$rollback_status" -eq 1 ]] || fail "PostgreSQL readiness failure did not fail"
 [[ "$(<"$rollback_data/pg_hba.conf")" == original ]] || fail "PostgreSQL failure did not restore pg_hba.conf"
 [[ ! -e "$service_state/postgresql.service.enabled" && ! -e "$service_state/postgresql.service.active" ]] || fail "PostgreSQL failure did not restore unit state: $(<"$service_log")"
+
+for postgres_failure in start reload; do
+  failure_data="$TEST_TMP_DIR/postgres-$postgres_failure-failure"
+  mkdir -p "$failure_data/base"; printf '18\n' >"$failure_data/PG_VERSION"; printf 'prior configuration\n' >"$failure_data/pg_hba.conf"
+  : >"$service_log"; rm -f "$service_state"/*
+  set +e
+  if [[ "$postgres_failure" == start ]]; then
+    PATH="$service_bin:$PATH" SERVICE_STATE="$service_state" SERVICE_LOG="$service_log" POSTGRES_DATA_DIR="$failure_data" FAIL_SERVICE_START=1 "$ROOT_DIR/omarchy/utils/bash/setup-services-postgresql" >"$TEST_STDOUT" 2>"$TEST_STDERR"
+  else
+    PATH="$service_bin:$PATH" SERVICE_STATE="$service_state" SERVICE_LOG="$service_log" POSTGRES_DATA_DIR="$failure_data" FAIL_SYSTEMCTL=1 "$ROOT_DIR/omarchy/utils/bash/setup-services-postgresql" >"$TEST_STDOUT" 2>"$TEST_STDERR"
+  fi
+  service_failure_status=$?
+  set -e
+  [[ "$service_failure_status" -eq 1 ]] || fail "PostgreSQL $postgres_failure failure returned $service_failure_status"
+  [[ "$(<"$failure_data/pg_hba.conf")" == 'prior configuration' ]] || fail "PostgreSQL $postgres_failure failure did not restore configuration"
+  [[ ! -e "$service_state/postgresql.service.enabled" && ! -e "$service_state/postgresql.service.active" ]] || fail "PostgreSQL $postgres_failure failure changed initial service state"
+done
+
+for postgres_config_state in prior absent; do
+  for initial_state in disabled-inactive enabled-inactive disabled-active enabled-active; do
+    install_failure_data="$TEST_TMP_DIR/postgres-install-$postgres_config_state-$initial_state"
+    mkdir -p "$install_failure_data/base"; printf '18\n' >"$install_failure_data/PG_VERSION"
+    if [[ "$postgres_config_state" == prior ]]; then printf 'prior configuration\n' >"$install_failure_data/pg_hba.conf"; fi
+    rm -f "$service_state"/*
+    [[ "$initial_state" != enabled-inactive && "$initial_state" != enabled-active ]] || touch "$service_state/postgresql.service.enabled"
+    [[ "$initial_state" != disabled-active && "$initial_state" != enabled-active ]] || touch "$service_state/postgresql.service.active"
+    : >"$service_log"
+    set +e
+    PATH="$service_bin:$PATH" SERVICE_STATE="$service_state" SERVICE_LOG="$service_log" POSTGRES_DATA_DIR="$install_failure_data" FAIL_SERVICE_INSTALL=1 "$ROOT_DIR/omarchy/utils/bash/setup-services-postgresql" >"$TEST_STDOUT" 2>"$TEST_STDERR"
+    install_failure_status=$?
+    set -e
+    [[ "$install_failure_status" -eq 1 ]] || fail "PostgreSQL partial install ($postgres_config_state/$initial_state) returned $install_failure_status"
+    if [[ "$postgres_config_state" == prior ]]; then
+      [[ "$(<"$install_failure_data/pg_hba.conf")" == 'prior configuration' ]] || fail "PostgreSQL did not restore prior config after partial install"
+      [[ "$(<"$DOTFILES_BACKUP_DIR/${install_failure_data#/*}/pg_hba.conf")" == 'prior configuration' ]] || fail "PostgreSQL did not retain the original backup"
+    else
+      [[ ! -e "$install_failure_data/pg_hba.conf" ]] || fail "PostgreSQL left partial config without prior destination"
+    fi
+    [[ "$(<"$TEST_STDERR")" == "[setup-services-postgresql] ERROR: could not install $install_failure_data/pg_hba.conf" ]] || fail "PostgreSQL partial install failure was not reported"
+    if [[ "$initial_state" == enabled-* ]]; then [[ -e "$service_state/postgresql.service.enabled" ]] || fail "PostgreSQL enabled state changed for $initial_state"; else [[ ! -e "$service_state/postgresql.service.enabled" ]] || fail "PostgreSQL enabled state changed for $initial_state"; fi
+    if [[ "$initial_state" == *-active ]]; then [[ -e "$service_state/postgresql.service.active" ]] || fail "PostgreSQL active state changed for $initial_state"; else [[ ! -e "$service_state/postgresql.service.active" ]] || fail "PostgreSQL active state changed for $initial_state"; fi
+  done
+done
+
+restore_failure_data="$TEST_TMP_DIR/postgres-restore-failure"
+mkdir -p "$restore_failure_data/base"; printf '18\n' >"$restore_failure_data/PG_VERSION"; printf 'prior configuration\n' >"$restore_failure_data/pg_hba.conf"
+rm -f "$service_state"/*
+set +e
+PATH="$service_bin:$PATH" SERVICE_STATE="$service_state" SERVICE_LOG="$service_log" POSTGRES_DATA_DIR="$restore_failure_data" FAIL_SERVICE_INSTALL=1 FAIL_SERVICE_RESTORE=1 "$ROOT_DIR/omarchy/utils/bash/setup-services-postgresql" >"$TEST_STDOUT" 2>"$TEST_STDERR"
+restore_failure_status=$?
+set -e
+[[ "$restore_failure_status" -eq 1 ]] || fail "PostgreSQL restore failure returned $restore_failure_status"
+[[ "$(<"$TEST_STDOUT")" == *"[setup-services-postgresql] Recovery ERROR: could not restore $restore_failure_data/pg_hba.conf"* ]] || fail "PostgreSQL restore failure was not explicitly reported"
+[[ "$(<"$TEST_STDERR")" == "[setup-services-postgresql] ERROR: could not install $restore_failure_data/pg_hba.conf" ]] || fail "PostgreSQL original install diagnostic changed"
 
 valkey_target="$TEST_TMP_DIR/valkey.conf"; printf original >"$valkey_target"
 : >"$service_log"; rm -f "$service_state"/*

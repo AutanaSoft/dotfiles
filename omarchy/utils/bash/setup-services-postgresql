@@ -94,8 +94,10 @@ install_hba() {
         sudo cp -a -- "$TARGET" "$backup" || fail "could not back up $TARGET"
     fi
     log "Installing configuration: $TARGET"
-    sudo install -o postgres -g postgres -m 0600 -- "$SOURCE" "$TARGET" || fail "could not install $TARGET"
+    # install can truncate/write the destination before returning failure. Mark it
+    # changed first so recover restores the backup (or removes a new partial file).
     changed=1
+    sudo install -o postgres -g postgres -m 0600 -- "$SOURCE" "$TARGET" || recover "could not install $TARGET"
 }
 
 [[ -f "$SOURCE" ]] || fail "configuration source not found: $SOURCE"

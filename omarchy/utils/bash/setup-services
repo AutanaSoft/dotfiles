@@ -10,7 +10,9 @@ usage() {
     cat <<EOF2
 Usage: $0 [--dry-run] [--non-interactive] [--help]
 
-Configure Omarchy input, PostgreSQL, and Valkey services.
+Configure Omarchy keyd, PostgreSQL, and Valkey services, in that order.
+Stop at the first failure.
+Earlier services are not rolled back automatically; recovery is helper-local.
 EOF2
 }
 fail() { echo "[setup-services] ERROR: $*" >&2; exit 1; }

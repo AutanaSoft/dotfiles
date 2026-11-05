@@ -99,8 +99,9 @@ Options:
   --interactive     Open a gum choose picker to deselect items before the
                     safety confirm. Requires a TTY.
   --dry-run         Simulate every removal: print the command and write a
-                    "dry-run" result line to the audit log. Skips the
-                    safety confirm. Does not mutate the system.
+                    "dry-run" result line to the audit log. Still requires
+                    confirmation unless --yes is supplied. Does not remove
+                    components.
   --list            Print the categorized plan (stubs:, packages:,
                     webapps: — TUIs omitted because the array is empty)
                     and exit 0. Pure discovery: no audit log is written,
@@ -397,9 +398,16 @@ execute_plan() {
                 result="dry-run"
                 log "DRY-RUN: would run: $cmd"
             else
-                # Capture the command's exit code without `set -e` aborting.
+                # Dispatch by typed category; the display command above is
+                # never interpreted as shell input.
                 set +e
-                bash -c "$cmd"
+                case "$cat" in
+                    stub) rm -f "$STUB_BIN_DIR/$name" ;;
+                    pkg) omarchy-pkg-drop "$name" ;;
+                    webapp) omarchy-webapp-remove "$name" ;;
+                    tui) omarchy-tui-remove "$name" ;;
+                    *) warn "execute_plan: unknown category '$cat'"; return 1 ;;
+                esac
                 rc=$?
                 set -e
                 if [[ $rc -eq 0 ]]; then

@@ -4,15 +4,30 @@ Este plan organiza las mejoras propuestas para que la configuración del perfil 
 predecible y fácil de mantener. No autoriza por sí mismo la aplicación de configuraciones al
 sistema, la eliminación de archivos, la creación de commits ni la instalación de paquetes.
 
-## Estado de partida
+## Estado de implementación
+
+La implementación de los siete pasos está incorporada al repositorio, incluida la evaluación del
+paso 7: se conservan los helpers separados porque sus diferencias no justifican una biblioteca
+compartida. La suite completa de Omarchy, sintaxis Bash, ayuda y comprobaciones de Markdown pasaron.
+
+**La verificación global no está cerrada:** T1 y fuentes conservan verificaciones independientes no
+disponibles; T2 conserva un resultado independiente parcial por la comparación pendiente del flujo
+exitoso contra la base. La revisión de cleanup y la del respaldo de enlaces sí se completaron. RDD
+está deshabilitado solo para este clon; eso no convierte la evidencia pendiente en aprobada.
+
+El usuario autorizó registrar la implementación en un commit local, sin publicar ni aplicar cambios
+al sistema. El detalle y las limitaciones permanecen en `odd/tasks/omarchy-setup-improvements.md`.
+
+## Estado inicial (histórico)
 
 - `setup` despacha las fases seleccionadas; `setup-omarchy` las ejecuta en el orden dependencias,
   fuentes, dotfiles, servicios y validación. Un fallo detiene las fases siguientes, pero no revierte
   las anteriores.
-- Hay cambios locales sin commit en `setup-dots` y su prueba para prevalidar el manifiesto. La
-  prueba focalizada y la suite de Omarchy pasaron. La revisión nativa aprobó esos dos archivos con
-  dos advertencias no bloqueantes, R3-001 y R4-001. La verificación independiente requerida no se
-  completó porque el entorno rechazó su solicitud y declaró no disponible el verificador.
+- Al redactar el plan había cambios locales sin commit en `setup-dots` y su prueba para prevalidar
+  el manifiesto; esa prevalidación quedó después en el commit `032c61c`. La prueba focalizada y la
+  suite de Omarchy pasaron. La revisión nativa aprobó esos dos archivos con dos advertencias no
+  bloqueantes, R3-001 y R4-001. La verificación independiente requerida no se completó porque el
+  entorno rechazó su solicitud y declaró no disponible el verificador.
 - La revisión nativa no sustituye esa verificación. No dar por terminada la primera mejora hasta
   resolver el requisito de verificación aplicable. El registro está en
   `odd/tasks/omarchy-setup-improvements.md`.
@@ -52,8 +67,10 @@ mantiene el comportamiento previsto. Las pruebas comprueban código de salida, m
 observables, incluidos destinos existentes y `--dry-run`. La validación previa no garantiza rollback
 ante todos los errores que puedan producirse después, durante la aplicación.
 
-**Decisión pendiente:** acordar si un enlace distinto se mueve al backup o se conserva de otro modo;
-no asumir que eliminarlo equivale a respaldarlo.
+**Decisión aplicada:** un enlace de destino distinto, válido o roto, se mueve como enlace al backup,
+con sufijos ante colisiones. Los enlaces correctos se conservan y `--dry-run` solo anuncia la
+operación. Un enlace relativo conserva su texto, aunque puede dejar de resolver desde el backup.
+Esta política no cambia los enlaces padres rotos ni la limpieza del enlace obsoleto del monitor.
 
 ## 2. Recuperar instalaciones parciales de servicios
 

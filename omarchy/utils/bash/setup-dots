@@ -11,6 +11,9 @@ usage() {
 Usage: $0 [--dry-run] [--help]
 
 Apply the Omarchy user dotfiles manifest, preserving local targets in backups.
+Distinct destination symlinks (including dangling links) are moved, not followed.
+Correct links are retained; --dry-run only previews backups and replacements.
+Relative links keep their text but may not resolve from the backup directory.
 This helper does not install packages, fonts, services, locale, or session changes.
 EOF
 }
@@ -55,17 +58,22 @@ prepare_parent() {
 }
 
 ensure_symlink() {
-    local source="$1" target="$2" stamp="$3" backup
+    local source="$1" target="$2" stamp="$3" backup resolved_target resolved_source
     [[ -e "$source" || -L "$source" ]] || fail "source does not exist: $source"
-    if [[ -L "$target" && "$(readlink -f -- "$target" 2>/dev/null || true)" == "$(readlink -f -- "$source" 2>/dev/null || true)" ]]; then
+    # Direct links remain correct even when their source cannot be resolved.
+    # Canonical aliases are equivalent only when both resolutions succeed.
+    if [[ -L "$target" ]] && {
+        [[ "$(readlink -- "$target")" == "$source" ]] || {
+            resolved_target="$(readlink -f -- "$target" 2>/dev/null)" &&
+            resolved_source="$(readlink -f -- "$source" 2>/dev/null)" &&
+            [[ "$resolved_target" == "$resolved_source" ]]
+        }
+    }; then
         log "Already linked: $target"
         return 0
     fi
     prepare_parent "$(dirname -- "$target")"
-    if [[ -L "$target" ]]; then
-        log "Removing stale target symlink: $target"
-        (( DRY_RUN )) || rm -- "$target"
-    elif [[ -e "$target" ]]; then
+    if [[ -e "$target" || -L "$target" ]]; then
         backup="$(backup_target "$target")"
         log "Backing up existing target: $target -> $backup"
         if (( !DRY_RUN )); then mkdir -p "$(dirname -- "$backup")"; mv -- "$target" "$backup"; fi
