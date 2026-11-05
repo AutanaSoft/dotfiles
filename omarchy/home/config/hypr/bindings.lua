@@ -14,6 +14,8 @@ if o.cmd_present("lazydocker") then
   o.rebind("SUPER + SHIFT + CTRL + D", "Docker", { tui = "omarchy-launch-docker-tui" })
 end
 o.rebind("SUPER + SHIFT + A", "Codex", "codex-desktop")
+o.rebind("SUPER + SHIFT + X", "Excel", { webapp = "https://excel.cloud.microsoft/" })
+o.rebind("SUPER + SHIFT + O", "OneDrive", { webapp = "https://www.office.com/launch/onedrive" })
 o.rebind("SUPER + SHIFT + W", "WhatsApp", { webapp = "https://web.whatsapp.com/", focus = true })
 o.rebind("SUPER + SHIFT + D", "Discord", { launch = "discord", focus = "^discord$" })
 o.rebind("SUPER + SHIFT + N", "Netflix", { webapp = "https://www.netflix.com/" })
