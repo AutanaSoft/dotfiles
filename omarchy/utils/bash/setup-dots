@@ -93,22 +93,31 @@ require_omarchy_4() {
     [[ "$version" =~ ^4\. ]] || fail "Omarchy 4.x is required; found: $version"
 }
 
-apply_manifest() {
-    local manifest="$REPO_ROOT/omarchy/dots-manifest" action source target expanded
+process_manifest() {
+    local mode="$1" manifest="$REPO_ROOT/omarchy/dots-manifest" action source target expanded
+    local -a matches
     [[ -f "$manifest" ]] || fail "manifest not found: $manifest"
     while IFS=$'\t' read -r action source target; do
         [[ -z "$action" || "$action" =~ ^[[:space:]]*# ]] && continue
         action="$(xargs <<<"$action")"; source="$(xargs <<<"$source")"; target="$(xargs <<<"$target")"
         case "$action" in
-            dir|file) ensure_symlink "$REPO_ROOT/$source" "$HOME/$target" "" ;;
-            glob)
-                target="${target%/}"
-                for expanded in $REPO_ROOT/$source; do
-                    [[ -e "$expanded" ]] && ensure_symlink "$expanded" "$HOME/$target/$(basename -- "$expanded")" ""
-                done
+            dir|file)
+                [[ -e "$REPO_ROOT/$source" || -L "$REPO_ROOT/$source" ]] || fail "source does not exist: $REPO_ROOT/$source"
+                [[ "$mode" == validate ]] || ensure_symlink "$REPO_ROOT/$source" "$HOME/$target" ""
                 ;;
-            copy) copy_file "$REPO_ROOT/$source" "$HOME/$target" ;;
-            skip) log "Skipping explicit exclusion: $source" ;;
+            glob)
+                matches=()
+                mapfile -t matches < <(compgen -G "$REPO_ROOT/$source" || true)
+                (( ${#matches[@]} )) || fail "glob has no matches: $source"
+                if [[ "$mode" != validate ]]; then
+                    target="${target%/}"
+                    for expanded in "${matches[@]}"; do
+                        [[ -e "$expanded" ]] && ensure_symlink "$expanded" "$HOME/$target/$(basename -- "$expanded")" ""
+                    done
+                fi
+                ;;
+            copy) [[ "$mode" == validate ]] || copy_file "$REPO_ROOT/$source" "$HOME/$target" ;;
+            skip) [[ "$mode" == validate ]] || log "Skipping explicit exclusion: $source" ;;
             *) fail "unknown manifest action: $action" ;;
         esac
     done < "$manifest"
@@ -126,6 +135,7 @@ remove_obsolete_monitor_link() {
 require_omarchy_4
 log "Repo root: $REPO_ROOT"
 (( DRY_RUN )) && log "Mode: DRY-RUN (no user changes)"
-apply_manifest
+process_manifest validate
+process_manifest apply
 remove_obsolete_monitor_link
 log "User dotfiles complete."

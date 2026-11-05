@@ -39,4 +39,24 @@ for kind in matching other file; do
     fi
 done
 
+# A malformed later entry must not leave earlier dotfiles applied.
+for invalid in action missing glob; do
+    home="$tmp/preflight-$invalid/home"
+    repo="$tmp/preflight-$invalid/repo with spaces"
+    mkdir -p "$home" "$repo/omarchy"
+    printf 'source\n' > "$repo/omarchy/source"
+    printf 'original\n' > "$home/target"
+    printf 'file\tomarchy/source\ttarget\n' > "$repo/omarchy/dots-manifest"
+    case "$invalid" in
+        action) printf 'invalid\tomarchy/source\tother\n' >> "$repo/omarchy/dots-manifest" ;;
+        missing) printf 'file\tomarchy/missing\tother\n' >> "$repo/omarchy/dots-manifest" ;;
+        glob) printf 'glob\tomarchy/missing*.lua\tother/\n' >> "$repo/omarchy/dots-manifest" ;;
+    esac
+    if HOME="$home" DOTFILES_ROOT="$repo" PATH="$tmp/bin:$PATH" bash "$script" > "$tmp/output" 2>&1; then
+        fail "invalid $invalid manifest accepted"
+    fi
+    [[ ! -L "$home/target" && "$(<"$home/target")" == original ]] || fail "invalid $invalid manifest changed target"
+    [[ ! -e "$repo/backup" ]] || fail "invalid $invalid manifest created backup"
+done
+
 echo 'setup-dots without monitor plugin cases passed'
