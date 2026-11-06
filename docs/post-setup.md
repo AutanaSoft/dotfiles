@@ -88,45 +88,17 @@ sudo wg show
 
 Replace `wg0` with the interface name from your config file.
 
-## PostgreSQL and Valkey
+## Databases through Docker DB
 
-`./setup --profile omarchy --services` initializes an absent or empty PostgreSQL cluster and
-configures both services. It never creates databases, PostgreSQL roles, or passwords.
+Manage PostgreSQL and Redis instances through Omarchy Docker DB, independently of this repository.
+The Omarchy profile does not install, initialize, configure, or start native database servers;
+`./setup --profile omarchy --services` manages only keyd.
 
-PostgreSQL keeps the Arch-standard socket at `/run/postgresql`. Local socket connections use `peer`;
-TCP connections are restricted to localhost and require SCRAM passwords. Create a role for the
-current system user when needed:
-
-```bash
-sudo -u postgres createuser --login "$(whoami)"
-```
-
-Interactive service setup offers to update the `postgres` role password without exposing it in the
-command line. If that step was declined, configure it safely with `psql`:
-
-```bash
-sudo -u postgres psql --command='\password postgres'
-```
-
-Then verify both transports:
-
-```bash
-PGPASSWORD='choose-a-secret' psql -h 127.0.0.1 -U postgres -c 'SELECT 1;'
-sudo -u postgres psql -h /run/postgresql -d postgres -c 'SELECT 1;'
-```
-
-Valkey listens on loopback TCP port 6379 and `/run/valkey/valkey.sock`. The socket is owned by
-`valkey:valkey` with mode `0770`. In an interactive setup, accept the optional group enrollment,
-then start a new session before using the socket. `newgrp valkey` can open an immediate subshell for
-manual use.
-
-```bash
-valkey-cli -h 127.0.0.1 -p 6379 ping
-valkey-cli -s /run/valkey/valkey.sock ping
-```
-
-Both commands should return `PONG`. Do not expose either service beyond loopback without separately
-reviewing authentication and firewall requirements.
+Removing packages from the profile does not uninstall servers already on a machine. Before retiring
+native PostgreSQL or Valkey, inventory their databases and dependencies, create and verify backups,
+and establish a recovery path. Stop and disable only the identified native services, then remove
+only their server packages. Preserve data directories and configuration; do not remove shared client
+libraries or touch Docker containers and volumes. Data migration is a separate manual operation.
 
 ## Related Files
 

@@ -25,7 +25,7 @@ Empty or negative answers leave a phase disabled.
 | `--dots-only`       | Apply only the manifest and permitted user copies. It cannot combine with optional phases and skips validation.                           |
 | `--deps`            | Validate and install the packages in `omarchy/deps-manifest` in one batch.                                                                |
 | `--fonts`           | Install verified, version-pinned user-local fonts under `$HOME/.local/share/fonts/<family>`; unowned or modified files stop installation. |
-| `--services`        | Configure and enable keyd, plus local PostgreSQL and Valkey services.                                                                     |
+| `--services`        | Configure and enable the keyd service on Omarchy.                                                                                         |
 | `--containers`      | Install Docker Engine on Fedora WSL2. Unsupported by Omarchy.                                                                             |
 | `--locale`          | Install Spanish locale data and set `LANG=es_VE.UTF-8` on Fedora WSL2.                                                                    |
 | `--no-validate`     | Skip the final validation of a `--dots` run.                                                                                              |
@@ -38,24 +38,13 @@ Fedora WSL2 additionally offers `containers` and `locale`. In non-interactive mo
 phase is inferred. A request such as `--profile omarchy --deps --dry-run` runs only the dependency
 phase; it does not apply dotfiles or validation.
 
-For Omarchy, `--services` processes keyd, PostgreSQL, and Valkey in that order. It stops at the
-first failure; earlier services are not automatically rolled back. Each helper attempts its own
-configuration and service-state recovery for applicable failures, but recovery is limited to that
-helper and may not reverse every effect.
+For Omarchy, `--services` installs the tracked keyd configuration and enables keyd. It retries a
+failed keyd reload up to ten times with a short delay for service startup; persistent failure
+restores the prior configuration and service state where possible.
 
-The phase installs the tracked keyd configuration and enables keyd. It retries a failed keyd reload
-up to ten times with a short delay for service startup; persistent failure restores the prior
-configuration and service state. The phase initializes PostgreSQL only when `/var/lib/postgres/data`
-is absent or empty, and configures peer authentication for local sockets and SCRAM authentication
-for localhost TCP. Interactive runs can optionally update the `postgres` role password; dry-run and
-non-interactive runs never ask for or change it. The phase configures Valkey on loopback TCP port
-6379 and `/run/valkey/valkey.sock` with group `valkey` and mode `0770`. Interactive runs can add the
-current user to that group; `--non-interactive` never changes group membership. If installing either
-service configuration fails after writing part of its destination, setup restores the previous file
-from its backup or removes a newly created partial file, then restores the service's initial
-enabled/active state where possible; recovery failures are reported. Valkey readiness also requires
-`ss` to succeed and report at least one listener, with every listener bound to loopback; failed or
-empty inspection is rejected.
+The Omarchy profile no longer installs or configures native PostgreSQL or Valkey. Manage PostgreSQL
+and Redis instances separately through Omarchy Docker DB. Running `--deps` or `--services` does not
+uninstall previously installed servers or migrate their data.
 
 ## Omarchy cleanup utility
 
@@ -167,10 +156,8 @@ the complete phase without `sudo`, downloads, writes, or service changes:
 - `omarchy/deps-manifest` — the package manifest consumed by the dependency phase.
 - `omarchy/utils/bash/setup-deps` — dependency manifest parser and installer.
 - `omarchy/utils/bash/setup-fonts` — user-local Nerd Font installer.
-- `omarchy/utils/bash/setup-services` — ordered input, PostgreSQL, and Valkey service orchestrator.
+- `omarchy/utils/bash/setup-services` — keyd service orchestrator.
 - `omarchy/utils/bash/setup-services-input` — keyd configuration and service setup.
-- `omarchy/utils/bash/setup-services-postgresql` — local PostgreSQL cluster and authentication.
-- `omarchy/utils/bash/setup-services-valkey` — local TCP and Unix-socket Valkey configuration.
 - `omarchy/utils/bash/setup-validate` — Omarchy 4, Hyprland, and Herdr configuration validation.
 - `fedora-wsl2/utils/bash/setup-fedora-wsl2` — Fedora WSL2 phase orchestrator.
 - `fedora-wsl2/utils/bash/setup-dots` — Mise bootstrap, dotfiles, and tools.

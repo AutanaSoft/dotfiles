@@ -40,8 +40,8 @@ Options:
   --help, -h         Show this help.
 
 Omarchy services:
-  --services runs keyd, PostgreSQL, then Valkey and stops at the first failure.
-  Earlier services are not rolled back automatically; recovery is helper-local.
+  --services configures and enables/reloads keyd.
+  Configuration and service-state recovery is handled by the keyd helper.
 
 Examples:
   $0 --dots
@@ -144,7 +144,7 @@ if (( DOTS )); then
                         if [[ "$PROFILE" == fedora-wsl2 ]]; then
                             prompt="Run services? This uses sudo, configures PostgreSQL and Valkey, and enables/restarts both services. [y/N] "
                         else
-                            prompt="Run services? This uses sudo, configures and enables/reloads keyd, PostgreSQL, and Valkey. [y/N] "
+                            prompt="Run services? This uses sudo, configures and enables/reloads keyd. [y/N] "
                         fi
                         ;;
                     containers) prompt="Run containers? This uses sudo and installs Docker Engine with root-equivalent group access. [y/N] " ;;

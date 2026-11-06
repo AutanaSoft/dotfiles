@@ -10,7 +10,5 @@ package	hunspell-en_us
 package	hunspell-es_any
 package	trash-cli
 package	keyd
-package	postgresql
-package	valkey
 package	discord
 # package	anydesk-bin

@@ -21,6 +21,7 @@ run_suite() {
     bash "$ROOT_DIR/tests/omarchy/setup-dots-monitor-plugin.sh"
     bash "$ROOT_DIR/tests/omarchy/setup-dots-symlink-backup.sh"
     bash "$ROOT_DIR/tests/omarchy/setup-services-recovery.sh"
+    bash "$ROOT_DIR/tests/omarchy/setup-native-db-retirement.sh"
     bash "$ROOT_DIR/tests/omarchy/setup-fonts-integrity.sh"
     bash "$ROOT_DIR/tests/omarchy/cleanup-contract.sh"
   fi

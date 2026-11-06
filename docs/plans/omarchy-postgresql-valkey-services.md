@@ -1,5 +1,9 @@
 # Servicios PostgreSQL y Valkey en Omarchy
 
+> **Plan histórico, sustituido:** el perfil Omarchy ya no instala ni configura PostgreSQL o Valkey
+> locales. `--services` conserva únicamente keyd; las instancias PostgreSQL y Redis se gestionan por
+> separado mediante Docker DB. El contenido siguiente documenta el diseño anterior.
+
 ## Objetivo
 
 Extender `./setup --profile omarchy --services` para configurar y validar PostgreSQL y Valkey,
