@@ -4,5 +4,5 @@ pnpm = "latest"
 prettier = "latest"
 markdownlint-cli2 = "latest"
 codegraph = "latest"
-"npm:@nestjs/cli" = "latest"
-gentle-ai = "latest"
+"npm:@nestjs/cli" = { version = "latest", lazy = true, minimum_release_age = "0s" }
+gentle-ai = { version = "latest", minimum_release_age = "0s" }
