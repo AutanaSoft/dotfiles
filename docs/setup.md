@@ -45,9 +45,11 @@ connectivity before `wg-quick@wg0` starts and retries failures every 15 seconds.
 0600 and enables `wg-quick@wg0.service` for boot; it never starts or restarts the VPN during setup.
 With no config, it reports the skip and leaves any existing enabled/disabled state unchanged. An
 identical existing drop-in is reused; differing local content is preserved and reported as an error.
-Run `--deps` first to install the declared WireGuard prerequisites: `--services` does not install
-packages implicitly. Keyd reload retries up to ten times with a short delay for service startup;
-persistent failure restores its prior configuration and service state where possible.
+Systemd is reloaded after installation or identical reuse, before enablement, so a rerun retries a
+previously failed reload. Run `--deps` first to install the declared WireGuard prerequisites:
+`--services` does not install packages implicitly. Keyd reload retries up to ten times with a short
+delay for service startup; persistent failure restores its prior configuration and service state
+where possible.
 
 The Omarchy profile no longer installs or configures native PostgreSQL or Valkey. Manage PostgreSQL
 and Redis instances separately through Omarchy Docker DB. Running `--deps` or `--services` does not

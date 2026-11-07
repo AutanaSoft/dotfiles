@@ -36,8 +36,13 @@ for arg in "$@"; do
   case "$arg" in
     /etc/wireguard/wg0.conf) arg="${WG_TEST_ROOT:?}/etc/wireguard/wg0.conf" ;;
     /etc/keyd/default.conf*) arg="${WG_TEST_ROOT:?}/etc/keyd/default.conf${arg#/etc/keyd/default.conf}" ;;
+    /etc/systemd/system/wg-quick@wg0.service.d) arg="${WG_TEST_ROOT:?}/etc/systemd/system/wg-quick@wg0.service.d" ;;
     /etc/systemd/system/wg-quick@wg0.service.d/90-networkmanager-connectivity.conf)
       arg="${WG_TEST_ROOT:?}/etc/systemd/system/wg-quick@wg0.service.d/90-networkmanager-connectivity.conf"
+      ;;
+    /etc/*)
+      printf 'unmapped privileged /etc argument: %s\n' "$arg" >&2
+      exit 95
       ;;
   esac
   args+=("$arg")
@@ -50,7 +55,17 @@ cat >"$BIN/systemctl" <<'EOF'
 set -euo pipefail
 printf 'systemctl %s\n' "$*" >>"${WG_CALL_LOG:?}"
 case "$1" in
-  daemon-reload) ;;
+  daemon-reload)
+    count_file="${WG_SYSTEM_STATE:?}/reload-count"
+    count=0
+    [[ -f "$count_file" ]] && count="$(<"$count_file")"
+    count=$((count + 1))
+    printf '%s\n' "$count" >"$count_file"
+    if (( count <= ${WG_RELOAD_FAILURES:-0} )); then
+      printf 'simulated daemon-reload failure\n' >&2
+      exit 96
+    fi
+    ;;
   is-enabled|is-active)
     operation="$1"
     shift
@@ -105,6 +120,7 @@ run_helper() {
   local status
   set +e
   PATH="$BIN:$PATH" DOTFILES_ROOT="$ROOT_DIR" WG_CALL_LOG="$CALL_LOG" \
+    WG_RELOAD_FAILURES="${WG_RELOAD_FAILURES:-0}" \
     "$WIREGUARD_SETUP" "$@" >"$TEST_STDOUT" 2>"$TEST_STDERR"
   status=$?
   set -e
@@ -145,6 +161,67 @@ assert_no_network_operations() {
     "$(<"$CALL_LOG")" != *'systemctl enable --now wg-quick@wg0.service'* && \
     "$(<"$CALL_LOG")" != *'sudo wg-quick '* ]] || fail "WireGuard setup attempted a network or immediate service operation"
 }
+
+run_reload_retry_case() {
+  new_case reload-retry
+  mkdir -p "$WG_TEST_ROOT/etc/wireguard"
+  printf 'reload-failure-secret-content\n' >"$WG_TEST_ROOT/etc/wireguard/wg0.conf"
+  chmod 644 "$WG_TEST_ROOT/etc/wireguard/wg0.conf"
+  : >"$CALL_LOG"
+  export WG_RELOAD_FAILURES=1
+  capture_helper
+  assert_output 1 $'[setup-services-wireguard] Installing the non-secret WireGuard systemd drop-in\n' $'simulated daemon-reload failure\n[setup-services-wireguard] ERROR: could not reload systemd after installing /etc/systemd/system/wg-quick@wg0.service.d/90-networkmanager-connectivity.conf\n'
+  [[ "$(stat -c '%a' "$WG_TEST_ROOT/etc/wireguard/wg0.conf")" == 644 && "$(<"$WG_TEST_ROOT/etc/wireguard/wg0.conf")" == 'reload-failure-secret-content' ]] || fail "first reload failure changed config content or permissions"
+  [[ "$(<"$CALL_LOG")" != *'systemctl enable '* ]] || fail "first reload failure enabled the unit"
+  [[ "$(<"$CALL_LOG")" != *'sudo chown root:root '* && "$(<"$CALL_LOG")" != *'sudo chmod 600 '* ]] || fail "first reload failure mutated config ownership or mode"
+
+  capture_helper
+  assert_output 0 $'[setup-services-wireguard] Reusing identical systemd drop-in at /etc/systemd/system/wg-quick@wg0.service.d/90-networkmanager-connectivity.conf\n[setup-services-wireguard] Enabling wg-quick@wg0.service for boot without starting the VPN\n[setup-services-wireguard] WireGuard boot configuration completed successfully\n' ''
+  [[ "$(<"$WG_SYSTEM_STATE/reload-count")" == 2 ]] || fail "second invocation did not retry daemon-reload"
+  [[ "$(<"$CALL_LOG")" == *'systemctl enable wg-quick@wg0.service'* ]] || fail "unit was not enabled after a successful retry"
+  [[ "$(stat -c '%a' "$WG_TEST_ROOT/etc/wireguard/wg0.conf")" == 600 && "$(<"$WG_TEST_ROOT/etc/wireguard/wg0.conf")" == 'reload-failure-secret-content' ]] || fail "successful retry did not preserve and secure the config"
+  assert_no_network_operations
+  unset WG_RELOAD_FAILURES
+}
+
+run_repeated_reload_failure_case() {
+  new_case repeated-reload-failure
+  mkdir -p "$WG_TEST_ROOT/etc/wireguard"
+  printf 'repeated-reload-secret-content\n' >"$WG_TEST_ROOT/etc/wireguard/wg0.conf"
+  chmod 644 "$WG_TEST_ROOT/etc/wireguard/wg0.conf"
+  : >"$CALL_LOG"
+  export WG_RELOAD_FAILURES=2
+  capture_helper
+  assert_output 1 $'[setup-services-wireguard] Installing the non-secret WireGuard systemd drop-in\n' $'simulated daemon-reload failure\n[setup-services-wireguard] ERROR: could not reload systemd after installing /etc/systemd/system/wg-quick@wg0.service.d/90-networkmanager-connectivity.conf\n'
+  capture_helper
+  assert_output 1 $'[setup-services-wireguard] Reusing identical systemd drop-in at /etc/systemd/system/wg-quick@wg0.service.d/90-networkmanager-connectivity.conf\n' $'simulated daemon-reload failure\n[setup-services-wireguard] ERROR: could not reload systemd after reusing /etc/systemd/system/wg-quick@wg0.service.d/90-networkmanager-connectivity.conf\n'
+  [[ "$(<"$WG_SYSTEM_STATE/reload-count")" == 2 ]] || fail "repeated failure did not attempt both reloads"
+  [[ "$(<"$CALL_LOG")" != *'systemctl enable '* ]] || fail "repeated reload failure enabled the unit"
+  [[ "$(<"$CALL_LOG")" != *'sudo chown root:root '* && "$(<"$CALL_LOG")" != *'sudo chmod 600 '* ]] || fail "repeated reload failure mutated config ownership or mode"
+  [[ "$(stat -c '%a' "$WG_TEST_ROOT/etc/wireguard/wg0.conf")" == 644 && "$(<"$WG_TEST_ROOT/etc/wireguard/wg0.conf")" == 'repeated-reload-secret-content' ]] || fail "reload failure changed config content or permissions"
+  assert_no_network_operations
+  unset WG_RELOAD_FAILURES
+}
+
+run_symlinked_dropin_directory_case() {
+  new_case symlinked-dropin-directory
+  mkdir -p "$WG_TEST_ROOT/etc/systemd/system" "$WG_TEST_ROOT/dropin-redirect"
+  ln -s "$WG_TEST_ROOT/dropin-redirect" "$WG_TEST_ROOT/etc/systemd/system/wg-quick@wg0.service.d"
+  : >"$CALL_LOG"
+  capture_helper
+  assert_output 1 '' $'[setup-services-wireguard] ERROR: /etc/systemd/system/wg-quick@wg0.service.d is a symlink; refusing to install through it\n'
+  [[ -L "$WG_TEST_ROOT/etc/systemd/system/wg-quick@wg0.service.d" ]] || fail "drop-in directory symlink was replaced"
+  [[ ! -e "$WG_TEST_ROOT/dropin-redirect/90-networkmanager-connectivity.conf" ]] || fail "drop-in was installed through the symlink"
+  [[ "$(<"$CALL_LOG")" != *'sudo install '* && "$(<"$CALL_LOG")" != *'systemctl '* ]] || fail "unsafe drop-in directory caused mutation or reload"
+}
+
+case "${WG_TEST_ONLY:-all}" in
+  reload-retry) run_reload_retry_case; printf 'PASS: reload retry contracts\n'; exit 0 ;;
+  reload-failure) run_repeated_reload_failure_case; printf 'PASS: repeated reload failure contract\n'; exit 0 ;;
+  symlink-directory) run_symlinked_dropin_directory_case; printf 'PASS: drop-in directory safety contract\n'; exit 0 ;;
+  all) ;;
+  *) fail "unknown WG_TEST_ONLY case: $WG_TEST_ONLY" ;;
+esac
 
 # Public dry-run previews the WireGuard phase without calling sudo/systemctl or writing state.
 new_case dry-run
@@ -195,7 +272,7 @@ reload_count="$(grep -c '^systemctl daemon-reload$' "$CALL_LOG" || true)"
 capture_helper
 assert_output 0 $'[setup-services-wireguard] Reusing identical systemd drop-in at /etc/systemd/system/wg-quick@wg0.service.d/90-networkmanager-connectivity.conf\n[setup-services-wireguard] Enabling wg-quick@wg0.service for boot without starting the VPN\n[setup-services-wireguard] WireGuard boot configuration completed successfully\n' ''
 [[ "$(grep -c '^sudo install -D -m 644 -- .*90-networkmanager-connectivity.conf$' "$CALL_LOG" || true)" == "$install_count" ]] || fail "idempotent run reinstalled the drop-in"
-[[ "$(grep -c '^systemctl daemon-reload$' "$CALL_LOG" || true)" == "$reload_count" ]] || fail "idempotent run unnecessarily reloaded systemd"
+[[ "$(grep -c '^systemctl daemon-reload$' "$CALL_LOG" || true)" == "$((reload_count + 1))" ]] || fail "idempotent run did not reload systemd after reusing the drop-in"
 [[ "$(<"$WG_TEST_ROOT/etc/wireguard/wg0.conf")" == 'private-key-content-must-not-change' ]] || fail "idempotent run changed wg0.conf content"
 assert_no_network_operations
 
@@ -206,7 +283,7 @@ cp "$DROPIN_SOURCE" "$WG_TEST_ROOT/etc/systemd/system/wg-quick@wg0.service.d/90-
 : >"$CALL_LOG"
 capture_helper
 assert_output 0 $'[setup-services-wireguard] Reusing identical systemd drop-in at /etc/systemd/system/wg-quick@wg0.service.d/90-networkmanager-connectivity.conf\n[setup-services-wireguard] /etc/wireguard/wg0.conf is not found; not enabling or disabling wg-quick@wg0.service\n' ''
-[[ "$(<"$CALL_LOG")" != *'sudo install '* && "$(<"$CALL_LOG")" != *'systemctl daemon-reload'* ]] || fail "identical drop-in was rewritten or needlessly reloaded"
+[[ "$(<"$CALL_LOG")" != *'sudo install '* && "$(<"$CALL_LOG")" == *'systemctl daemon-reload'* ]] || fail "identical drop-in was rewritten or not reloaded"
 
 new_case conflicting-dropin
 mkdir -p "$WG_TEST_ROOT/etc/systemd/system/wg-quick@wg0.service.d"
@@ -258,5 +335,9 @@ set -e
 RESULT_STATUS="$prerequisite_status"
 assert_output 1 '' "[setup-services-wireguard] ERROR: required command 'wg' is not on PATH; install its package before --services"$'\n'
 [[ ! -s "$CALL_LOG" ]] || fail "missing prerequisite invoked privilege or service commands"
+
+run_reload_retry_case
+run_repeated_reload_failure_case
+run_symlinked_dropin_directory_case
 
 printf 'PASS: Omarchy WireGuard startup contracts\n'

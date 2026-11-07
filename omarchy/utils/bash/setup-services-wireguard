@@ -71,12 +71,14 @@ esac
 if ! dropin_state="$(inspect_path "$dropin")"; then
     fail "could not inspect $dropin safely"
 fi
+dropin_action=installing
 case "$dropin_state" in
     absent) ;;
     regular)
         if ! sudo cmp -s -- "$source" "$dropin"; then
             fail "existing systemd drop-in conflicts with the tracked file; preserving $dropin"
         fi
+        dropin_action=reusing
         log "Reusing identical systemd drop-in at $dropin"
         ;;
     symlink) fail "$dropin is a symlink; refusing to replace it" ;;
@@ -86,8 +88,8 @@ esac
 if [[ "$dropin_state" == absent ]]; then
     log "Installing the non-secret WireGuard systemd drop-in"
     sudo install -D -m 644 -- "$source" "$dropin" || fail "could not install $dropin"
-    sudo systemctl daemon-reload || fail "could not reload systemd after installing $dropin"
 fi
+sudo systemctl daemon-reload || fail "could not reload systemd after $dropin_action $dropin"
 
 if [[ "$config_state" == absent ]]; then
     log "$config is not found; not enabling or disabling $unit"

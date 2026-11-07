@@ -81,7 +81,8 @@ sudo install -m 600 /path/to/wg0.conf /etc/wireguard/wg0.conf
 ```
 
 `--services` enforces root ownership and mode `0600`, installs the tracked non-secret systemd
-connectivity/retry drop-in, reloads systemd when that file is newly installed, and enables
+connectivity/retry drop-in, then reloads systemd after installing it or verifying an identical
+existing copy. Reruns therefore retry a previously failed reload before enabling
 `wg-quick@wg0.service` for boot. It does not start, stop, or restart WireGuard. If the config is
 absent, setup reports the skip and leaves any existing unit enablement state unchanged; the
 non-secret drop-in may still be installed. Rerun `--services` after placing the config to enable
