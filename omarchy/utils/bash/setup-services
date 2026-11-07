@@ -10,8 +10,9 @@ usage() {
     cat <<EOF2
 Usage: $0 [--dry-run] [--non-interactive] [--help]
 
-Configure the Omarchy keyd service.
-Configuration and service-state recovery is handled by the keyd helper.
+Configure keyd and the Omarchy WireGuard boot service.
+WireGuard is enabled only when /etc/wireguard/wg0.conf is a regular, non-symlink file;
+the tunnel is never started by this helper.
 EOF2
 }
 fail() { echo "[setup-services] ERROR: $*" >&2; exit 1; }
@@ -28,7 +29,7 @@ done
 args=()
 (( DRY_RUN )) && args+=(--dry-run)
 (( NON_INTERACTIVE )) && args+=(--non-interactive)
-for helper in setup-services-input; do
+for helper in setup-services-input setup-services-wireguard; do
     path="$REPO_ROOT/omarchy/utils/bash/$helper"
     [[ -x "$path" ]] || fail "helper is missing or not executable: $path"
     "$path" "${args[@]}"

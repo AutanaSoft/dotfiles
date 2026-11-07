@@ -30,6 +30,7 @@ assert_status 2 "$SETUP" --profile omarchy --no-validate --dry-run
 assert_status 2 "$SETUP" --profile omarchy --locale --dry-run
 help_output="$("$SETUP" --help)"
 [[ "$help_output" == *"--locale"*"Install the Fedora WSL2 locale."* ]] || fail "shared help does not identify --locale as Fedora WSL2-only"
+[[ "$help_output" == *"keyd"* && "$help_output" == *"WireGuard"* && "$help_output" == *"never starts or restarts the VPN"* ]] || fail "shared help does not explain Omarchy WireGuard boot behavior"
 [[ ! -e "$ROOT_DIR/omarchy/utils/bash/setup-locale" ]] || fail "obsolete Omarchy locale helper still exists"
 
 omarchy_3_bin="$TEST_TMP_DIR/omarchy-3-bin"
@@ -50,7 +51,7 @@ deps_output="$("$SETUP" --profile omarchy --deps --non-interactive --dry-run)"
 
 dots_output="$("$SETUP" --profile omarchy --dots-only --non-interactive --dry-run)"
 [[ "$dots_output" == *"[setup-dots]"* ]] || fail "--dots-only did not dispatch to setup-dots"
-for excluded in setup-deps setup-fonts setup-services setup-locale setup-validate; do
+for excluded in setup-deps setup-fonts setup-services setup-locale setup-services-wireguard setup-validate; do
   [[ "$dots_output" != *"[$excluded]"* ]] || fail "--dots-only dispatched excluded phase $excluded"
 done
 [[ "$dots_output" == *"hyprland.lua"* ]] || fail "--dots-only did not preview the Omarchy 4 Hyprland entry point"
@@ -123,7 +124,7 @@ done < "$ROOT_DIR/omarchy/dots-manifest"
 
 # Interactive consent must describe every service in the Omarchy phase.
 prompt_output="$(script -q -c "$SETUP --profile omarchy --dots --dry-run" /dev/null <<< $'n\nn\nn\n' 2>&1)"
-[[ "$prompt_output" == *"keyd"* && "$prompt_output" != *"PostgreSQL"* && "$prompt_output" != *"Valkey"* ]] || fail "Omarchy services consent prompt does not describe keyd-only setup"
+[[ "$prompt_output" == *"keyd"* && "$prompt_output" == *"WireGuard"* && "$prompt_output" != *"PostgreSQL"* && "$prompt_output" != *"Valkey"* ]] || fail "Omarchy services consent prompt does not describe keyd and WireGuard setup without native databases"
 [[ "$prompt_output" != *"ratbagd"* ]] || fail "Omarchy services consent prompt still names ratbagd"
 [[ "$prompt_output" != *"[setup-services]"* ]] || fail "declined service consent still dispatched services"
 
@@ -131,7 +132,7 @@ prompt_output="$(script -q -c "$SETUP --profile omarchy --dots --dry-run" /dev/n
 service_root="$TEST_TMP_DIR/services-root"
 mkdir -p "$service_root/omarchy/utils/bash"
 service_log="$TEST_TMP_DIR/services.log"
-for helper in setup-services-input; do
+for helper in setup-services-input setup-services-wireguard; do
   cat >"$service_root/omarchy/utils/bash/$helper" <<EOF
 #!/usr/bin/env bash
 printf '%s %s\\n' '$helper' "\$*" >>'$service_log'
@@ -139,7 +140,7 @@ EOF
   chmod +x "$service_root/omarchy/utils/bash/$helper"
 done
 DOTFILES_ROOT="$service_root" "$ROOT_DIR/omarchy/utils/bash/setup-services" --dry-run --non-interactive
-expected_services='setup-services-input --dry-run --non-interactive'
+expected_services=$'setup-services-input --dry-run --non-interactive\nsetup-services-wireguard --dry-run --non-interactive'
 [[ "$(<"$service_log")" == "$expected_services" ]] || fail "service helpers were not dispatched in order with flags"
 
 # keyd readiness and rollback contracts use shims and a temporary target; no host service is touched.

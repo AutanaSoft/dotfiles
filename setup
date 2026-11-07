@@ -40,8 +40,9 @@ Options:
   --help, -h         Show this help.
 
 Omarchy services:
-  --services configures and enables/reloads keyd.
-  Configuration and service-state recovery is handled by the keyd helper.
+  --services configures keyd and the WireGuard boot drop-in.
+  It enables wg-quick@wg0 only when /etc/wireguard/wg0.conf is a safe regular file;
+  it never starts or restarts the VPN. Run --deps for required tools.
 
 Examples:
   $0 --dots
@@ -144,7 +145,7 @@ if (( DOTS )); then
                         if [[ "$PROFILE" == fedora-wsl2 ]]; then
                             prompt="Run services? This uses sudo, configures PostgreSQL and Valkey, and enables/restarts both services. [y/N] "
                         else
-                            prompt="Run services? This uses sudo, configures and enables/reloads keyd. [y/N] "
+                            prompt="Run services? This uses sudo, configures keyd, and prepares WireGuard for boot when /etc/wireguard/wg0.conf exists. [y/N] "
                         fi
                         ;;
                     containers) prompt="Run containers? This uses sudo and installs Docker Engine with root-equivalent group access. [y/N] " ;;

@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+REPO_ROOT="${DOTFILES_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)}"
+DRY_RUN="${DOTFILES_DRY_RUN:-0}"
+
+usage() {
+    cat <<EOF
+Usage: $0 [--dry-run] [--non-interactive] [--help]
+
+Install the Omarchy WireGuard boot drop-in and enable wg-quick@wg0.service
+only when /etc/wireguard/wg0.conf is a regular, non-symlink file. This helper
+never starts or restarts the VPN. Run --deps first for its package prerequisites.
+EOF
+}
+log() { echo "[setup-services-wireguard] $*"; }
+fail() { echo "[setup-services-wireguard] ERROR: $*" >&2; exit 1; }
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dry-run) DRY_RUN=1; shift ;;
+        --non-interactive) shift ;;
+        --help|-h) usage; exit 0 ;;
+        *) fail "unknown option: $1" ;;
+    esac
+done
+
+source="$REPO_ROOT/omarchy/etc/systemd/system/wg-quick@wg0.service.d/90-networkmanager-connectivity.conf"
+config=/etc/wireguard/wg0.conf
+dropin_dir=/etc/systemd/system/wg-quick@wg0.service.d
+dropin="$dropin_dir/90-networkmanager-connectivity.conf"
+unit=wg-quick@wg0.service
+[[ -f "$source" ]] || fail "WireGuard systemd drop-in source not found: $source"
+
+if (( DRY_RUN )); then
+    log "[dry-run] would install or reuse the non-secret WireGuard systemd drop-in at $dropin"
+    log "[dry-run] would secure $config to root:root mode 0600 only if it is a regular, non-symlink file"
+    log "[dry-run] would enable $unit for boot only when $config exists as a regular, non-symlink file"
+    log "[dry-run] would not start, stop, or restart the VPN"
+    exit 0
+fi
+
+for required in sudo systemctl wg wg-quick resolvconf nmcli timeout; do
+    command -v "$required" >/dev/null 2>&1 || fail "required command '$required' is not on PATH; install its package before --services"
+done
+
+inspect_path() {
+    local path="$1"
+    sudo bash -c 'if [[ -L "$1" ]]; then printf symlink; elif [[ -e "$1" ]]; then if [[ -f "$1" ]]; then printf regular; elif [[ -d "$1" ]]; then printf directory; else printf unsafe; fi; else printf absent; fi' _ "$path"
+}
+
+if ! config_state="$(inspect_path "$config")"; then
+    fail "could not inspect $config safely"
+fi
+case "$config_state" in
+    absent|regular) ;;
+    symlink) fail "$config is a symlink; refusing to follow it or enable $unit" ;;
+    *) fail "$config is not a regular file; refusing to change it or enable $unit" ;;
+esac
+
+if ! dropin_dir_state="$(inspect_path "$dropin_dir")"; then
+    fail "could not inspect $dropin_dir safely"
+fi
+case "$dropin_dir_state" in
+    absent|directory) ;;
+    symlink) fail "$dropin_dir is a symlink; refusing to install through it" ;;
+    *) fail "$dropin_dir is not a directory; refusing to install the drop-in" ;;
+esac
+
+if ! dropin_state="$(inspect_path "$dropin")"; then
+    fail "could not inspect $dropin safely"
+fi
+case "$dropin_state" in
+    absent) ;;
+    regular)
+        if ! sudo cmp -s -- "$source" "$dropin"; then
+            fail "existing systemd drop-in conflicts with the tracked file; preserving $dropin"
+        fi
+        log "Reusing identical systemd drop-in at $dropin"
+        ;;
+    symlink) fail "$dropin is a symlink; refusing to replace it" ;;
+    *) fail "$dropin is not a regular file; refusing to replace it" ;;
+esac
+
+if [[ "$dropin_state" == absent ]]; then
+    log "Installing the non-secret WireGuard systemd drop-in"
+    sudo install -D -m 644 -- "$source" "$dropin" || fail "could not install $dropin"
+    sudo systemctl daemon-reload || fail "could not reload systemd after installing $dropin"
+fi
+
+if [[ "$config_state" == absent ]]; then
+    log "$config is not found; not enabling or disabling $unit"
+    exit 0
+fi
+
+sudo chown root:root -- "$config" || fail "could not set root ownership on $config"
+sudo chmod 600 -- "$config" || fail "could not set mode 0600 on $config"
+log "Enabling $unit for boot without starting the VPN"
+sudo systemctl enable "$unit" || fail "could not enable $unit"
+log "WireGuard boot configuration completed successfully"

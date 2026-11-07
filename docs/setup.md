@@ -18,29 +18,36 @@ Empty or negative answers leave a phase disabled.
 
 ## CLI contract
 
-| Flag                | Meaning                                                                                                                                   |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `--profile omarchy` | Select the implemented profile. Interactive runs offer `omarchy` when omitted.                                                            |
-| `--dots`            | Apply dotfiles, ask interactively about optional phases, then validate unless `--no-validate` is used.                                    |
-| `--dots-only`       | Apply only the manifest and permitted user copies. It cannot combine with optional phases and skips validation.                           |
-| `--deps`            | Validate and install the packages in `omarchy/deps-manifest` in one batch.                                                                |
-| `--fonts`           | Install verified, version-pinned user-local fonts under `$HOME/.local/share/fonts/<family>`; unowned or modified files stop installation. |
-| `--services`        | Configure and enable the keyd service on Omarchy.                                                                                         |
-| `--containers`      | Install Docker Engine on Fedora WSL2. Unsupported by Omarchy.                                                                             |
-| `--locale`          | Install Spanish locale data and set `LANG=es_VE.UTF-8` on Fedora WSL2.                                                                    |
-| `--no-validate`     | Skip the final validation of a `--dots` run.                                                                                              |
-| `--non-interactive` | Require `--profile`, run only explicitly declared phases, and enable DNF automatic confirmation for Fedora mutations.                     |
-| `--dry-run`         | Show actions without downloads, writes, sudo, DNF, service changes, or graphical changes.                                                 |
-| `--help`, `-h`      | Show usage.                                                                                                                               |
+| Flag                | Meaning                                                                                                                                                  |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--profile omarchy` | Select the implemented profile. Interactive runs offer `omarchy` when omitted.                                                                           |
+| `--dots`            | Apply dotfiles, ask interactively about optional phases, then validate unless `--no-validate` is used.                                                   |
+| `--dots-only`       | Apply only the manifest and permitted user copies. It cannot combine with optional phases and skips validation.                                          |
+| `--deps`            | Validate and install the packages in `omarchy/deps-manifest` in one batch.                                                                               |
+| `--fonts`           | Install verified, version-pinned user-local fonts under `$HOME/.local/share/fonts/<family>`; unowned or modified files stop installation.                |
+| `--services`        | Configure keyd and prepare the WireGuard boot unit on Omarchy; `wg-quick@wg0` is enabled only when its safe config exists and is never started by setup. |
+| `--containers`      | Install Docker Engine on Fedora WSL2. Unsupported by Omarchy.                                                                                            |
+| `--locale`          | Install Spanish locale data and set `LANG=es_VE.UTF-8` on Fedora WSL2.                                                                                   |
+| `--no-validate`     | Skip the final validation of a `--dots` run.                                                                                                             |
+| `--non-interactive` | Require `--profile`, run only explicitly declared phases, and enable DNF automatic confirmation for Fedora mutations.                                    |
+| `--dry-run`         | Show actions without downloads, writes, sudo, DNF, service changes, or graphical changes.                                                                |
+| `--help`, `-h`      | Show usage.                                                                                                                                              |
 
 Without `--non-interactive`, Omarchy `--dots` asks separately about `deps`, `fonts`, and `services`;
 Fedora WSL2 additionally offers `containers` and `locale`. In non-interactive mode, no optional
 phase is inferred. A request such as `--profile omarchy --deps --dry-run` runs only the dependency
 phase; it does not apply dotfiles or validation.
 
-For Omarchy, `--services` installs the tracked keyd configuration and enables keyd. It retries a
-failed keyd reload up to ten times with a short delay for service startup; persistent failure
-restores the prior configuration and service state where possible.
+For Omarchy, `--services` installs the tracked keyd configuration, enables keyd, and installs the
+non-secret WireGuard systemd drop-in. The drop-in checks that NetworkManager reports full
+connectivity before `wg-quick@wg0` starts and retries failures every 15 seconds. If
+`/etc/wireguard/wg0.conf` is a regular, non-symlink file, setup enforces root ownership and mode
+0600 and enables `wg-quick@wg0.service` for boot; it never starts or restarts the VPN during setup.
+With no config, it reports the skip and leaves any existing enabled/disabled state unchanged. An
+identical existing drop-in is reused; differing local content is preserved and reported as an error.
+Run `--deps` first to install the declared WireGuard prerequisites: `--services` does not install
+packages implicitly. Keyd reload retries up to ten times with a short delay for service startup;
+persistent failure restores its prior configuration and service state where possible.
 
 The Omarchy profile no longer installs or configures native PostgreSQL or Valkey. Manage PostgreSQL
 and Redis instances separately through Omarchy Docker DB. Running `--deps` or `--services` does not
@@ -124,7 +131,7 @@ the complete phase without `sudo`, downloads, writes, or service changes:
 - `setup-dots` owns only user configuration, including LazyVim, the manifest, backups, symlinks,
   Mise, and Mise-managed tools.
 - `setup-deps`, `setup-fonts`, `setup-containers`, `setup-services`, `setup-locale`, and
-  `setup-validate` each own one phase.
+  `setup-validate` each own one phase. Omarchy `setup-services` coordinates keyd and WireGuard.
 - `--dry-run` never invokes `sudo`, DNF, package downloads, `fc-cache`, service management, or
   Hyprland commands.
 - Existing Omarchy dotfile targets, including distinct or dangling destination symlinks, are moved
@@ -162,8 +169,11 @@ the complete phase without `sudo`, downloads, writes, or service changes:
 - `omarchy/deps-manifest` — the package manifest consumed by the dependency phase.
 - `omarchy/utils/bash/setup-deps` — dependency manifest parser and installer.
 - `omarchy/utils/bash/setup-fonts` — user-local Nerd Font installer.
-- `omarchy/utils/bash/setup-services` — keyd service orchestrator.
+- `omarchy/utils/bash/setup-services` — Omarchy service orchestrator.
 - `omarchy/utils/bash/setup-services-input` — keyd configuration and service setup.
+- `omarchy/utils/bash/setup-services-wireguard` — WireGuard config safety and boot enablement.
+- `omarchy/etc/systemd/system/wg-quick@wg0.service.d/90-networkmanager-connectivity.conf` —
+  connectivity check and retry policy.
 - `omarchy/utils/bash/setup-validate` — Omarchy 4, Hyprland, and Herdr configuration validation.
 - `fedora-wsl2/utils/bash/setup-fedora-wsl2` — Fedora WSL2 phase orchestrator.
 - `fedora-wsl2/utils/bash/setup-dots` — Mise bootstrap, dotfiles, and tools.

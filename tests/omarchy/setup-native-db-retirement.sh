@@ -34,7 +34,7 @@ only_keyd_services() {
   export RETIREMENT_LOG="$TEST_TMP_DIR/service-calls"
   : >"$RETIREMENT_LOG"
   local helper
-  for helper in setup-services-input setup-services-postgresql setup-services-valkey; do
+  for helper in setup-services-input setup-services-wireguard setup-services-postgresql setup-services-valkey; do
     printf '#!/usr/bin/env bash\nprintf "%%s %%s\\n" "%s" "$*" >>"$RETIREMENT_LOG"\n' "$helper" >"$root/omarchy/utils/bash/$helper"
     chmod +x "$root/omarchy/utils/bash/$helper"
   done
@@ -43,7 +43,7 @@ only_keyd_services() {
   status=$?
   set -e
   [[ "$status" -eq 0 && ! -s "$TEST_STDOUT" && ! -s "$TEST_STDERR" ]] &&
-    [[ "$(<"$RETIREMENT_LOG")" == 'setup-services-input --dry-run --non-interactive' ]]
+    [[ "$(<"$RETIREMENT_LOG")" == $'setup-services-input --dry-run --non-interactive\nsetup-services-wireguard --dry-run --non-interactive' ]]
 }
 
 keyd_only_help_and_prompt() {
@@ -53,13 +53,13 @@ keyd_only_help_and_prompt() {
   status=$?
   set -e
   [[ "$status" -eq 0 && ! -s "$TEST_STDERR" ]] || return 1
-  [[ "$help" == *keyd* && "$help" != *PostgreSQL* && "$help" != *Valkey* ]] || return 1
+  [[ "$help" == *keyd* && "$help" == *WireGuard* && "$help" != *PostgreSQL* && "$help" != *Valkey* ]] || return 1
   set +e
   prompt="$(script -q -e -c "$ROOT_DIR/setup --profile omarchy --dots --dry-run" /dev/null <<< $'n\nn\nn\n' 2>"$TEST_STDERR")"
   status=$?
   set -e
   [[ "$status" -eq 0 && ! -s "$TEST_STDERR" ]] &&
-    [[ "$prompt" == *keyd* && "$prompt" != *PostgreSQL* && "$prompt" != *Valkey* && "$prompt" != *'[setup-services-input]'* ]]
+    [[ "$prompt" == *keyd* && "$prompt" == *WireGuard* && "$prompt" != *PostgreSQL* && "$prompt" != *Valkey* && "$prompt" != *'[setup-services-input]'* ]]
 }
 
 check 'Omarchy dependencies exclude native databases and retain keyd' no_native_dependencies

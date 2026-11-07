@@ -55,8 +55,9 @@ The `./setup` entrypoint is a dispatcher, not a distribution-neutral installer. 
 - validates the installed Herdr configuration during final graphical validation;
 - applies user dotfiles by default when `--dots` is selected; and
 - can explicitly run dependencies, fonts, services, and final graphical validation as separate
-  phases. Its services phase installs and enables only the tracked keyd configuration. PostgreSQL
-  and Redis instances are managed separately through Omarchy Docker DB, not by this profile.
+  phases. Its services phase configures keyd and prepares `wg-quick@wg0.service` for boot when a
+  safe `/etc/wireguard/wg0.conf` is present; it does not start the VPN. PostgreSQL and Redis
+  instances are managed separately through Omarchy Docker DB, not by this profile.
 
 It does not install Omarchy. Ubuntu is not supported. `--dots-only` is the non-graphical user
 configuration path. `--dry-run` previews actions without mutating the host.
@@ -99,8 +100,9 @@ it is not a reason to split the repository before a second profile requires that
   currently managed by the Omarchy manifest; keep host-specific values local.
 - Existing targets are moved to a timestamped `backup/` path before symlinks replace them. Inspect
   those backups before deleting anything.
-- Treat `omarchy/etc/` as privileged, host-specific configuration. Keyd installation is opt-in
-  through `--services`.
+- Treat `omarchy/etc/` as privileged, host-specific configuration. Keyd and the non-secret WireGuard
+  systemd drop-in are opt-in through `--services`. Never store `wg0.conf` or VPN secrets in Git;
+  services setup preserves an absent config's existing enablement state.
 - Never edit `/usr/share/omarchy/`; Omarchy owns that tree and package updates overwrite it. Put
   personal Hyprland changes in the tracked Lua modules.
 - Do not apply `omarchy/etc/fstab` automatically. Review and install host mount configuration
