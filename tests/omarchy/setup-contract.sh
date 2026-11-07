@@ -104,7 +104,18 @@ assert_dependency_status 1
 [[ ! -e "$ROOT_DIR/omarchy/home/config/hypr/hypridle.conf" ]] || fail "Omarchy profile still includes hypridle configuration"
 [[ ! -e "$ROOT_DIR/omarchy/home/config/omarchy/themes/tokyo-night-autana" ]] || fail "Omarchy profile still includes a custom theme"
 [[ "$(<"$ROOT_DIR/omarchy/dots-manifest")" == *"hypr/*.lua"* ]] || fail "Omarchy manifest does not link Lua modules"
-[[ "$(<"$ROOT_DIR/omarchy/dots-manifest")" == *$'file\tomarchy/home/config/herdr/config.toml\t.config/herdr/config.toml'* ]] || fail "Omarchy manifest does not link Herdr configuration"
+herdr_action=""
+herdr_count=0
+while IFS=$'\t' read -r action source target; do
+  [[ "$source" == omarchy/home/config/herdr/config.toml && "$target" == .config/herdr/config.toml ]] || continue
+  herdr_count=$((herdr_count + 1))
+  herdr_action="$action"
+done < "$ROOT_DIR/omarchy/dots-manifest"
+[[ "$herdr_count" -eq 1 ]] || fail "Omarchy manifest must map Herdr configuration exactly once; found $herdr_count"
+case "$herdr_action" in
+  file|copy|skip) ;;
+  *) fail "Omarchy manifest has incompatible Herdr action '$herdr_action' for a file mapping" ;;
+esac
 [[ "$(<"$ROOT_DIR/omarchy/dots-manifest")" != *"waybar"* ]] || fail "Omarchy manifest still links Waybar"
 [[ "$(<"$ROOT_DIR/omarchy/home/bashrc")" == *"/usr/share/omarchy/default/bash/env-bootstrap"* ]] || fail "Omarchy Bash does not bootstrap Omarchy 4"
 [[ "$(<"$ROOT_DIR/omarchy/home/bashrc")" != *".local/share/omarchy"* ]] || fail "Omarchy Bash still references Omarchy 3"
