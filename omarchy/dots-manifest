@@ -38,5 +38,10 @@ file	omarchy/home/config/starship.toml	.config/starship.toml
 # --- Mise ---
 file	omarchy/home/config/mise/config.toml	.config/mise/config.toml
 
+# --- Pi Agent and Gentle AI ---
+file	omarchy/home/pi/agent/settings.json	.pi/agent/settings.json
+file	omarchy/home/pi/gentle-ai/persona.json	.pi/gentle-ai/persona.json
+file	omarchy/home/pi/gentle-ai/profiles.json	.pi/gentle-ai/profiles.json
+
 # --- Herdr ---
 file	omarchy/home/config/herdr/config.toml	.config/herdr/config.toml

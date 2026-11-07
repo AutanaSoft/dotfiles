@@ -134,6 +134,12 @@ the complete phase without `sudo`, downloads, writes, or service changes:
   unchanged, and `--dry-run` only previews backups and replacements. This policy does not change
   stale parent-link handling or obsolete monitor-link cleanup.
 - Herdr's `config.toml` is managed as a symlink from `omarchy/dots-manifest`.
+- Omarchy links `omarchy/home/pi/agent/settings.json` to `~/.pi/agent/settings.json` and
+  `omarchy/home/pi/gentle-ai/{persona,profiles}.json` to their matching paths under
+  `~/.pi/gentle-ai/`. Changes written through these links can modify the repository files, including
+  active profiles and changelog state. Review them before committing. Credentials, sessions,
+  history, and other Pi runtime data remain unmanaged. This does not install Pi, its packages, or
+  its theme, or configure provider authentication.
 - Fonts are installed under `$HOME/.local/share/fonts/<family>/` from Monaspace v1.400 and Nerd
   Fonts v3.5.1 archives. Download URLs and SHA-256 values are pinned in `setup-fonts` from official
   release metadata:
