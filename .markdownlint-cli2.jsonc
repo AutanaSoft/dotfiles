@@ -3,7 +3,9 @@
   "config": {
     "default": true,
     "MD009": false,
-    "MD013": false,
+    "MD013": {
+      "line_length": 120
+    },
     "MD024": {
       "siblings_only": true
     },
@@ -28,5 +30,5 @@
     }
   },
   "gitignore": true,
-  "ignores": [".agents/**", ".claude/**", ".git/**"]
+  "ignores": [".agents/**", ".claude/**", ".atl/**", ".codegraph/**", ".git/**", ".husky/_/**"]
 }
