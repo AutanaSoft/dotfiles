@@ -1,0 +1,25 @@
+id: omarchy-dotfiles
+title: Omarchy Dotfiles Manifest
+description: >-
+  Illustrative examples only; this is not a complete manifest and does not define runtime behavior.
+components:
+  - id: neovim
+    name: Neovim
+    description: A small example of grouped Neovim configuration files.
+    items:
+      - action: file
+        source: omarchy/home/config/nvim/lazyvim.json
+        destination: .config/nvim/lazyvim.json
+      - action: file
+        source: omarchy/home/config/nvim/lua/config/autocmds.lua
+        destination: .config/nvim/lua/config/autocmds.lua
+  - id: pi-agent-gentle-ai
+    name: Pi Agent and Gentle AI
+    description: A small example of grouped Pi Agent and Gentle AI files.
+    items:
+      - action: copy
+        source: omarchy/home/pi/agent/settings.json
+        destination: .pi/agent/settings.json
+      - action: copy
+        source: omarchy/home/pi/gentle-ai/persona.json
+        destination: .pi/gentle-ai/persona.json

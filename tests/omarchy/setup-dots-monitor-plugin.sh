@@ -31,9 +31,12 @@ for kind in matching other file; do
         file) printf 'keep\n' > "$home/.local/bin/monitor" ;;
     esac
     HOME="$home" DOTFILES_ROOT="$repo" PATH="$tmp/bin:$PATH" \
-        bash "$script" > "$tmp/output" 2>&1 || { printf '%s\n' "$(<"$tmp/output")" >&2; fail 'setup failed without a monitor plugin'; }
+        bash "$script" > "$tmp/stdout" 2> "$tmp/stderr" || { printf '%s\n' "$(<"$tmp/stdout")" "$(<"$tmp/stderr")" >&2; fail 'setup failed without a monitor plugin'; }
+    [[ ! -s "$tmp/stderr" ]] || fail 'setup wrote unexpected stderr'
     if [[ "$kind" == matching ]]; then
-        [[ ! -e "$home/.local/bin/monitor" && ! -L "$home/.local/bin/monitor" ]] || fail 'obsolete link retained'
+        [[ -L "$home/.local/bin/monitor" && "$(readlink -- "$home/.local/bin/monitor")" == "$repo/omarchy/home/local/bin/monitor" ]] || fail 'setup changed the existing monitor link'
+        printf '[setup-dots] Repo root: %s\n[setup-dots] User dotfiles complete.\n' "$repo" > "$tmp/expected"
+        cmp "$tmp/expected" "$tmp/stdout" || fail 'setup stdout changed for an existing monitor link'
     else
         [[ -e "$home/.local/bin/monitor" || -L "$home/.local/bin/monitor" ]] || fail 'unrelated monitor removed'
     fi

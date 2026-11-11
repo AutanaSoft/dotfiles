@@ -1,0 +1,3 @@
+order	id	name	description	setup
+1	omarchy	omarchy	Omarchy profile (demo fixture)	../../omarchy/utils/bash/setup-omarchy
+2	fedora-wsl2	fedora-wsl2	Fedora WSL2 development profile (demo fixture)	../../fedora-wsl2/utils/bash/setup-fedora-wsl2

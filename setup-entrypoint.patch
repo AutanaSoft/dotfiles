@@ -1,0 +1,23 @@
+diff --git a/setup b/setup
+--- a/setup
++++ b/setup
+@@ -4,6 +4,12 @@
+ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+ BACKUP_DIR="$SCRIPT_DIR/backup/$(date -u +%Y%m%dT%H%M%SZ)"
+ 
++# The interactive interface is opt-in via --tui, or the default without flags.
++# Existing flag-based invocations keep their established CLI contract.
++if (( $# == 0 )) || { (( $# == 1 )) && [[ $1 == --tui ]]; }; then
++    exec "$SCRIPT_DIR/setup-tui"
++fi
++
+ PROFILE=""
+ DOTS=0
+ DOTS_ONLY=0
+@@ -22,6 +28,7 @@
+ Configure the selected dotfiles profile.
+ 
+ Actions:
++  --tui              Open the interactive terminal interface (sole argument).
+   --dots             Apply user dotfiles and, interactively, select optional phases.
+   --dots-only        Apply only the manifest and permitted user copies.

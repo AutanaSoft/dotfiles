@@ -131,19 +131,9 @@ process_manifest() {
     done < "$manifest"
 }
 
-remove_obsolete_monitor_link() {
-    local target="$HOME/.local/bin/monitor" obsolete="$REPO_ROOT/omarchy/home/local/bin/monitor"
-    if [[ -L "$target" && "$(readlink -- "$target")" == "$obsolete" ]]; then
-        log "Removing obsolete monitor symlink: $target"
-        if (( !DRY_RUN )); then rm -- "$target"; fi
-    fi
-    return 0
-}
-
 require_omarchy_4
 log "Repo root: $REPO_ROOT"
 (( DRY_RUN )) && log "Mode: DRY-RUN (no user changes)"
 process_manifest validate
 process_manifest apply
-remove_obsolete_monitor_link
 log "User dotfiles complete."
