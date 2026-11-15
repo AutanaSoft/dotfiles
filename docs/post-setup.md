@@ -95,6 +95,20 @@ conflict. Required tools must already be available; the services phase does not 
 The unit checks for full NetworkManager connectivity before starting and retries a failed start after 15 seconds. Review
 the host's `/etc/wireguard/wg0.conf` separately when verifying the tunnel.
 
+For a second profile, install its private configuration separately as `/etc/wireguard/wg1.conf`, owned by root with mode
+`0600`. Keep `wg-quick@wg0.service` enabled at boot and `wg-quick@wg1.service` disabled. The dotfiles manifest links
+`vpn-switch` to `~/.local/bin/vpn-switch`; ensure that directory is on your PATH. Switch manually with:
+
+```bash
+vpn-switch wg1
+vpn-switch wg0
+```
+
+The command stops the other active service before starting the requested one, without changing boot enablement. If the
+start fails, it attempts to restart the previous service and reports whether that also failed. It refuses to switch if
+both services are already active or another invocation holds its system-wide lock. Switching may interrupt connectivity.
+The boot connectivity check and retry policy apply to `wg0` only.
+
 ## Databases through Docker DB
 
 Manage PostgreSQL and Redis instances through Omarchy Docker DB, independently of this repository. The Omarchy profile

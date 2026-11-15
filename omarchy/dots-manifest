@@ -29,6 +29,9 @@ file	omarchy/home/config/nvim/lua/plugins/render-markdown.lua	.config/nvim/lua/p
 file	omarchy/home/config/nvim/lua/plugins/snacks-paths.lua	.config/nvim/lua/plugins/snacks-paths.lua
 file	omarchy/home/config/nvim/spell/custom.utf-8.add	.config/nvim/spell/custom.utf-8.add
 
+# --- WireGuard ---
+file	omarchy/utils/bash/vpn-switch	.local/bin/vpn-switch
+
 # --- Bash ---
 file	omarchy/home/bashrc	.bashrc
 
