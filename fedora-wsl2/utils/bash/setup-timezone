@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=setup-common
+source "$SCRIPT_DIR/setup-common"
+
+DRY_RUN="${DOTFILES_DRY_RUN:-0}"
+NON_INTERACTIVE=0
+TIMEZONE="America/Puerto_Rico"
+
+log() { echo "[setup-timezone] $*"; }
+fail() { echo "[setup-timezone] ERROR: $*" >&2; exit 1; }
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dry-run) DRY_RUN=1; shift ;;
+        --non-interactive) NON_INTERACTIVE=1; shift ;;
+        *) fail "unknown option: $1" ;;
+    esac
+done
+
+setup_require_command timedatectl
+setup_preflight_privileged_phase "$DRY_RUN" "$NON_INTERACTIVE"
+
+current="$(timedatectl show --property=Timezone --value)"
+if [[ "$current" == "$TIMEZONE" ]]; then
+    log "[unchanged] time zone is already $TIMEZONE"
+    exit 0
+fi
+
+log "Current time zone: $current"
+if (( DRY_RUN )); then
+    log "[dry-run] would set time zone: $TIMEZONE"
+    exit 0
+fi
+
+sudo timedatectl set-timezone "$TIMEZONE"
+log "Time zone set to $TIMEZONE"

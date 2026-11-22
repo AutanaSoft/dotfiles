@@ -22,7 +22,6 @@ alias ...='cd ../..'
 alias ....='cd ../../..'
 
 alias c='opencode'
-alias zl='zellij'
 alias g='git'
 alias gcm='git commit -m'
 alias gcam='git commit -a -m'

@@ -27,14 +27,14 @@ Empty or negative answers leave a phase disabled.
 | `--fonts`           | Install verified, version-pinned user-local fonts under `$HOME/.local/share/fonts/<family>`; unowned or modified files stop installation.                |
 | `--services`        | Configure keyd and prepare the WireGuard boot unit on Omarchy; `wg-quick@wg0` is enabled only when its safe config exists and is never started by setup. |
 | `--containers`      | Install Docker Engine on Fedora WSL2. Unsupported by Omarchy.                                                                                            |
-| `--locale`          | Install Spanish locale data and set `LANG=es_VE.UTF-8` on Fedora WSL2.                                                                                   |
+| `--timezone`        | Set the system time zone to `America/Puerto_Rico` on Fedora WSL2.                                                                                        |
 | `--no-validate`     | Skip the final validation of a `--dots` run.                                                                                                             |
 | `--non-interactive` | Require `--profile`, run only explicitly declared phases, and enable DNF automatic confirmation for Fedora mutations.                                    |
 | `--dry-run`         | Show actions without downloads, writes, sudo, DNF, service changes, or graphical changes.                                                                |
 | `--help`, `-h`      | Show usage.                                                                                                                                              |
 
 Without `--non-interactive`, Omarchy `--dots` asks separately about `deps`, `fonts`, and `services`;
-Fedora WSL2 additionally offers `containers` and `locale`. In non-interactive mode, no optional
+Fedora WSL2 additionally offers `containers` and `timezone`. In non-interactive mode, no optional
 phase is inferred. A request such as `--profile omarchy --deps --dry-run` runs only the dependency
 phase; it does not apply dotfiles or validation.
 
@@ -69,10 +69,9 @@ invokes the existing Omarchy removal APIs with component names as separate argum
 ```bash
 ./setup --profile fedora-wsl2 --dots-only
 ./setup --profile fedora-wsl2 --deps
-./setup --profile fedora-wsl2 --services
 ./setup --profile fedora-wsl2 --containers
-./setup --profile fedora-wsl2 --locale
-./setup --profile fedora-wsl2 --dots --deps --containers --services --locale
+./setup --profile fedora-wsl2 --timezone
+./setup --profile fedora-wsl2 --dots --deps --containers --timezone
 ```
 
 | Flag           | Meaning                                                                                                                                                                                                              |
@@ -80,19 +79,14 @@ invokes the existing Omarchy removal APIs with component names as separate argum
 | `--dots-only`  | Install a new LazyVim starter, apply `fedora-wsl2/dots-paths`, enable the `jdxcode/mise` COPR, install RPM-managed Mise with DNF if needed, and run `mise install`. It uses `sudo` only when Mise must be installed. |
 | `--dots`       | Apply the same user configuration as `--dots-only`.                                                                                                                                                                  |
 | `--deps`       | Install the groups and packages declared in `fedora-wsl2/dnf-packages`; dry-runs leave group state unqueried.                                                                                                        |
-| `--services`   | Initialize, configure, enable, and validate PostgreSQL and Valkey.                                                                                                                                                   |
 | `--containers` | Install Docker Engine from Docker's official Fedora repository, configure log rotation, and start the service.                                                                                                       |
-| `--locale`     | Install Spanish locale data and set the system locale to `es_VE.UTF-8`.                                                                                                                                              |
+| `--timezone`   | Set the system time zone to `America/Puerto_Rico`.                                                                                                                                                                   |
 
-Fedora's `--deps` phase also installs Google Chrome Stable from Google's official RPM when it is
-absent. Its `--dots` and `--dots-only` phases install OpenCode when it is absent. Their Mise setup
+OpenCode is installed through the Mise tool list. Fedora's `--dots` and `--dots-only` Mise setup
 requires an RPM-managed executable: a standalone `~/.local/bin/mise` does not satisfy that state.
 When needed, it installs DNF COPR support, enables `jdxcode/mise`, and installs `mise` through DNF.
-`--fonts` and `--no-validate` are exclusive to Omarchy and are rejected for Fedora WSL2. Fedora's
-`--services` can interactively set the PostgreSQL `postgres` role password; it never prompts in
-`--non-interactive` or `--dry-run` mode. Valkey accepts local socket connections through
-`/run/valkey/valkey.sock` for users in the `wheel` group. The profile installs a Valkey systemd
-drop-in so the service can create that group-owned socket with mode `770`.
+`--fonts`, `--no-validate`, and `--services` are exclusive to Omarchy and are rejected for Fedora
+WSL2.
 
 The Fedora Mise configuration selects the latest Herdr release. Its configuration is managed at
 `~/.config/herdr/config.toml` with Windows Terminal-compatible pane and tab bindings derived from
@@ -113,7 +107,7 @@ confirmation for every Fedora package mutation. `--dry-run` invokes neither `sud
 checks RPM package state but reports declared DNF groups as unverified rather than calling them
 missing.
 
-Fedora's `--containers` phase requires Fedora 44 under WSL2 with systemd running. It stops before
+Fedora's `--containers` phase requires Fedora 44 or newer under WSL2 with systemd running. It stops before
 mutation when conflicting Docker packages, ambiguous data directories, repository state, or
 `/etc/docker/daemon.json` configuration are detected; it never removes packages or data. The phase
 installs Docker's official Engine, CLI, containerd, Buildx, and Compose packages, uses the `local`
@@ -132,7 +126,7 @@ the complete phase without `sudo`, downloads, writes, or service changes:
 
 - `setup-dots` owns only user configuration, including LazyVim, the manifest, backups, symlinks,
   Mise, and Mise-managed tools.
-- `setup-deps`, `setup-fonts`, `setup-containers`, `setup-services`, `setup-locale`, and
+- `setup-deps`, `setup-fonts`, `setup-containers`, `setup-services`, `setup-timezone`, and
   `setup-validate` each own one phase. Omarchy `setup-services` coordinates keyd and WireGuard.
 - `--dry-run` never invokes `sudo`, DNF, package downloads, `fc-cache`, service management, or
   Hyprland commands.
@@ -180,6 +174,5 @@ the complete phase without `sudo`, downloads, writes, or service changes:
 - `fedora-wsl2/utils/bash/setup-fedora-wsl2` — Fedora WSL2 phase orchestrator.
 - `fedora-wsl2/utils/bash/setup-dots` — Mise bootstrap, dotfiles, and tools.
 - `fedora-wsl2/utils/bash/setup-deps` — DNF group and package setup.
-- `fedora-wsl2/utils/bash/setup-services` — PostgreSQL and Valkey setup.
 - `fedora-wsl2/utils/bash/setup-containers` — official Docker Engine setup for Fedora WSL2.
-- `fedora-wsl2/utils/bash/setup-locale` — Spanish locale setup.
+- `fedora-wsl2/utils/bash/setup-timezone` — time zone setup.

@@ -14,7 +14,7 @@ DEPS=0
 FONTS=0
 SERVICES=0
 CONTAINERS=0
-LOCALE=0
+TIMEZONE=0
 DRY_RUN=1
 CURSOR=0
 SCREEN=menu
@@ -37,7 +37,7 @@ options() {
   if [[ $PROFILE == omarchy ]]; then
     KEYS+=(fonts services)
   else
-    KEYS+=(containers services locale)
+    KEYS+=(containers timezone)
   fi
   KEYS+=(dry-run continue cancel)
 }
@@ -49,7 +49,7 @@ value() {
     fonts) printf '%s' "$FONTS" ;;
     services) printf '%s' "$SERVICES" ;;
     containers) printf '%s' "$CONTAINERS" ;;
-    locale) printf '%s' "$LOCALE" ;;
+    timezone) printf '%s' "$TIMEZONE" ;;
     dry-run) printf '%s' "$DRY_RUN" ;;
   esac
 }
@@ -61,7 +61,7 @@ label() {
     fonts) printf 'Install user fonts' ;;
     services) printf 'Configure services' ;;
     containers) printf 'Install Docker Engine' ;;
-    locale) printf 'Configure system locale' ;;
+    timezone) printf 'Set system time zone' ;;
     dry-run) printf 'Preview only (no changes)' ;;
     continue) printf 'Review selection' ;;
     cancel) printf 'Cancel' ;;
@@ -71,7 +71,7 @@ render_item() {
   local key="$1" index="$2" prefix='  ' suffix=''
   (( index == CURSOR )) && prefix='❯ '
   case "$key" in
-    dots|deps|fonts|services|containers|locale|dry-run)
+    dots|deps|fonts|services|containers|timezone|dry-run)
       if [[ $(value "$key") == 1 ]]; then suffix='[x] ' ; else suffix='[ ] ' ; fi ;;
   esac
   if (( index == CURSOR )); then
@@ -106,7 +106,7 @@ render_menu() {
 build_args() {
   ARGS=(--profile "$PROFILE" --non-interactive)
   if (( DOTS )); then
-    if (( DEPS || FONTS || SERVICES || CONTAINERS || LOCALE )); then
+    if (( DEPS || FONTS || SERVICES || CONTAINERS || TIMEZONE )); then
       ARGS+=(--dots)
     else
       ARGS+=(--dots-only)
@@ -116,7 +116,7 @@ build_args() {
   (( FONTS )) && ARGS+=(--fonts)
   (( SERVICES )) && ARGS+=(--services)
   (( CONTAINERS )) && ARGS+=(--containers)
-  (( LOCALE )) && ARGS+=(--locale)
+  (( TIMEZONE )) && ARGS+=(--timezone)
   (( DRY_RUN )) && ARGS+=(--dry-run)
 }
 render_review() {
@@ -131,7 +131,7 @@ render_review() {
   fi
   line ''
   local phase
-  for phase in dots deps fonts containers services locale; do
+  for phase in dots deps fonts containers services timezone; do
     if [[ $(value "$phase") == 1 ]]; then
       line "  [x] $(label "$phase")"
     fi
@@ -171,18 +171,18 @@ activate() {
   case "$key" in
     profile)
       if [[ $PROFILE == omarchy ]]; then PROFILE=fedora-wsl2; else PROFILE=omarchy; fi
-      FONTS=0; CONTAINERS=0; LOCALE=0
+      FONTS=0; SERVICES=0; CONTAINERS=0; TIMEZONE=0
       ;;
     dots) DOTS=$((1-DOTS)) ;;
     deps) DEPS=$((1-DEPS)) ;;
     fonts) FONTS=$((1-FONTS)) ;;
     services) SERVICES=$((1-SERVICES)) ;;
     containers) CONTAINERS=$((1-CONTAINERS)) ;;
-    locale) LOCALE=$((1-LOCALE)) ;;
+    timezone) TIMEZONE=$((1-TIMEZONE)) ;;
     dry-run) DRY_RUN=$((1-DRY_RUN)) ;;
     cancel) exit 0 ;;
     continue)
-      if (( !DOTS && !DEPS && !FONTS && !SERVICES && !CONTAINERS && !LOCALE )); then
+      if (( !DOTS && !DEPS && !FONTS && !SERVICES && !CONTAINERS && !TIMEZONE )); then
         MESSAGE='Select at least one phase.'
       else
         build_args

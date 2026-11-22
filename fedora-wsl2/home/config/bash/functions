@@ -1,94 +1,8 @@
 # Custom Bash functions.
 
-# Run Pi with an isolated development profile and session history.
-pi-dev() {
-  PI_CODING_AGENT_DIR="$HOME/.pi/dev" command pi "$@"
-}
-
-# Create or attach the default development session when Tmux has no arguments.
-tmux() {
-  if (($# == 0)); then
-    command tmux new-session -A -s AutanaSoft
-  else
-    command tmux "$@"
-  fi
-}
-
-# Create or attach the default development session when Zellij has no arguments.
-zellij() {
-  if (($# == 0)); then
-    command zellij attach --create AutanaSoft
-  else
-    command zellij "$@"
-  fi
-}
-
 # Start Herdr with a short command while preserving all arguments.
 hr() {
   command herdr "$@"
-}
-
-# Create a tmux development layout with editor, AI, and terminal panes.
-# Usage: tdl <ai> [second_ai]
-tdl() {
-  local ai="${1:-}"
-  local ai2="${2:-}"
-  local current_dir="${PWD}"
-  local editor_pane ai_pane ai2_pane launch_command session session_name="AutanaSoft"
-
-  if [[ -z "$ai" ]]; then
-    printf 'Usage: tdl <ai> [second_ai]\n' >&2
-    return 1
-  fi
-  if ! command -v "$ai" >/dev/null 2>&1; then
-    printf 'tdl: command not found: %s\n' "$ai" >&2
-    return 1
-  fi
-  if [[ -n "$ai2" ]] && ! command -v "$ai2" >/dev/null 2>&1; then
-    printf 'tdl: command not found: %s\n' "$ai2" >&2
-    return 1
-  fi
-  if ! command -v tmux >/dev/null 2>&1; then
-    printf 'tdl: command not found: tmux\n' >&2
-    return 1
-  fi
-  if [[ -z "${TMUX:-}" || -z "${TMUX_PANE:-}" ]]; then
-    if tmux has-session -t "$session_name" 2>/dev/null; then
-      tmux attach-session -t "$session_name"
-      return $?
-    fi
-    printf -v launch_command 'tdl %q' "$ai"
-    if [[ -n "$ai2" ]]; then
-      printf -v launch_command '%s %q' "$launch_command" "$ai2"
-    fi
-    session=$(tmux new-session -d -P -F '#{session_name}' -s "$session_name" -c "$current_dir") || return
-    tmux send-keys -t "$session" "$launch_command" C-m || return
-    tmux attach-session -t "$session"
-    return $?
-  fi
-
-  [[ "$(tmux display-message -p '#S')" == "$session_name" ]] || {
-    printf 'tdl: run this command inside the %s tmux session\n' "$session_name" >&2
-    return 1
-  }
-
-  editor_pane="$TMUX_PANE"
-  tmux rename-window -t "$editor_pane" "$(basename "$current_dir")" || return
-
-  ai_pane=$(tmux split-window -h -p 35 -t "$editor_pane" -c "$current_dir" -P -F '#{pane_id}') || return
-  tmux split-window -v -p 20 -t "$editor_pane" -c "$current_dir" || return
-
-  if [[ -n "$ai2" ]]; then
-    ai2_pane=$(tmux split-window -v -t "$ai_pane" -c "$current_dir" -P -F '#{pane_id}') || return
-  fi
-
-  sleep 1
-  tmux send-keys -t "$editor_pane" "${EDITOR:-nvim} ." C-m
-  tmux send-keys -t "$ai_pane" "$ai" C-m
-  if [[ -n "$ai2" ]]; then
-    tmux send-keys -t "$ai2_pane" "$ai2" C-m
-  fi
-  tmux select-pane -t "$ai_pane"
 }
 
 # Pick a recently modified file and copy it to a remote destination.
@@ -156,6 +70,3 @@ n() {
   fi
 }
 
-__wezterm_osc7() {
-  printf '\033]7;file://%s%s\033\\' "${HOSTNAME}" "${PWD}"
-}

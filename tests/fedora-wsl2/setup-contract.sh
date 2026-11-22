@@ -5,8 +5,7 @@ set -euo pipefail
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 SETUP="$ROOT_DIR/setup"
 FEDORA_DEPS_SETUP="$ROOT_DIR/fedora-wsl2/utils/bash/setup-deps"
-FEDORA_SERVICES_SETUP="$ROOT_DIR/fedora-wsl2/utils/bash/setup-services"
-FEDORA_LOCALE_SETUP="$ROOT_DIR/fedora-wsl2/utils/bash/setup-locale"
+FEDORA_TIMEZONE_SETUP="$ROOT_DIR/fedora-wsl2/utils/bash/setup-timezone"
 FEDORA_CONTAINERS_SETUP="$ROOT_DIR/fedora-wsl2/utils/bash/setup-containers"
 FEDORA_COMMON_SETUP="$ROOT_DIR/fedora-wsl2/utils/bash/setup-common"
 
@@ -16,45 +15,12 @@ source "$ROOT_DIR/tests/lib/test-helpers.sh"
 setup_test_environment
 trap cleanup_test_environment EXIT
 
-pi_launcher_root="$TEST_TMP_DIR/pi-launchers"
-pi_launcher_bin="$pi_launcher_root/bin"
-pi_launcher_home="$pi_launcher_root/home"
-pi_launcher_log="$pi_launcher_root/invocation"
-mkdir -p "$pi_launcher_bin" "$pi_launcher_home"
-printf '%s\n' \
-  '#!/usr/bin/env bash' \
-  'printf "%s\\0" "${PI_CODING_AGENT_DIR-}" "${PI_CODING_AGENT_SESSION_DIR-}" "$@" >"$PI_LAUNCHER_LOG"' \
-  >"$pi_launcher_bin/pi"
-chmod +x "$pi_launcher_bin/pi"
-(
-  export HOME="$pi_launcher_home"
-  export PATH="$pi_launcher_bin:$PATH"
-  export PI_LAUNCHER_LOG="$pi_launcher_log"
-  export PI_CODING_AGENT_DIR=normal-agent
-  export PI_CODING_AGENT_SESSION_DIR=normal-sessions
-  source "$ROOT_DIR/fedora-wsl2/home/config/bash/functions"
-
-  declare -F pi >/dev/null && fail "Fedora functions unexpectedly override the normal pi function"
-  declare -F pi-ext >/dev/null && fail "Fedora functions unexpectedly define pi-ext"
-  pi-dev --help "value with spaces"
-  mapfile -d '' -t pi_launch_args <"$PI_LAUNCHER_LOG"
-  [[ ${#pi_launch_args[@]} -eq 4 ]] || fail "pi-dev did not preserve its argument count"
-  [[ ${pi_launch_args[0]} == "$HOME/.pi/dev" ]] || fail "pi-dev did not select the development agent directory"
-  [[ ${pi_launch_args[1]} == normal-sessions ]] || fail "pi-dev did not inherit the caller session override"
-  [[ ${pi_launch_args[2]} == --help && ${pi_launch_args[3]} == "value with spaces" ]] || fail "pi-dev did not preserve its arguments"
-  [[ $PI_CODING_AGENT_DIR == normal-agent && $PI_CODING_AGENT_SESSION_DIR == normal-sessions ]] || fail "pi-dev changed the parent agent environment"
-  [[ ! -e "$HOME/.pi/dev" ]] || fail "pi-dev unexpectedly created a development directory"
-  [[ ! -e "$HOME/.pi/agent/auth.json" ]] || fail "pi-dev unexpectedly created shared authentication"
-)
-
 fake_bin="$TEST_TMP_DIR/bin"
 mkdir -p "$fake_bin"
 printf '#!/usr/bin/env bash\nexit 1\n' >"$fake_bin/rpm"
 printf '#!/usr/bin/env bash\nexit 1\n' >"$fake_bin/dnf"
-for command in postgresql-setup pg_isready psql valkey-cli; do
-  printf '#!/usr/bin/env bash\nexit 0\n' >"$fake_bin/$command"
-done
 printf '#!/usr/bin/env bash\nprintf "wheel\\n"\n' >"$fake_bin/id"
+printf '#!/usr/bin/env bash\nif [[ $1 == show ]]; then printf "%%s\\n" "${TEST_CURRENT_TZ:-America/Caracas}"; else printf "%%s\\n" "$*" >>"${TIMEZONE_LOG:-/dev/null}"; fi\n' >"$fake_bin/timedatectl"
 chmod +x "$fake_bin"/*
 export PATH="$fake_bin:$PATH"
 
@@ -63,17 +29,15 @@ export PATH="$fake_bin:$PATH"
 assert_status 2 "$SETUP" --profile fedora-wsl2 --fonts --dry-run
 assert_status 2 "$SETUP" --profile fedora-wsl2 --dots-only --deps --dry-run
 assert_status 2 "$SETUP" --profile fedora-wsl2 --dots-only --services --dry-run
+assert_status 2 "$SETUP" --profile fedora-wsl2 --services --dry-run
 assert_status 2 "$SETUP" --profile fedora-wsl2 --dots-only --containers --dry-run
 assert_status 2 "$SETUP" --profile omarchy --containers --dry-run
 
 fedora_deps_output="$("$SETUP" --profile fedora-wsl2 --deps --non-interactive --dry-run)"
 [[ "$fedora_deps_output" == *"[setup-deps]"* ]] || fail "Fedora --deps did not dispatch to setup-deps"
 [[ "$fedora_deps_output" != *"[setup-dots]"* ]] || fail "Fedora --deps unexpectedly dispatched dots"
-[[ "$fedora_deps_output" != *"[setup-services]"* ]] || fail "Fedora --deps unexpectedly dispatched services"
-[[ "$fedora_deps_output" != *"[setup-locale]"* ]] || fail "Fedora --deps unexpectedly dispatched locale"
-[[ "$fedora_deps_output" != *"would initialize PostgreSQL"* ]] || fail "Fedora --deps previewed PostgreSQL initialization"
-[[ "$fedora_deps_output" != *"would enable postgresql"* ]] || fail "Fedora --deps previewed service management"
-[[ "$fedora_deps_output" == *"google-chrome-stable"* ]] || fail "Fedora --deps did not check Google Chrome"
+[[ "$fedora_deps_output" != *"[setup-timezone]"* ]] || fail "Fedora --deps unexpectedly dispatched timezone"
+[[ "$fedora_deps_output" != *"google-chrome-stable"* ]] || fail "Fedora --deps unexpectedly checked Google Chrome"
 [[ "$fedora_deps_output" == *"pulseaudio-utils"* ]] || fail "Fedora --deps did not include Herdr audio playback support"
 
 fedora_dots_output="$("$SETUP" --profile fedora-wsl2 --dots-only --non-interactive --dry-run)"
@@ -91,7 +55,7 @@ fedora_dots_output="$("$SETUP" --profile fedora-wsl2 --dots-only --non-interacti
 [[ "$fedora_dots_output" == *"Enabling jdxcode/mise COPR"* ]] || fail "Fedora --dots-only did not preview the Mise COPR"
 [[ "$fedora_dots_output" == *"Installing Mise with DNF"* ]] || fail "Fedora --dots-only did not preview the DNF Mise installation"
 [[ "$fedora_dots_output" != *"Installing Mise at"* ]] || fail "Fedora --dots-only retained the standalone Mise installer"
-[[ "$fedora_dots_output" == *"Installing OpenCode at"* ]] || fail "Fedora --dots-only did not preview OpenCode installation"
+[[ "$fedora_dots_output" != *"OpenCode"* ]] || fail "Fedora --dots-only unexpectedly installs OpenCode outside Mise"
 
 mkdir -p "$HOME/.local/bin"
 printf '#!/usr/bin/env bash\nexit 0\n' >"$HOME/.local/bin/mise"
@@ -104,12 +68,6 @@ fedora_existing_nvim_output="$("$SETUP" --profile fedora-wsl2 --dots-only --non-
 [[ "$fedora_existing_nvim_output" == *"Keeping existing Neovim configuration"* ]] || fail "Fedora --dots-only did not keep existing Neovim configuration"
 [[ "$fedora_existing_nvim_output" == *"Installing tools declared by Mise"* ]] || fail "Fedora --dots-only did not continue after existing Neovim configuration"
 rm -rf "$HOME/.config/nvim"
-
-fedora_services_output="$("$SETUP" --profile fedora-wsl2 --services --non-interactive --dry-run)"
-[[ "$fedora_services_output" == *"[setup-services] [dry-run] would initialize PostgreSQL if the cluster is absent"* ]] || fail "Fedora --services did not preview PostgreSQL initialization"
-[[ "$fedora_services_output" == *"[setup-services] [dry-run] would install configuration: /var/lib/pgsql/data/pg_hba.conf"* ]] || fail "Fedora --services did not preview PostgreSQL configuration"
-[[ "$fedora_services_output" == *"[setup-services] [dry-run] would install configuration: /etc/systemd/system/valkey.service.d/socket-group.conf"* ]] || fail "Fedora --services did not preview the Valkey drop-in"
-[[ "$fedora_services_output" == *"[setup-services] [dry-run] would run: systemctl daemon-reload"* ]] || fail "Fedora --services did not preview systemd reload"
 
 containers_root="$TEST_TMP_DIR/containers"
 mkdir -p "$containers_root/etc" "$containers_root/bin"
@@ -181,6 +139,26 @@ DOTFILES_SUDO_LOG="$containers_sudo_log" PATH="$containers_root/bin:$PATH" \
 [[ "$(<"$containers_sudo_log")" == *"dnf install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin"* ]] || fail "Fedora interactive containers install did not preserve DNF confirmation"
 [[ "$(<"$containers_sudo_log")" != *"dnf --assumeyes install"* ]] || fail "Fedora interactive containers install forced DNF automatic confirmation"
 
+for fedora_version in 44 46; do
+  printf 'ID=fedora\nVERSION_ID=%s\n' "$fedora_version" >"$containers_root/etc/os-release-$fedora_version"
+  assert_status 0 env PATH="$containers_root/bin:$PATH" \
+    DOTFILES_OS_RELEASE_FILE="$containers_root/etc/os-release-$fedora_version" \
+    DOTFILES_KERNEL_RELEASE_FILE="$containers_root/kernel-release" \
+    DOTFILES_DOCKER_REPO_FILE="$containers_root/docker-ce.repo" \
+    DOTFILES_DOCKER_CONFIG_FILE="$containers_root/daemon.json" \
+    DOTFILES_DOCKER_DATA_DIR="$containers_root/docker-data" \
+    DOTFILES_CONTAINERD_DATA_DIR="$containers_root/containerd-data" \
+    "$FEDORA_CONTAINERS_SETUP" --dry-run
+done
+for fedora_version in 43 rawhide; do
+  printf 'ID=fedora\nVERSION_ID=%s\n' "$fedora_version" >"$containers_root/etc/os-release-$fedora_version"
+  assert_status 1 env PATH="$containers_root/bin:$PATH" \
+    DOTFILES_OS_RELEASE_FILE="$containers_root/etc/os-release-$fedora_version" \
+    DOTFILES_KERNEL_RELEASE_FILE="$containers_root/kernel-release" \
+    "$FEDORA_CONTAINERS_SETUP" --dry-run
+  grep -q "Fedora 44 or newer is required" "$TEST_STDERR" || fail "Fedora $fedora_version did not report the minimum Fedora version"
+done
+
 printf 'ID=ubuntu\nVERSION_ID=24.04\n' >"$containers_root/etc/not-fedora"
 assert_status 1 env PATH="$containers_root/bin:$PATH" \
   DOTFILES_OS_RELEASE_FILE="$containers_root/etc/not-fedora" \
@@ -198,18 +176,16 @@ assert_status 1 env PATH="$containers_root/bin:$PATH" \
   DOTFILES_CONTAINERD_DATA_DIR="$containers_root/containerd-data" \
   "$FEDORA_CONTAINERS_SETUP" --dry-run
 
-fedora_locale_output="$("$SETUP" --profile fedora-wsl2 --locale --non-interactive --dry-run)"
-[[ "$fedora_locale_output" == *"glibc-langpack-es"* ]] || fail "Fedora --locale did not check Spanish locale data"
-[[ "$fedora_locale_output" == *"[setup-locale] [dry-run] would install locale configuration: /etc/locale.conf"* ]] || fail "Fedora --locale did not preview locale configuration"
-[[ "$fedora_locale_output" != *"[setup-deps]"* ]] || fail "Fedora --locale unexpectedly dispatched dependencies"
+fedora_timezone_output="$("$SETUP" --profile fedora-wsl2 --timezone --non-interactive --dry-run)"
+[[ "$fedora_timezone_output" == *"[setup-timezone] [dry-run] would set time zone: America/Puerto_Rico"* ]] || fail "Fedora --timezone did not preview the Puerto Rico time zone"
+[[ "$fedora_timezone_output" != *"[setup-deps]"* ]] || fail "Fedora --timezone unexpectedly dispatched dependencies"
 
-fedora_full_output="$("$SETUP" --profile fedora-wsl2 --dots --deps --services --locale --non-interactive --dry-run)"
+fedora_full_output="$("$SETUP" --profile fedora-wsl2 --dots --deps --timezone --non-interactive --dry-run)"
 [[ "$fedora_full_output" != *"unknown option: --final-validation"* ]] || fail "Fedora --dots forwarded Omarchy validation"
-[[ "$fedora_full_output" == *"[setup-deps]"*"[setup-dots]"*"[setup-services]"*"[setup-locale]"* ]] || fail "Fedora full flow did not dispatch phases in order"
+[[ "$fedora_full_output" == *"[setup-deps]"*"[setup-dots]"*"[setup-timezone]"* ]] || fail "Fedora full flow did not dispatch phases in order"
 
 fedora_deps_config_output="$("$SETUP" --profile fedora-wsl2 --deps --non-interactive --dry-run)"
 [[ "$fedora_deps_config_output" != *"would install configuration"* ]] || fail "Fedora --deps previewed custom configuration"
-[[ "$fedora_deps_config_output" != *"would initialize PostgreSQL"* ]] || fail "Fedora --deps previewed PostgreSQL initialization"
 
 manifest_root="$TEST_TMP_DIR/manifest"
 mkdir -p "$manifest_root/fedora-wsl2"
@@ -238,20 +214,20 @@ sudo_log="$manifest_root/sudo.log"
 printf 'alpha\n' >"$manifest_root/fedora-wsl2/dnf-packages"
 DNF_LOG="$dnf_log" SUDO_LOG="$sudo_log" PATH="$fake_bin:$PATH" DOTFILES_ROOT="$manifest_root" "$FEDORA_DEPS_SETUP" --non-interactive >/dev/null
 [[ "$(<"$dnf_log")" == *"--assumeyes install alpha"* ]] || fail "Fedora non-interactive dependencies did not enable DNF automatic confirmation"
-[[ "$(<"$dnf_log")" == *"--assumeyes install https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm"* ]] || fail "Fedora non-interactive Chrome install did not enable DNF automatic confirmation"
+[[ "$(<"$dnf_log")" != *"google-chrome-stable"* ]] || fail "Fedora non-interactive dependencies unexpectedly installed Chrome"
 
-locale_root="$TEST_TMP_DIR/locale"
-mkdir -p "$locale_root/bin" "$locale_root/fedora-wsl2/etc"
-cp "$ROOT_DIR/fedora-wsl2/etc/locale.conf" "$locale_root/fedora-wsl2/etc/locale.conf"
-printf '#!/usr/bin/env bash\nexit 1\n' >"$locale_root/bin/rpm"
-printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >>"$DNF_LOG"\nexit 0\n' >"$locale_root/bin/dnf"
-printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >>"$SUDO_LOG"\nif [[ $1 == -n ]]; then shift; fi\nif [[ ${1:-} == dnf ]]; then shift; dnf "$@"; fi\n' >"$locale_root/bin/sudo"
-printf '#!/usr/bin/env bash\nprintf "es_VE.utf8\\n"\n' >"$locale_root/bin/locale"
-chmod +x "$locale_root/bin"/*
-locale_dnf_log="$locale_root/dnf.log"
-locale_sudo_log="$locale_root/sudo.log"
-DNF_LOG="$locale_dnf_log" SUDO_LOG="$locale_sudo_log" PATH="$locale_root/bin:$PATH" DOTFILES_ROOT="$locale_root" "$FEDORA_LOCALE_SETUP" --non-interactive >/dev/null
-[[ "$(<"$locale_dnf_log")" == *"--assumeyes install glibc-langpack-es"* ]] || fail "Fedora non-interactive locale install did not enable DNF automatic confirmation"
+timezone_root="$TEST_TMP_DIR/timezone"
+mkdir -p "$timezone_root/bin"
+printf '#!/usr/bin/env bash\nif [[ $1 == -n ]]; then shift; fi\n"$@"\n' >"$timezone_root/bin/sudo"
+printf '#!/usr/bin/env bash\nif [[ $1 == show ]]; then printf "%%s\\n" "${TEST_CURRENT_TZ:-America/Caracas}"; else printf "%%s\\n" "$*" >>"${TIMEZONE_LOG:-/dev/null}"; fi\n' >"$timezone_root/bin/timedatectl"
+chmod +x "$timezone_root/bin"/*
+timezone_log="$timezone_root/timezone.log"
+: >"$timezone_log"
+TIMEZONE_LOG="$timezone_log" PATH="$timezone_root/bin:$PATH" "$FEDORA_TIMEZONE_SETUP" --non-interactive >/dev/null
+[[ "$(<"$timezone_log")" == *"set-timezone America/Puerto_Rico"* ]] || fail "Fedora timezone setup did not set America/Puerto_Rico"
+: >"$timezone_log"
+TEST_CURRENT_TZ=America/Puerto_Rico TIMEZONE_LOG="$timezone_log" PATH="$timezone_root/bin:$PATH" "$FEDORA_TIMEZONE_SETUP" --non-interactive >/dev/null
+[[ ! -s "$timezone_log" ]] || fail "Fedora timezone setup changed an already configured time zone"
 printf '@alpha\n@alpha\n' >"$manifest_root/fedora-wsl2/dnf-packages"
 set +e
 PATH="$fake_bin:$PATH" DOTFILES_ROOT="$manifest_root" "$FEDORA_DEPS_SETUP" --dry-run >"$TEST_STDOUT" 2>"$TEST_STDERR"
@@ -259,25 +235,11 @@ fedora_dependency_status=$?
 set -e
 [[ "$fedora_dependency_status" -eq 1 ]] || fail "Fedora dependency manifest accepted a duplicate group"
 
-assert_status 1 "$FEDORA_SERVICES_SETUP" --unknown
-assert_status 1 "$FEDORA_LOCALE_SETUP" --unknown
-
-services_user_output="$(USER=incorrect "$FEDORA_SERVICES_SETUP" --dry-run)"
-[[ "$services_user_output" != *"incorrect must belong"* ]] || fail "Fedora services trusted USER instead of the invoking user"
+assert_status 1 "$FEDORA_TIMEZONE_SETUP" --unknown
 
 [[ "$(<"$ROOT_DIR/fedora-wsl2/home/config/mise/config.toml")" == *'python = "latest"'* ]] || fail "Fedora Mise configuration does not select the latest Python"
 [[ "$(<"$ROOT_DIR/fedora-wsl2/home/config/mise/config.toml")" == *'markdownlint-cli2 = "latest"'* ]] || fail "Fedora Mise configuration does not select the latest markdownlint-cli2"
 [[ "$(<"$ROOT_DIR/fedora-wsl2/home/config/mise/config.toml")" == *'lazydocker = "latest"'* ]] || fail "Fedora Mise configuration does not install Lazydocker"
-[[ "$(<"$FEDORA_SERVICES_SETUP")" == *'log "PostgreSQL is ready"'* ]] || fail "Fedora services do not confirm PostgreSQL readiness"
-[[ "$(<"$FEDORA_SERVICES_SETUP")" == *'log "Valkey socket is ready"'* ]] || fail "Fedora services do not confirm Valkey readiness"
-
-tmux_functions="$(<"$ROOT_DIR/fedora-wsl2/home/config/bash/functions")"
-[[ "$tmux_functions" == *$'tmux() {\n  if (($# == 0)); then\n    command tmux new-session -A -s AutanaSoft'* ]] || fail "tmux does not create or attach AutanaSoft without arguments"
-[[ "$tmux_functions" == *'command tmux "$@"'* ]] || fail "tmux does not preserve subcommands"
-[[ "$tmux_functions" == *'session_name="AutanaSoft"'* ]] || fail "tdl does not name the Tmux session AutanaSoft"
-[[ "$tmux_functions" == *'tmux has-session -t "$session_name"'* ]] || fail "tdl does not reuse the AutanaSoft session"
-[[ "$tmux_functions" == *'tmux new-session -d -P -F '\''#{session_name}'\'' -s "$session_name"'* ]] || fail "tdl does not create a named Tmux session"
-[[ "$tmux_functions" == *'run this command inside the %s tmux session'* ]] || fail "tdl does not protect other Tmux sessions"
 
 [[ "$(<"$ROOT_DIR/fedora-wsl2/home/bashrc")" == *"/etc/bashrc"* ]] || fail "Fedora bashrc does not source /etc/bashrc"
 bash_init="$(<"$ROOT_DIR/fedora-wsl2/home/config/bash/init")"
@@ -293,7 +255,7 @@ bash_output="$(HOME="$bash_home" PATH=/usr/bin:/bin bash --noprofile --norc -c '
   source "$HOME/.config/bash/rc"
   source "$HOME/.config/bash/envs"
   [[ ${DOTFILES_BASHRC_D_TEST:-} == loaded ]]
-  for path in "$HOME/.opencode/bin" "$HOME/.local/bin" "$HOME/bin"; do
+  for path in "$HOME/.local/bin" "$HOME/bin"; do
     case ":$PATH:" in *":$path:"*) ;; *) exit 1 ;; esac
     path_without_current=":$PATH:"
     path_without_current="${path_without_current/":$path:"/:}"
@@ -301,6 +263,6 @@ bash_output="$(HOME="$bash_home" PATH=/usr/bin:/bin bash --noprofile --norc -c '
   done
   printf "%s" "$PATH"
 ')" || fail "Fedora Bash configuration did not load correctly"
-[[ "$bash_output" == "$bash_home/.opencode/bin:$bash_home/bin:$bash_home/.local/bin:"* ]] || fail "Fedora Bash PATH order is incorrect"
+[[ "$bash_output" == "$bash_home/.local/bin:$bash_home/bin:"* ]] || fail "Fedora Bash PATH order is incorrect"
 
 printf 'PASS: Fedora WSL2 setup contracts\n'

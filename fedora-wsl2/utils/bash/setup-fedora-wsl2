@@ -7,9 +7,8 @@ DRY_RUN="${DOTFILES_DRY_RUN:-0}"
 DOTS=0
 DOTS_ONLY=0
 DEPS=0
-SERVICES=0
 CONTAINERS=0
-LOCALE=0
+TIMEZONE=0
 NON_INTERACTIVE=0
 
 fail() { echo "[setup-fedora-wsl2] ERROR: $*" >&2; exit 1; }
@@ -20,9 +19,8 @@ while [[ $# -gt 0 ]]; do
         --dots) DOTS=1; shift ;;
         --dots-only) DOTS_ONLY=1; shift ;;
         --deps) DEPS=1; shift ;;
-        --services) SERVICES=1; shift ;;
         --containers) CONTAINERS=1; shift ;;
-        --locale) LOCALE=1; shift ;;
+        --timezone) TIMEZONE=1; shift ;;
         --dry-run) DRY_RUN=1; shift ;;
         --non-interactive) NON_INTERACTIVE=1; shift ;;
         *) fail "unknown option: $1" ;;
@@ -30,8 +28,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 (( DOTS && DOTS_ONLY )) && fail "dots and dots-only cannot be combined"
-(( DOTS_ONLY && (DEPS || SERVICES || CONTAINERS || LOCALE) )) && fail "dots-only cannot include phases"
-(( DOTS || DOTS_ONLY || DEPS || SERVICES || CONTAINERS || LOCALE )) || fail "no phase selected"
+(( DOTS_ONLY && (DEPS || CONTAINERS || TIMEZONE) )) && fail "dots-only cannot include phases"
+(( DOTS || DOTS_ONLY || DEPS || CONTAINERS || TIMEZONE )) || fail "no phase selected"
 
 run_helper() {
     local helper="$REPO_ROOT/fedora-wsl2/utils/bash/$1"
@@ -47,5 +45,4 @@ if (( DEPS )); then run_helper setup-deps "${helper_args[@]}"; fi
 if (( DOTS )); then run_helper setup-dots "${helper_args[@]}"; fi
 if (( DOTS_ONLY )); then run_helper setup-dots "${helper_args[@]}"; fi
 if (( CONTAINERS )); then run_helper setup-containers "${helper_args[@]}"; fi
-if (( SERVICES )); then run_helper setup-services "${helper_args[@]}"; fi
-if (( LOCALE )); then run_helper setup-locale "${helper_args[@]}"; fi
+if (( TIMEZONE )); then run_helper setup-timezone "${helper_args[@]}"; fi

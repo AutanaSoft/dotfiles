@@ -28,12 +28,6 @@ config/nvim/lua/plugins/snacks-paths.lua | .config/nvim/lua/plugins/snacks-paths
 config/nvim/lua/plugins/tokyonight.lua | .config/nvim/lua/plugins/tokyonight.lua
 config/nvim/spell | .config/nvim/spell
 
-# --- Tmux ---
-config/tmux | .config/tmux
-
-# --- Zellij ---
-config/zellij | .config/zellij
-
 # --- Pi ---
 pi/agent/themes/tokyo-night.json | .pi/agent/themes/tokyo-night.json
 pi/agent/themes/tokyo-night-storm.json | .pi/agent/themes/tokyo-night-storm.json

@@ -23,8 +23,7 @@ For Fedora WSL2:
 ./setup --profile fedora-wsl2 --dots-only
 ./setup --profile fedora-wsl2 --deps
 ./setup --profile fedora-wsl2 --containers
-./setup --profile fedora-wsl2 --services
-./setup --profile fedora-wsl2 --locale
+./setup --profile fedora-wsl2 --timezone
 ```
 
 ## Tests
@@ -62,14 +61,13 @@ The `./setup` entrypoint is a dispatcher, not a distribution-neutral installer. 
 It does not install Omarchy. Ubuntu is not supported. `--dots-only` is the non-graphical user
 configuration path. `--dry-run` previews actions without mutating the host.
 
-The `fedora-wsl2` profile supports `--dots`, `--dots-only`, `--deps`, `--containers`, `--services`,
-and `--locale`. Its dotfiles phase installs a new LazyVim starter instance, applies `dots-paths`,
-installs Mise and OpenCode in the user home, and installs the tools declared in the linked Mise
-configuration. Its dependency phase installs the groups and packages in `dnf-packages` and Google
-Chrome Stable from Google's official RPM. Its containers phase requires Fedora 44 under WSL2 with
+The `fedora-wsl2` profile supports `--dots`, `--dots-only`, `--deps`, `--containers`, and
+`--timezone`. Its dotfiles phase installs a new LazyVim starter instance, applies `dots-paths`,
+installs Mise with DNF, and installs the tools declared in the linked Mise
+configuration, including OpenCode. Its dependency phase installs the groups and packages in `dnf-packages`. Its
+containers phase requires Fedora 44 or newer under WSL2 with
 systemd running, installs Docker Engine from Docker's official repository, and grants the invoking
-user Docker-group access. Its services phase initializes, configures, and validates PostgreSQL and
-Valkey. Its `--locale` phase installs Spanish locale data and sets `LANG=es_VE.UTF-8`.
+user Docker-group access. Its `--timezone` phase sets the system time zone to `America/Puerto_Rico`.
 
 Use `--non-interactive` with an explicit `--profile`; it runs only selected phases and passes DNF
 automatic confirmation to Fedora package mutations. Use `--dry-run` to preview without invoking
@@ -77,7 +75,7 @@ automatic confirmation to Fedora package mutations. Use `--dry-run` to preview w
 without claiming whether they are installed because they do not query DNF group state.
 
 The `--deps`, `--fonts`, and `--services` flags are explicit Omarchy phases. The Fedora WSL2 profile
-also supports `--locale`. The dependency phase installs the packages declared in the TSV manifest,
+also supports `--timezone`. The dependency phase installs the packages declared in the TSV manifest,
 and the font phase installs each family directly under `$HOME/.local/share/fonts/<family>/`.
 
 ## Configuration boundaries

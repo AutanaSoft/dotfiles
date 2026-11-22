@@ -13,10 +13,3 @@ if [[ ! -v BASH_COMPLETION_VERSINFO && -f /usr/share/bash-completion/bash_comple
 fi
 
 PS1='[\u@\h \W]\$ '
-
-# Publish cwd so WezTerm can inherit it into new panes. Avoid duplicate hooks
-# when the configuration is sourced more than once.
-case ";${PROMPT_COMMAND:-};" in
-  *';__wezterm_osc7;'*) ;;
-  *) PROMPT_COMMAND="__wezterm_osc7${PROMPT_COMMAND:+;${PROMPT_COMMAND}}" ;;
-esac

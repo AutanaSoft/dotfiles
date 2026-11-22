@@ -40,8 +40,4 @@ trash-cli
 pulseaudio-utils
 
 # Local development services
-postgresql
-postgresql-server
-postgresql-contrib
-valkey
 wireguard-tools

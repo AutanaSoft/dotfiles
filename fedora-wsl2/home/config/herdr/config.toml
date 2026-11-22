@@ -64,7 +64,7 @@ pane_outer_borders = false
 confirm_close = false
 
 # automatic-rename gave windows a name without prompting
-prompt_new_tab_name = false
+# prompt_new_tab_name = false
 
 # set -g mouse on
 mouse_capture = true

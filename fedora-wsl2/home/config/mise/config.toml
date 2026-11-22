@@ -2,22 +2,19 @@
 # Mise Config
 # ------------------------------------------------------------------------------
 [tools]
-starship = "latest"
-zellij = "latest"
-tmux = "latest"
-neovim = "latest"
-lazygit = "latest"
+claude = "latest"
+codegraph = "latest"
+codex = "latest"
+gh = "latest"
+go = "latest"
+herdr = "latest"
 lazydocker = "latest"
+lazygit = "latest"
+markdownlint-cli2 = "latest"
+neovim = "latest"
 node = "latest"
+opencode = { version = "latest", allow_builds = ["@opencode/cli"] }
 pnpm = "latest"
 prettier = "latest"
 python = "latest"
-go = "latest"
-gh = "latest"
-herdr = "latest"
-markdownlint-cli2 = "latest"
-pi = "latest"
-codegraph = "latest"
-gentle-ai = "latest"
-opencode = { version = "latest", allow_builds = ["@opencode/cli"] }
-"npm:@nestjs/cli" = "latest"
+starship = "latest"
