@@ -12,6 +12,7 @@ DEPS=0
 FONTS=0
 SERVICES=0
 CONTAINERS=0
+POSTGRES=0
 TIMEZONE=0
 NO_VALIDATE=0
 NON_INTERACTIVE=0
@@ -30,7 +31,8 @@ Actions:
   --fonts            Install Omarchy user-local fonts.
   --services         Configure Omarchy services.
   --containers       Install and configure Docker Engine on Fedora WSL2.
-  --timezone           Set the Fedora WSL2 time zone.
+  --postgres         Run a local PostgreSQL container on Fedora WSL2.
+  --timezone         Set the Fedora WSL2 time zone.
 
 Options:
   --profile NAME     Select omarchy or fedora-wsl2.
@@ -48,7 +50,7 @@ Examples:
   $0 --dots
   $0 --profile omarchy --dots-only --dry-run
   $0 --profile omarchy --dots --deps --fonts --services
-  $0 --profile fedora-wsl2 --dots --deps --containers --timezone
+  $0 --profile fedora-wsl2 --dots --deps --containers --postgres --timezone
 EOF
 }
 
@@ -70,6 +72,7 @@ while [[ $# -gt 0 ]]; do
         --fonts) FONTS=1; shift ;;
         --services) SERVICES=1; shift ;;
         --containers) CONTAINERS=1; shift ;;
+        --postgres) POSTGRES=1; shift ;;
         --timezone) TIMEZONE=1; shift ;;
         --no-validate) NO_VALIDATE=1; shift ;;
         --non-interactive) NON_INTERACTIVE=1; shift ;;
@@ -82,7 +85,7 @@ done
 if (( DOTS && DOTS_ONLY )); then
     fail "--dots and --dots-only cannot be combined."
 fi
-if (( DOTS_ONLY && (DEPS || FONTS || SERVICES || CONTAINERS || TIMEZONE || NO_VALIDATE) )); then
+if (( DOTS_ONLY && (DEPS || FONTS || SERVICES || CONTAINERS || POSTGRES || TIMEZONE || NO_VALIDATE) )); then
     fail "--dots-only cannot be combined with phases or --no-validate."
 fi
 if (( NO_VALIDATE && !DOTS )); then
@@ -114,6 +117,9 @@ esac
 if [[ "$PROFILE" == omarchy ]] && (( CONTAINERS )); then
     fail "--containers is unsupported for omarchy."
 fi
+if [[ "$PROFILE" == omarchy ]] && (( POSTGRES )); then
+    fail "--postgres is unsupported for omarchy."
+fi
 if [[ "$PROFILE" == omarchy ]] && (( TIMEZONE )); then
     fail "--timezone is unsupported for omarchy."
 fi
@@ -124,20 +130,21 @@ if [[ "$PROFILE" == fedora-wsl2 ]] && (( SERVICES )); then
     fail "--services is unsupported for fedora-wsl2."
 fi
 
-if (( !DOTS && !DOTS_ONLY && !DEPS && !FONTS && !SERVICES && !CONTAINERS && !TIMEZONE )); then
+if (( !DOTS && !DOTS_ONLY && !DEPS && !FONTS && !SERVICES && !CONTAINERS && !POSTGRES && !TIMEZONE )); then
     fail "choose --dots, --dots-only, or at least one phase."
 fi
 
 if (( DOTS )); then
     if (( !NON_INTERACTIVE )); then
         phases=(deps fonts services)
-        [[ "$PROFILE" == fedora-wsl2 ]] && phases=(deps containers timezone)
+        [[ "$PROFILE" == fedora-wsl2 ]] && phases=(deps containers postgres timezone)
         for phase in "${phases[@]}"; do
             case "$phase" in
                 deps) selected=$DEPS ;;
                 fonts) selected=$FONTS ;;
                 services) selected=$SERVICES ;;
                 containers) selected=$CONTAINERS ;;
+                postgres) selected=$POSTGRES ;;
                 timezone) selected=$TIMEZONE ;;
             esac
             if (( !selected )); then
@@ -146,12 +153,13 @@ if (( DOTS )); then
                     fonts) prompt="Run fonts? This uses the network and downloads font archives. [y/N] " ;;
                     services) prompt="Run services? This uses sudo, configures keyd, and prepares WireGuard for boot when /etc/wireguard/wg0.conf exists. [y/N] " ;;
                     containers) prompt="Run containers? This uses sudo and installs Docker Engine with root-equivalent group access. [y/N] " ;;
+                    postgres) prompt="Run postgres? This uses sudo, pulls the postgres image and runs a local container published only on 127.0.0.1:5432 with the default postgres user and password. [y/N] " ;;
                     timezone) prompt="Run timezone? This sets the system time zone to America/Puerto_Rico and may require sudo. [y/N] " ;;
                 esac
                 read -r -p "$prompt" answer || answer=""
                 case "$answer" in
                     y|Y|yes|YES) case "$phase" in
-                        deps) DEPS=1 ;; fonts) FONTS=1 ;; containers) CONTAINERS=1 ;; services) SERVICES=1 ;; timezone) TIMEZONE=1 ;;
+                        deps) DEPS=1 ;; fonts) FONTS=1 ;; containers) CONTAINERS=1 ;; services) SERVICES=1 ;; postgres) POSTGRES=1 ;; timezone) TIMEZONE=1 ;;
                     esac ;;
                 esac
             fi
@@ -177,6 +185,7 @@ args=(--profile "$PROFILE")
 (( FONTS )) && args+=(--fonts)
 (( SERVICES )) && args+=(--services)
 (( CONTAINERS )) && args+=(--containers)
+(( POSTGRES )) && args+=(--postgres)
 (( TIMEZONE )) && args+=(--timezone)
 if [[ "$PROFILE" == omarchy ]] && (( DOTS && !NO_VALIDATE )); then
     args+=(--final-validation)

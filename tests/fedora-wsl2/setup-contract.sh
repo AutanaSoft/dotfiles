@@ -6,6 +6,7 @@ ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 SETUP="$ROOT_DIR/setup"
 FEDORA_DEPS_SETUP="$ROOT_DIR/fedora-wsl2/utils/bash/setup-deps"
 FEDORA_TIMEZONE_SETUP="$ROOT_DIR/fedora-wsl2/utils/bash/setup-timezone"
+FEDORA_POSTGRES_SETUP="$ROOT_DIR/fedora-wsl2/utils/bash/setup-postgres"
 FEDORA_CONTAINERS_SETUP="$ROOT_DIR/fedora-wsl2/utils/bash/setup-containers"
 FEDORA_COMMON_SETUP="$ROOT_DIR/fedora-wsl2/utils/bash/setup-common"
 
@@ -32,6 +33,8 @@ assert_status 2 "$SETUP" --profile fedora-wsl2 --dots-only --services --dry-run
 assert_status 2 "$SETUP" --profile fedora-wsl2 --services --dry-run
 assert_status 2 "$SETUP" --profile fedora-wsl2 --dots-only --containers --dry-run
 assert_status 2 "$SETUP" --profile omarchy --containers --dry-run
+assert_status 2 "$SETUP" --profile omarchy --postgres --dry-run
+assert_status 2 "$SETUP" --profile fedora-wsl2 --dots-only --postgres --dry-run
 
 fedora_deps_output="$("$SETUP" --profile fedora-wsl2 --deps --non-interactive --dry-run)"
 [[ "$fedora_deps_output" == *"[setup-deps]"* ]] || fail "Fedora --deps did not dispatch to setup-deps"
@@ -180,6 +183,13 @@ fedora_timezone_output="$("$SETUP" --profile fedora-wsl2 --timezone --non-intera
 [[ "$fedora_timezone_output" == *"[setup-timezone] [dry-run] would set time zone: America/Puerto_Rico"* ]] || fail "Fedora --timezone did not preview the Puerto Rico time zone"
 [[ "$fedora_timezone_output" != *"[setup-deps]"* ]] || fail "Fedora --timezone unexpectedly dispatched dependencies"
 
+fedora_postgres_output="$("$SETUP" --profile fedora-wsl2 --postgres --non-interactive --dry-run)"
+[[ "$fedora_postgres_output" == *"[setup-postgres] [dry-run] would ensure container postgres (postgres:19) published on 127.0.0.1:5432"* ]] || fail "Fedora --postgres did not preview the loopback-only container"
+[[ "$fedora_postgres_output" == *"--restart unless-stopped"* ]] || fail "Fedora --postgres did not preview the restart policy"
+[[ "$fedora_postgres_output" != *"[setup-deps]"* ]] || fail "Fedora --postgres unexpectedly dispatched dependencies"
+fedora_postgres_order_output="$("$SETUP" --profile fedora-wsl2 --deps --postgres --timezone --non-interactive --dry-run)"
+[[ "$fedora_postgres_order_output" == *"[setup-deps]"*"[setup-postgres]"*"[setup-timezone]"* ]] || fail "Fedora --postgres did not run between dependencies and timezone"
+
 fedora_full_output="$("$SETUP" --profile fedora-wsl2 --dots --deps --timezone --non-interactive --dry-run)"
 [[ "$fedora_full_output" != *"unknown option: --final-validation"* ]] || fail "Fedora --dots forwarded Omarchy validation"
 [[ "$fedora_full_output" == *"[setup-deps]"*"[setup-dots]"*"[setup-timezone]"* ]] || fail "Fedora full flow did not dispatch phases in order"
@@ -236,6 +246,30 @@ set -e
 [[ "$fedora_dependency_status" -eq 1 ]] || fail "Fedora dependency manifest accepted a duplicate group"
 
 assert_status 1 "$FEDORA_TIMEZONE_SETUP" --unknown
+assert_status 1 "$FEDORA_POSTGRES_SETUP" --unknown
+
+postgres_root="$TEST_TMP_DIR/postgres"
+mkdir -p "$postgres_root/bin"
+printf '#!/usr/bin/env bash\nif [[ $1 == -n ]]; then shift; fi\n"$@"\n' >"$postgres_root/bin/sudo"
+printf '#!/usr/bin/env bash\nif [[ ${POSTGRES_TEST_PORT_BUSY:-0} == 1 ]]; then printf "LISTEN 0 4096 127.0.0.1:5432 0.0.0.0:*\\n"; fi\n' >"$postgres_root/bin/ss"
+printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >>"$DOCKER_LOG"\ncase "$1 $2" in\n  "container inspect") [[ ${DOCKER_CONTAINER_EXISTS:-0} == 1 ]] ;;\n  "volume inspect") [[ ${DOCKER_VOLUME_EXISTS:-0} == 1 ]] ;;\n  "inspect -f") printf "true\\n" ;;\n  "run --rm") printf "1\\n" ;;\n  *) exit 0 ;;\nesac\n' >"$postgres_root/bin/docker"
+chmod +x "$postgres_root/bin"/*
+postgres_log="$postgres_root/docker.log"
+: >"$postgres_log"
+DOCKER_LOG="$postgres_log" PATH="$postgres_root/bin:$PATH" "$FEDORA_POSTGRES_SETUP" --non-interactive >/dev/null
+postgres_calls="$(<"$postgres_log")"
+[[ "$postgres_calls" == *"volume create pgdata"* ]] || fail "Fedora postgres did not create the data volume"
+[[ "$postgres_calls" == *"pull postgres:19"* ]] || fail "Fedora postgres did not pull the pinned image"
+[[ "$postgres_calls" == *"run -d --name postgres --restart unless-stopped"* ]] || fail "Fedora postgres did not create a restarting container"
+[[ "$postgres_calls" == *"-p 127.0.0.1:5432:5432"* ]] || fail "Fedora postgres did not publish only on loopback"
+[[ "$postgres_calls" == *"-v pgdata:/var/lib/postgresql"* ]] || fail "Fedora postgres did not mount the PostgreSQL 18+ data path"
+[[ "$postgres_calls" == *"run --rm --network host"* ]] || fail "Fedora postgres did not validate the password over TCP"
+: >"$postgres_log"
+DOCKER_CONTAINER_EXISTS=1 DOCKER_LOG="$postgres_log" PATH="$postgres_root/bin:$PATH" "$FEDORA_POSTGRES_SETUP" --non-interactive >/dev/null
+postgres_calls="$(<"$postgres_log")"
+[[ "$postgres_calls" != *"run -d"* && "$postgres_calls" != *"volume create"* && "$postgres_calls" != *"pull "* ]] || fail "Fedora postgres recreated an existing container"
+assert_status 1 env POSTGRES_TEST_PORT_BUSY=1 DOCKER_LOG="$postgres_log" PATH="$postgres_root/bin:$PATH" "$FEDORA_POSTGRES_SETUP" --non-interactive
+grep -q "port 5432 is already in use" "$TEST_STDERR" || fail "Fedora postgres did not report the busy port"
 
 [[ "$(<"$ROOT_DIR/fedora-wsl2/home/config/mise/config.toml")" == *'python = "latest"'* ]] || fail "Fedora Mise configuration does not select the latest Python"
 [[ "$(<"$ROOT_DIR/fedora-wsl2/home/config/mise/config.toml")" == *'markdownlint-cli2 = "latest"'* ]] || fail "Fedora Mise configuration does not select the latest markdownlint-cli2"

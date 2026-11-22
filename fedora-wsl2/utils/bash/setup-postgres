@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=setup-common
+source "$SCRIPT_DIR/setup-common"
+
+DRY_RUN="${DOTFILES_DRY_RUN:-0}"
+NON_INTERACTIVE=0
+
+# Local development database. The fixed credentials are acceptable only because the
+# port is published on the loopback interface, which keeps it off the external network.
+POSTGRES_IMAGE="postgres:19"
+POSTGRES_CONTAINER="postgres"
+POSTGRES_VOLUME="pgdata"
+POSTGRES_USER="postgres"
+POSTGRES_PASSWORD="postgres"
+POSTGRES_BIND="127.0.0.1"
+POSTGRES_PORT=5432
+READY_ATTEMPTS=30
+
+log() { echo "[setup-postgres] $*"; }
+fail() { echo "[setup-postgres] ERROR: $*" >&2; exit 1; }
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dry-run) DRY_RUN=1; shift ;;
+        --non-interactive) NON_INTERACTIVE=1; shift ;;
+        *) fail "unknown option: $1" ;;
+    esac
+done
+
+# Docker is driven through sudo, as in setup-containers, so this phase also works in the
+# same run that adds the user to the docker group (the group is not active until a new session).
+docker_cmd() { sudo docker "$@"; }
+
+if (( DRY_RUN )); then
+    log "[dry-run] would ensure container $POSTGRES_CONTAINER ($POSTGRES_IMAGE) published on $POSTGRES_BIND:$POSTGRES_PORT"
+    log "[dry-run] would pull $POSTGRES_IMAGE and create volume $POSTGRES_VOLUME when missing"
+    log "[dry-run] would start the container with --restart unless-stopped"
+    log "[dry-run] would validate the connection through $POSTGRES_BIND:$POSTGRES_PORT as $POSTGRES_USER"
+    exit 0
+fi
+
+setup_require_command docker
+setup_require_command ss
+setup_preflight_privileged_phase "$DRY_RUN" "$NON_INTERACTIVE"
+
+if docker_cmd container inspect "$POSTGRES_CONTAINER" >/dev/null 2>&1; then
+    if [[ "$(docker_cmd inspect -f '{{.State.Running}}' "$POSTGRES_CONTAINER")" == true ]]; then
+        log "[running] $POSTGRES_CONTAINER"
+    else
+        log "Starting existing container: $POSTGRES_CONTAINER"
+        docker_cmd start "$POSTGRES_CONTAINER" >/dev/null
+    fi
+else
+    [[ -z "$(ss -H -ltn "sport = :$POSTGRES_PORT")" ]] || fail "port $POSTGRES_PORT is already in use"
+    if docker_cmd volume inspect "$POSTGRES_VOLUME" >/dev/null 2>&1; then
+        log "WARNING: volume $POSTGRES_VOLUME already exists; the user and password apply only to an empty volume, so existing credentials are kept"
+    else
+        log "Creating volume: $POSTGRES_VOLUME"
+        docker_cmd volume create "$POSTGRES_VOLUME" >/dev/null
+    fi
+    log "Pulling image: $POSTGRES_IMAGE"
+    docker_cmd pull "$POSTGRES_IMAGE" >/dev/null
+    log "Creating container $POSTGRES_CONTAINER on $POSTGRES_BIND:$POSTGRES_PORT"
+    docker_cmd run -d --name "$POSTGRES_CONTAINER" \
+        --restart unless-stopped \
+        -e "POSTGRES_USER=$POSTGRES_USER" \
+        -e "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" \
+        -p "$POSTGRES_BIND:$POSTGRES_PORT:5432" \
+        -v "$POSTGRES_VOLUME:/var/lib/postgresql" \
+        "$POSTGRES_IMAGE" >/dev/null
+fi
+
+# A throwaway client over TCP checks the password. Inside the container the local socket uses
+# trust authentication, and the server only opens its TCP port after initialization finishes.
+log "Waiting for PostgreSQL on $POSTGRES_BIND:$POSTGRES_PORT"
+for (( attempt = 1; attempt <= READY_ATTEMPTS; attempt++ )); do
+    result="$(docker_cmd run --rm --network host -e "PGPASSWORD=$POSTGRES_PASSWORD" "$POSTGRES_IMAGE" \
+        psql -h "$POSTGRES_BIND" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -tAc 'select 1' 2>/dev/null || true)"
+    if [[ "$result" == 1 ]]; then
+        log "PostgreSQL is ready: $POSTGRES_USER@$POSTGRES_BIND:$POSTGRES_PORT"
+        exit 0
+    fi
+    sleep 1
+done
+fail "PostgreSQL did not accept $POSTGRES_USER connections on $POSTGRES_BIND:$POSTGRES_PORT; if volume $POSTGRES_VOLUME was created earlier, its stored password may differ"

@@ -27,6 +27,7 @@ Empty or negative answers leave a phase disabled.
 | `--fonts`           | Install verified, version-pinned user-local fonts under `$HOME/.local/share/fonts/<family>`; unowned or modified files stop installation.                |
 | `--services`        | Configure keyd and prepare the WireGuard boot unit on Omarchy; `wg-quick@wg0` is enabled only when its safe config exists and is never started by setup. |
 | `--containers`      | Install Docker Engine on Fedora WSL2. Unsupported by Omarchy.                                                                                            |
+| `--postgres`        | Run a local PostgreSQL container on Fedora WSL2, published only on `127.0.0.1:5432`.                                                                     |
 | `--timezone`        | Set the system time zone to `America/Puerto_Rico` on Fedora WSL2.                                                                                        |
 | `--no-validate`     | Skip the final validation of a `--dots` run.                                                                                                             |
 | `--non-interactive` | Require `--profile`, run only explicitly declared phases, and enable DNF automatic confirmation for Fedora mutations.                                    |
@@ -34,7 +35,7 @@ Empty or negative answers leave a phase disabled.
 | `--help`, `-h`      | Show usage.                                                                                                                                              |
 
 Without `--non-interactive`, Omarchy `--dots` asks separately about `deps`, `fonts`, and `services`;
-Fedora WSL2 additionally offers `containers` and `timezone`. In non-interactive mode, no optional
+Fedora WSL2 additionally offers `containers`, `postgres`, and `timezone`. In non-interactive mode, no optional
 phase is inferred. A request such as `--profile omarchy --deps --dry-run` runs only the dependency
 phase; it does not apply dotfiles or validation.
 
@@ -70,8 +71,9 @@ invokes the existing Omarchy removal APIs with component names as separate argum
 ./setup --profile fedora-wsl2 --dots-only
 ./setup --profile fedora-wsl2 --deps
 ./setup --profile fedora-wsl2 --containers
+./setup --profile fedora-wsl2 --postgres
 ./setup --profile fedora-wsl2 --timezone
-./setup --profile fedora-wsl2 --dots --deps --containers --timezone
+./setup --profile fedora-wsl2 --dots --deps --containers --postgres --timezone
 ```
 
 | Flag           | Meaning                                                                                                                                                                                                              |
@@ -80,6 +82,7 @@ invokes the existing Omarchy removal APIs with component names as separate argum
 | `--dots`       | Apply the same user configuration as `--dots-only`.                                                                                                                                                                  |
 | `--deps`       | Install the groups and packages declared in `fedora-wsl2/dnf-packages`; dry-runs leave group state unqueried.                                                                                                        |
 | `--containers` | Install Docker Engine from Docker's official Fedora repository, configure log rotation, and start the service.                                                                                                       |
+| `--postgres`   | Run a local PostgreSQL container on Fedora WSL2, published only on `127.0.0.1:5432`.                                                                                                                                 |
 | `--timezone`   | Set the system time zone to `America/Puerto_Rico`.                                                                                                                                                                   |
 
 OpenCode is installed through the Mise tool list. Fedora's `--dots` and `--dots-only` Mise setup
@@ -87,6 +90,12 @@ requires an RPM-managed executable: a standalone `~/.local/bin/mise` does not sa
 When needed, it installs DNF COPR support, enables `jdxcode/mise`, and installs `mise` through DNF.
 `--fonts`, `--no-validate`, and `--services` are exclusive to Omarchy and are rejected for Fedora
 WSL2.
+
+Fedora's `--postgres` phase runs the `postgres:19` image as the `postgres` container with the user and
+password `postgres`, a `pgdata` volume mounted at `/var/lib/postgresql`, and `--restart unless-stopped`.
+It publishes the port only on `127.0.0.1:5432`, so the database is reachable from WSL and from Windows
+but not from the network. The credentials apply only when the volume is empty; an existing volume keeps
+its stored password.
 
 The Fedora Mise configuration selects the latest Herdr release. Its configuration is managed at
 `~/.config/herdr/config.toml` with Windows Terminal-compatible pane and tab bindings derived from
@@ -126,7 +135,7 @@ the complete phase without `sudo`, downloads, writes, or service changes:
 
 - `setup-dots` owns only user configuration, including LazyVim, the manifest, backups, symlinks,
   Mise, and Mise-managed tools.
-- `setup-deps`, `setup-fonts`, `setup-containers`, `setup-services`, `setup-timezone`, and
+- `setup-deps`, `setup-fonts`, `setup-containers`, `setup-postgres`, `setup-services`, `setup-timezone`, and
   `setup-validate` each own one phase. Omarchy `setup-services` coordinates keyd and WireGuard.
 - `--dry-run` never invokes `sudo`, DNF, package downloads, `fc-cache`, service management, or
   Hyprland commands.
@@ -175,4 +184,5 @@ the complete phase without `sudo`, downloads, writes, or service changes:
 - `fedora-wsl2/utils/bash/setup-dots` — Mise bootstrap, dotfiles, and tools.
 - `fedora-wsl2/utils/bash/setup-deps` — DNF group and package setup.
 - `fedora-wsl2/utils/bash/setup-containers` — official Docker Engine setup for Fedora WSL2.
+- `fedora-wsl2/utils/bash/setup-postgres` — local PostgreSQL container setup.
 - `fedora-wsl2/utils/bash/setup-timezone` — time zone setup.

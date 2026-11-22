@@ -8,6 +8,7 @@ DOTS=0
 DOTS_ONLY=0
 DEPS=0
 CONTAINERS=0
+POSTGRES=0
 TIMEZONE=0
 NON_INTERACTIVE=0
 
@@ -20,6 +21,7 @@ while [[ $# -gt 0 ]]; do
         --dots-only) DOTS_ONLY=1; shift ;;
         --deps) DEPS=1; shift ;;
         --containers) CONTAINERS=1; shift ;;
+        --postgres) POSTGRES=1; shift ;;
         --timezone) TIMEZONE=1; shift ;;
         --dry-run) DRY_RUN=1; shift ;;
         --non-interactive) NON_INTERACTIVE=1; shift ;;
@@ -28,8 +30,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 (( DOTS && DOTS_ONLY )) && fail "dots and dots-only cannot be combined"
-(( DOTS_ONLY && (DEPS || CONTAINERS || TIMEZONE) )) && fail "dots-only cannot include phases"
-(( DOTS || DOTS_ONLY || DEPS || CONTAINERS || TIMEZONE )) || fail "no phase selected"
+(( DOTS_ONLY && (DEPS || CONTAINERS || POSTGRES || TIMEZONE) )) && fail "dots-only cannot include phases"
+(( DOTS || DOTS_ONLY || DEPS || CONTAINERS || POSTGRES || TIMEZONE )) || fail "no phase selected"
 
 run_helper() {
     local helper="$REPO_ROOT/fedora-wsl2/utils/bash/$1"
@@ -45,4 +47,5 @@ if (( DEPS )); then run_helper setup-deps "${helper_args[@]}"; fi
 if (( DOTS )); then run_helper setup-dots "${helper_args[@]}"; fi
 if (( DOTS_ONLY )); then run_helper setup-dots "${helper_args[@]}"; fi
 if (( CONTAINERS )); then run_helper setup-containers "${helper_args[@]}"; fi
+if (( POSTGRES )); then run_helper setup-postgres "${helper_args[@]}"; fi
 if (( TIMEZONE )); then run_helper setup-timezone "${helper_args[@]}"; fi
