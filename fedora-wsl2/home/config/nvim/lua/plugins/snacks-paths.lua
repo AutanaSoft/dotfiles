@@ -9,6 +9,7 @@ return {
   {
     'folke/snacks.nvim',
     opts = {
+      bigfile = { line_length = 4000 },
       picker = {
         sources = {
           files = {
@@ -21,7 +22,7 @@ return {
           },
         },
       },
-      scroll = { enabled = false },
+      scroll = { enabled = true },
     },
   },
 }
