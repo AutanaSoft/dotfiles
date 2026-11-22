@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "id": "demo",
+  "name": "Perfil de ejemplo",
+  "description": "Datos ilustrativos e inertes para recorrer la plantilla TUI.",
+  "order": 1,
+  "platform": {
+    "os": "example",
+    "distribution": "example",
+    "version": "1"
+  },
+  "requirements": [],
+  "categories": [
+    {
+      "id": "dotfiles",
+      "name": "Dotfiles",
+      "description": "Grupo ilustrativo de configuración de usuario.",
+      "requirements": [],
+      "components": [
+        {
+          "id": "shell",
+          "name": "Shell",
+          "description": "Componente de ejemplo sin acciones.",
+          "items": []
+        }
+      ]
+    },
+    {
+      "id": "fonts",
+      "name": "Fuentes",
+      "description": "Grupo ilustrativo de fuentes.",
+      "requirements": [],
+      "components": [
+        {
+          "id": "font-sample",
+          "name": "Fuente de ejemplo",
+          "description": "Componente de ejemplo sin acciones.",
+          "items": []
+        }
+      ]
+    },
+    {
+      "id": "dependencies",
+      "name": "Dependencias",
+      "description": "Grupo ilustrativo de dependencias.",
+      "requirements": [],
+      "components": [
+        {
+          "id": "tools",
+          "name": "Herramientas",
+          "description": "Componente de ejemplo sin acciones.",
+          "items": []
+        }
+      ]
+    },
+    {
+      "id": "services",
+      "name": "Servicios",
+      "description": "Grupo ilustrativo de servicios.",
+      "requirements": [],
+      "components": [
+        {
+          "id": "service-sample",
+          "name": "Servicio de ejemplo",
+          "description": "Componente de ejemplo sin acciones.",
+          "items": []
+        }
+      ]
+    }
+  ]
+}

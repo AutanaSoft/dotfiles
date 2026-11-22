@@ -1,0 +1,715 @@
+#!/usr/bin/env bash
+# Inert profile-selection template. This entrypoint never applies profile actions.
+set -uo pipefail
+
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+ROOT_DIR=$(cd -- "$SCRIPT_DIR/.." && pwd -P)
+
+usage() {
+  printf '%s\n' \
+    'Usage: scripts/setup [--profile ID]' \
+    'Browse inert profile examples, select categories and components, then review.' \
+    'This template does not install or modify anything.'
+}
+
+fail() {
+  printf 'scripts/setup: %s\n' "$1" >&2
+  exit "${2:-2}"
+}
+
+REQUESTED_PROFILE=''
+USE_SELECTOR=1
+case ${1:-} in
+  --help|-h)
+    [[ $# == 1 ]] || fail 'too many arguments'
+    usage
+    exit 0
+    ;;
+  --profile)
+    [[ $# == 2 ]] || fail 'Usage: scripts/setup --profile ID'
+    REQUESTED_PROFILE=$2
+    USE_SELECTOR=0
+    [[ $REQUESTED_PROFILE =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || fail 'invalid profile id'
+    ;;
+  '')
+    [[ $# == 0 ]] || fail 'Usage: scripts/setup [--profile ID]'
+    ;;
+  *)
+    fail 'Usage: scripts/setup [--profile ID]'
+    ;;
+esac
+
+command -v jq >/dev/null 2>&1 || fail 'jq is required to read profile manifests'
+
+readonly VALIDATOR='
+def valid_text: type == "string" and length > 0;
+def valid_id: type == "string" and test("^[a-z0-9]+(-[a-z0-9]+)*$");
+def valid_requirements: type == "array" and all(.[]; valid_text);
+def valid_component:
+  type == "object"
+  and (.id | valid_id)
+  and (.name | valid_text)
+  and (.description | valid_text)
+  and (.items | type == "array");
+def valid_category:
+  type == "object"
+  and (.id | valid_id)
+  and (.name | valid_text)
+  and (.description | valid_text)
+  and (.requirements | valid_requirements)
+  and (.components | type == "array")
+  and all(.components[]; valid_component)
+  and ([.components[].id] | length == (unique | length));
+type == "object"
+and (.schema_version | type == "number" and . == 1)
+and (.id | valid_id)
+and (.name | valid_text)
+and (.description | valid_text)
+and (.order | type == "number" and . >= 0 and floor == .)
+and (.platform | type == "object"
+  and (.os | valid_text)
+  and (.distribution | valid_text)
+  and (.version | valid_text))
+and (.requirements | valid_requirements)
+and (.categories | type == "array")
+and all(.categories[]; valid_category)
+and ([.categories[].id] as $category_ids | ($category_ids | length) == ($category_ids | unique | length))
+and ([.. | strings | select(test("[[:cntrl:]]"))] | length == 0)
+'
+
+declare -a MANIFESTS=() PROFILE_PATHS=() PROFILE_IDS=() PROFILE_NAMES=() PROFILE_DESCRIPTIONS=() PROFILE_ORDERS=() PROFILE_ENABLED=() PROFILE_SORTED=()
+declare -A PROFILE_ID_COUNTS=()
+INVALID_COUNT=0
+DUPLICATE_COUNT=0
+
+shopt -s nullglob
+MANIFESTS=("$ROOT_DIR"/src/*/profile.json)
+for manifest in "${MANIFESTS[@]}"; do
+  if [[ ! -r $manifest ]] || ! jq -e "$VALIDATOR" "$manifest" >/dev/null 2>&1; then
+    INVALID_COUNT=$((INVALID_COUNT + 1))
+    continue
+  fi
+  PROFILE_PATHS+=("$manifest")
+  PROFILE_IDS+=("$(jq -r '.id' "$manifest")")
+  PROFILE_NAMES+=("$(jq -r '.name' "$manifest")")
+  PROFILE_DESCRIPTIONS+=("$(jq -r '.description' "$manifest")")
+  PROFILE_ORDERS+=("$(jq -r '.order' "$manifest")")
+  PROFILE_ENABLED+=(1)
+  id=${PROFILE_IDS[-1]}
+  PROFILE_ID_COUNTS[$id]=$(( ${PROFILE_ID_COUNTS[$id]:-0} + 1 ))
+done
+
+for index in "${!PROFILE_IDS[@]}"; do
+  id=${PROFILE_IDS[index]}
+  if [[ ${PROFILE_ID_COUNTS[$id]:-0} -gt 1 ]]; then
+    PROFILE_ENABLED[index]=0
+    DUPLICATE_COUNT=$((DUPLICATE_COUNT + 1))
+  fi
+done
+
+# Insertion sorting only shifts on strictly greater order values, so ties keep
+# the manifest glob's stable encounter order.
+for ((index = 0; index < ${#PROFILE_IDS[@]}; index++)); do
+  insertion=$index
+  while (( insertion > 0 )); do
+    previous=${PROFILE_SORTED[insertion - 1]}
+    if (( PROFILE_ORDERS[previous] <= PROFILE_ORDERS[index] )); then
+      break
+    fi
+    PROFILE_SORTED[insertion]=${PROFILE_SORTED[insertion - 1]}
+    insertion=$((insertion - 1))
+  done
+  PROFILE_SORTED[insertion]=$index
+done
+
+INVALID_WARNING=''
+if (( INVALID_COUNT == 1 )); then
+  INVALID_WARNING='1 manifiesto inválido'
+elif (( INVALID_COUNT > 1 )); then
+  INVALID_WARNING="$INVALID_COUNT manifiestos inválidos"
+fi
+DUPLICATE_WARNING=''
+if (( DUPLICATE_COUNT == 1 )); then
+  DUPLICATE_WARNING='1 perfil no seleccionable por ID duplicado'
+elif (( DUPLICATE_COUNT > 1 )); then
+  DUPLICATE_WARNING="$DUPLICATE_COUNT perfiles no seleccionables por ID duplicado"
+fi
+WARNING=$INVALID_WARNING
+if [[ -n $DUPLICATE_WARNING ]]; then
+  [[ -z $WARNING ]] || WARNING+=" · "
+  WARNING+=$DUPLICATE_WARNING
+fi
+
+CURRENT_PROFILE_INDEX=-1
+CURRENT_PROFILE_PATH=''
+SCREEN=PROFILE
+PROFILE_SELECTOR_USED=$USE_SELECTOR
+CATEGORY_STEP=1
+FOCUS=0
+OFFSET=0
+COMPONENT_POSITION=0
+SELECTED_CATEGORIES=()
+MESSAGE=''
+declare -a CATEGORY_IDS=() CATEGORY_NAMES=() CATEGORY_DESCRIPTIONS=() SELECTED_CATEGORIES=()
+declare -A CATEGORY_SELECTED=() COMPONENT_COUNTS=() COMPONENT_IDS=() COMPONENT_NAMES=() COMPONENT_DESCRIPTIONS=() COMPONENT_SELECTED=()
+
+load_profile() {
+  local profile_index=$1 category_id component_id category_index component_index
+  if (( profile_index != CURRENT_PROFILE_INDEX )); then
+    CURRENT_PROFILE_INDEX=$profile_index
+    CURRENT_PROFILE_PATH=${PROFILE_PATHS[profile_index]}
+    CATEGORY_IDS=()
+    CATEGORY_NAMES=()
+    CATEGORY_DESCRIPTIONS=()
+    CATEGORY_SELECTED=()
+    COMPONENT_COUNTS=()
+    COMPONENT_IDS=()
+    COMPONENT_NAMES=()
+    COMPONENT_DESCRIPTIONS=()
+    COMPONENT_SELECTED=()
+    mapfile -t CATEGORY_IDS < <(jq -r '.categories[].id' "$CURRENT_PROFILE_PATH")
+    for category_index in "${!CATEGORY_IDS[@]}"; do
+      category_id=${CATEGORY_IDS[category_index]}
+      CATEGORY_NAMES[category_index]=$(jq -r --arg id "$category_id" '.categories[] | select(.id == $id) | .name' "$CURRENT_PROFILE_PATH")
+      CATEGORY_DESCRIPTIONS[category_index]=$(jq -r --arg id "$category_id" '.categories[] | select(.id == $id) | .description' "$CURRENT_PROFILE_PATH")
+      CATEGORY_SELECTED[$category_id]=0
+      local -a component_ids=()
+      mapfile -t component_ids < <(jq -r --arg id "$category_id" '.categories[] | select(.id == $id) | .components[].id' "$CURRENT_PROFILE_PATH")
+      COMPONENT_COUNTS[$category_id]=${#component_ids[@]}
+      for component_index in "${!component_ids[@]}"; do
+        component_id=${component_ids[component_index]}
+        COMPONENT_IDS["$category_id:$component_index"]=$component_id
+        COMPONENT_NAMES["$category_id:$component_id"]=$(jq -r --arg category "$category_id" --arg component "$component_id" '.categories[] | select(.id == $category) | .components[] | select(.id == $component) | .name' "$CURRENT_PROFILE_PATH")
+        COMPONENT_DESCRIPTIONS["$category_id:$component_id"]=$(jq -r --arg category "$category_id" --arg component "$component_id" '.categories[] | select(.id == $category) | .components[] | select(.id == $component) | .description' "$CURRENT_PROFILE_PATH")
+        COMPONENT_SELECTED["$category_id:$component_id"]=0
+      done
+    done
+  fi
+  SCREEN=CATEGORIES
+  CATEGORY_STEP=1
+  (( PROFILE_SELECTOR_USED )) && CATEGORY_STEP=2
+  FOCUS=0
+  OFFSET=0
+  MESSAGE=''
+}
+
+if (( !USE_SELECTOR )); then
+  found_profile=-1
+  for index in "${!PROFILE_IDS[@]}"; do
+    if [[ ${PROFILE_IDS[index]} == "$REQUESTED_PROFILE" ]]; then
+      found_profile=$index
+      break
+    fi
+  done
+  if (( found_profile < 0 )); then
+    fail 'requested profile is not available'
+  fi
+  if (( PROFILE_ENABLED[found_profile] == 0 )); then
+    fail 'requested profile has a duplicate id and is not selectable'
+  fi
+  load_profile "$found_profile"
+else
+  SCREEN=PROFILE
+  FOCUS=-1
+  for index in "${!PROFILE_SORTED[@]}"; do
+    candidate=${PROFILE_SORTED[index]}
+    if (( PROFILE_ENABLED[candidate] )); then
+      FOCUS=$index
+      break
+    fi
+  done
+fi
+
+# Render rows are rebuilt from validated data and selection state on each frame.
+declare -a ROW_KIND=() ROW_KEY=() ROW_LABEL=()
+CONTENT_WIDTH=0
+append_row() {
+  ROW_KIND+=("$1")
+  ROW_KEY+=("$2")
+  ROW_LABEL+=("$3")
+}
+
+build_rows() {
+  local index profile_index category_id component_id category_index selected_id
+  ROW_KIND=()
+  ROW_KEY=()
+  ROW_LABEL=()
+  case $SCREEN in
+    PROFILE)
+      for index in "${!PROFILE_SORTED[@]}"; do
+        profile_index=${PROFILE_SORTED[index]}
+        append_row profile "$profile_index" "${PROFILE_NAMES[profile_index]} · ${PROFILE_IDS[profile_index]}"
+      done
+      ;;
+    CATEGORIES)
+      for index in "${!CATEGORY_IDS[@]}"; do
+        append_row category "${CATEGORY_IDS[index]}" "${CATEGORY_NAMES[index]}"
+      done
+      append_row back '' '← Volver'
+      append_row continue '' 'Continuar →'
+      ;;
+    COMPONENTS)
+      category_id=${SELECTED_CATEGORIES[COMPONENT_POSITION]}
+      for ((index = 0; index < COMPONENT_COUNTS[$category_id]; index++)); do
+        component_id=${COMPONENT_IDS["$category_id:$index"]}
+        append_row component "$category_id:$component_id" "${COMPONENT_NAMES["$category_id:$component_id"]}"
+      done
+      append_row back '' '← Volver'
+      append_row continue '' 'Continuar →'
+      ;;
+    REVIEW)
+      for category_id in "${SELECTED_CATEGORIES[@]}"; do
+        category_index=$(category_index_for_id "$category_id")
+        append_row review_category "$category_id" "${CATEGORY_NAMES[category_index]}"
+        for ((index = 0; index < COMPONENT_COUNTS[$category_id]; index++)); do
+          component_id=${COMPONENT_IDS["$category_id:$index"]}
+          if [[ ${COMPONENT_SELECTED["$category_id:$component_id"]:-0} == 1 ]]; then
+            append_row review_component "$category_id:$component_id" "${COMPONENT_NAMES["$category_id:$component_id"]}"
+          fi
+        done
+      done
+      append_row back '' '← Volver'
+      append_row disabled '' 'Instalar (deshabilitado)'
+      ;;
+  esac
+}
+
+selected_component_count() {
+  local category_id=$1 component_id index count=0
+  for ((index = 0; index < COMPONENT_COUNTS[$category_id]; index++)); do
+    component_id=${COMPONENT_IDS["$category_id:$index"]}
+    [[ ${COMPONENT_SELECTED["$category_id:$component_id"]:-0} == 1 ]] && count=$((count + 1))
+  done
+  printf '%s' "$count"
+}
+
+collect_selected_categories() {
+  local index category_id
+  SELECTED_CATEGORIES=()
+  for index in "${!CATEGORY_IDS[@]}"; do
+    category_id=${CATEGORY_IDS[index]}
+    [[ ${CATEGORY_SELECTED[$category_id]:-0} == 1 ]] && SELECTED_CATEGORIES+=("$category_id")
+  done
+}
+
+screen_title() {
+  local selected_count
+  case $SCREEN in
+    PROFILE) printf 'Paso 1 · Perfil' ;;
+    CATEGORIES) printf 'Paso %s · Categorías' "$CATEGORY_STEP" ;;
+    COMPONENTS)
+      printf 'Paso %s · Componentes · %s' "$((CATEGORY_STEP + 1 + COMPONENT_POSITION))" \
+        "${CATEGORY_NAMES[$(category_index_for_id "${SELECTED_CATEGORIES[COMPONENT_POSITION]}")]}"
+      ;;
+    REVIEW)
+      selected_count=${#SELECTED_CATEGORIES[@]}
+      printf 'Paso %s · Revisión' "$((CATEGORY_STEP + 1 + selected_count))"
+      ;;
+  esac
+}
+
+category_index_for_id() {
+  local id=$1 index
+  for index in "${!CATEGORY_IDS[@]}"; do
+    [[ ${CATEGORY_IDS[index]} == "$id" ]] && { printf '%s' "$index"; return; }
+  done
+  printf '0'
+}
+
+trim_text() {
+  local value=$1 width=$2
+  if (( width <= 0 )); then
+    TRIMMED=''
+  elif (( ${#value} > width )); then
+    if (( width == 1 )); then TRIMMED='…'; else TRIMMED="${value:0:width-1}…"; fi
+  else
+    TRIMMED=$value
+  fi
+}
+
+FRAME=''
+append_line() {
+  FRAME+="$1"$'\n'
+}
+
+render_row() {
+  local index=$1 kind key label
+  local prefix='  ' selected=0 profile_index category_id component_id text padded
+  kind=${ROW_KIND[index]}
+  key=${ROW_KEY[index]}
+  label=${ROW_LABEL[index]}
+  case $kind in
+    profile)
+      profile_index=$key
+      if (( PROFILE_ENABLED[profile_index] == 0 )); then
+        label+=" · ID duplicado (no seleccionable)"
+      fi
+      ;;
+    category)
+      [[ ${CATEGORY_SELECTED[$key]:-0} == 1 ]] && selected=1
+      ;;
+    component)
+      category_id=${key%%:*}
+      component_id=${key#*:}
+      [[ ${COMPONENT_SELECTED["$category_id:$component_id"]:-0} == 1 ]] && selected=1
+      ;;
+    review_component)
+      label="· $label"
+      ;;
+    disabled)
+      label='Instalar (deshabilitado)'
+      ;;
+  esac
+  if [[ $kind == category || $kind == component ]]; then
+    if (( selected )); then text="[x] $label"; else text="[ ] $label"; fi
+  else
+    text=$label
+  fi
+  (( index == FOCUS )) && prefix='› '
+  trim_text "$prefix$text" "$CONTENT_WIDTH"
+  text=$TRIMMED
+  printf -v padded '%-*s' "$CONTENT_WIDTH" "$text"
+  if (( index == FOCUS )); then
+    append_line "$FOCUS_BG$FG_FOCUS$padded$RESET"
+  elif [[ $kind == review_category ]]; then
+    append_line "$ACCENT$BOLD$padded$RESET"
+  elif [[ $kind == review_component ]]; then
+    append_line "$SECONDARY$padded$RESET"
+  elif [[ $kind == disabled ]]; then
+    append_line "$DIM$padded$RESET"
+  elif [[ $kind == profile && ${PROFILE_ENABLED[key]:-1} == 0 ]]; then
+    append_line "$DIM$padded$RESET"
+  else
+    append_line "$padded"
+  fi
+}
+
+render() {
+  local index total available capacity first last max_offset top_more=0 bottom_more=0 status footer step title
+  FRAME=$CLEAR_SCREEN
+  if (( TERM_COLUMNS < 32 || TERM_ROWS < 8 )); then
+    CONTENT_WIDTH=$TERM_COLUMNS
+    append_line "$ACCENT$(trim_text 'Amplía la terminal' "$CONTENT_WIDTH")$RESET"
+    append_line "$(trim_text 'Esc volver' "$CONTENT_WIDTH")"
+    return
+  fi
+  CONTENT_WIDTH=$((TERM_COLUMNS - 2))
+  title=$(screen_title)
+  trim_text 'Instalador de perfiles' "$CONTENT_WIDTH"
+  append_line "$ACCENT$BOLD$TRIMMED$RESET"
+  trim_text "$title" "$CONTENT_WIDTH"
+  append_line "$SECONDARY$TRIMMED$RESET"
+
+  status=$MESSAGE
+  [[ -n $status ]] || status=$WARNING
+  trim_text "$status" "$CONTENT_WIDTH"
+  status=$TRIMMED
+  footer='↑↓ mover · Espacio elegir · Enter seguir · Esc volver'
+  if [[ $SCREEN == PROFILE ]]; then
+    if ((${#PROFILE_SORTED[@]} == 0)); then footer='Esc salir'
+    else footer='↑↓ mover · Enter abrir · Esc salir'
+    fi
+  elif [[ $SCREEN == REVIEW ]]; then
+    footer='↑↓ mover · Enter elegir · Esc volver'
+  fi
+  trim_text "$footer" "$CONTENT_WIDTH"
+  footer=$TRIMMED
+  available=$((TERM_ROWS - 4))
+  build_rows
+  total=${#ROW_KIND[@]}
+  if (( total == 0 )); then
+    if [[ $SCREEN == PROFILE ]]; then
+      ROW_KIND=(message)
+      ROW_KEY=('')
+      ROW_LABEL=('No hay perfiles válidos disponibles.')
+      total=1
+    fi
+  fi
+  capacity=$available
+  if (( total > available )); then
+    capacity=$((available - 2))
+    (( capacity > 0 )) || capacity=1
+  fi
+  if (( FOCUS < 0 && total > 0 )) && [[ $SCREEN == PROFILE ]]; then
+    for index in "${!ROW_KIND[@]}"; do
+      profile_index=${ROW_KEY[index]}
+      if [[ ${ROW_KIND[index]} == profile ]] && (( PROFILE_ENABLED[profile_index] )); then
+        FOCUS=$index
+        break
+      fi
+    done
+  fi
+  if (( total == 0 )); then
+    OFFSET=0
+  else
+    if (( FOCUS < 0 )) && [[ $SCREEN != PROFILE ]]; then FOCUS=0; fi
+    (( FOCUS >= total )) && FOCUS=$((total - 1))
+    if (( FOCUS >= 0 )); then
+      (( FOCUS < OFFSET )) && OFFSET=$FOCUS
+      (( FOCUS >= OFFSET + capacity )) && OFFSET=$((FOCUS - capacity + 1))
+      (( OFFSET < 0 )) && OFFSET=0
+      max_offset=$((total - capacity))
+      (( max_offset < 0 )) && max_offset=0
+      (( OFFSET > max_offset )) && OFFSET=$max_offset
+    else
+      OFFSET=0
+    fi
+  fi
+  first=$OFFSET
+  last=$((OFFSET + capacity))
+  (( last > total )) && last=$total
+  (( total > available && OFFSET > 0 )) && top_more=1
+  (( total > available && last < total )) && bottom_more=1
+  if (( total > available )); then
+    if (( top_more )); then append_line "$SECONDARY↑ Más$RESET"; fi
+    for ((index = first; index < last; index++)); do render_row "$index"; done
+    if (( bottom_more )); then append_line "$SECONDARY↓ Más$RESET"; fi
+  else
+    for ((index = first; index < last; index++)); do render_row "$index"; done
+  fi
+  append_line "$SECONDARY$status$RESET"
+  append_line "$SECONDARY$footer$RESET"
+  if [[ $SCREEN == REVIEW ]]; then
+    FRAME=${FRAME%$'\n'}
+    FRAME+=$'\n'"$SECONDARY"'Instalación no disponible en esta plantilla.'"$RESET"$'\n'
+  fi
+}
+
+find_next_focus() {
+  local direction=$1 candidate
+  candidate=$((FOCUS + direction))
+  while (( candidate >= 0 && candidate < ${#ROW_KIND[@]} )); do
+    if [[ ${ROW_KIND[candidate]} != profile ]] || (( PROFILE_ENABLED[${ROW_KEY[candidate]}] )); then
+      FOCUS=$candidate
+      return
+    fi
+    candidate=$((candidate + direction))
+  done
+}
+
+activate_back() {
+  MESSAGE=''
+  case $SCREEN in
+    CATEGORIES)
+      SCREEN=PROFILE
+      FOCUS=0
+      for index in "${!PROFILE_SORTED[@]}"; do
+        if [[ ${PROFILE_SORTED[index]} == "$CURRENT_PROFILE_INDEX" ]]; then
+          FOCUS=$index
+          break
+        fi
+      done
+      OFFSET=0
+      ;;
+    COMPONENTS)
+      if (( COMPONENT_POSITION > 0 )); then
+        COMPONENT_POSITION=$((COMPONENT_POSITION - 1))
+        FOCUS=0
+      else
+        SCREEN=CATEGORIES
+        FOCUS=0
+      fi
+      OFFSET=0
+      ;;
+    REVIEW)
+      SCREEN=COMPONENTS
+      COMPONENT_POSITION=$((${#SELECTED_CATEGORIES[@]} - 1))
+      FOCUS=0
+      OFFSET=0
+      ;;
+    PROFILE) RUNNING=0 ;;
+  esac
+}
+
+continue_flow() {
+  local category_id selected_count
+  MESSAGE=''
+  case $SCREEN in
+    CATEGORIES)
+      collect_selected_categories
+      if ((${#SELECTED_CATEGORIES[@]} == 0)); then
+        MESSAGE='Selecciona al menos una categoría para continuar.'
+        return
+      fi
+      COMPONENT_POSITION=0
+      SCREEN=COMPONENTS
+      FOCUS=0
+      OFFSET=0
+      ;;
+    COMPONENTS)
+      category_id=${SELECTED_CATEGORIES[COMPONENT_POSITION]}
+      selected_count=$(selected_component_count "$category_id")
+      if (( selected_count == 0 )); then
+        MESSAGE='Selecciona al menos un componente para continuar.'
+        return
+      fi
+      if (( COMPONENT_POSITION + 1 < ${#SELECTED_CATEGORIES[@]} )); then
+        COMPONENT_POSITION=$((COMPONENT_POSITION + 1))
+        FOCUS=0
+        OFFSET=0
+      else
+        SCREEN=REVIEW
+        build_rows
+        FOCUS=0
+        for index in "${!ROW_KIND[@]}"; do
+          if [[ ${ROW_KIND[index]} == back ]]; then
+            FOCUS=$index
+            break
+          fi
+        done
+        OFFSET=0
+      fi
+      ;;
+  esac
+}
+
+activate_enter() {
+  local kind key profile_index category_id component_id
+  if (( FOCUS < 0 || FOCUS >= ${#ROW_KIND[@]} )); then return; fi
+  kind=${ROW_KIND[FOCUS]}
+  key=${ROW_KEY[FOCUS]}
+  case $SCREEN in
+    PROFILE)
+      if [[ $kind == profile ]]; then
+        profile_index=$key
+        if (( PROFILE_ENABLED[profile_index] )); then
+          PROFILE_SELECTOR_USED=1
+          load_profile "$profile_index"
+        else
+          MESSAGE='Los perfiles con ID duplicado no se pueden seleccionar.'
+        fi
+      fi
+      ;;
+    CATEGORIES|COMPONENTS)
+      if [[ $kind == back ]]; then activate_back; else continue_flow; fi
+      ;;
+    REVIEW)
+      if [[ $kind == back ]]; then activate_back; fi
+      ;;
+  esac
+}
+
+activate_space() {
+  local kind key category_id component_id
+  (( FOCUS >= 0 && FOCUS < ${#ROW_KIND[@]} )) || return
+  kind=${ROW_KIND[FOCUS]}
+  key=${ROW_KEY[FOCUS]}
+  case $kind in
+    category)
+      if [[ ${CATEGORY_SELECTED[$key]:-0} == 1 ]]; then CATEGORY_SELECTED[$key]=0; else CATEGORY_SELECTED[$key]=1; fi
+      MESSAGE=''
+      ;;
+    component)
+      category_id=${key%%:*}
+      component_id=${key#*:}
+      if [[ ${COMPONENT_SELECTED["$category_id:$component_id"]:-0} == 1 ]]; then
+        COMPONENT_SELECTED["$category_id:$component_id"]=0
+      else
+        COMPONENT_SELECTED["$category_id:$component_id"]=1
+      fi
+      MESSAGE=''
+      ;;
+  esac
+}
+
+read_key() {
+  local first='' second='' third=''
+  KEY=''
+  if ! IFS= read -r -s -n 1 -t 0.1 first; then return 0; fi
+  if [[ -z $first || $first == $'\n' || $first == $'\r' ]]; then
+    KEY=enter
+  elif [[ $first == $'\033' ]]; then
+    if IFS= read -r -s -n 1 -t 0.05 second && [[ $second == '[' ]]; then
+      if IFS= read -r -s -n 1 -t 0.05 third; then
+        case $third in A) KEY=up ;; B) KEY=down ;; *) KEY=escape ;; esac
+      else
+        KEY=escape
+      fi
+    else
+      KEY=escape
+    fi
+  elif [[ $first == ' ' ]]; then
+    KEY=space
+  fi
+}
+
+update_size() {
+  local size extra
+  size=$(stty size <&0 2>/dev/null) || return
+  read -r TERM_ROWS TERM_COLUMNS extra <<< "$size"
+  [[ ${TERM_ROWS:-} =~ ^[0-9]+$ && ${TERM_COLUMNS:-} =~ ^[0-9]+$ ]] || return
+}
+
+if [[ ! -t 0 || ! -t 1 ]]; then
+  fail 'se requiere una terminal interactiva'
+fi
+SAVED_STTY=$(stty -g <&0) || fail 'no se pudo leer el estado de la terminal'
+TERMINAL_ACTIVE=1
+SCREEN_ACTIVE=0
+CLEANED=0
+RUNNING=1
+RESIZED=1
+TERM_ROWS=24
+TERM_COLUMNS=80
+KEY=''
+LAST_FRAME=''
+readonly RESET=$'\033[0m'
+readonly ACCENT=$'\033[38;2;91;207;190m'
+readonly SECONDARY=$'\033[38;2;150;164;169m'
+readonly DIM=$'\033[38;2;112;124;130m'
+readonly BOLD=$'\033[1m'
+readonly FOCUS_BG=$'\033[48;2;23;69;68m'
+readonly FG_FOCUS=$'\033[38;2;225;250;246m'
+readonly CLEAR_SCREEN=$'\033[H\033[2J'
+
+cleanup() {
+  local status=$?
+  (( CLEANED )) && return "$status"
+  CLEANED=1
+  trap - EXIT INT TERM HUP WINCH
+  if (( TERMINAL_ACTIVE )); then
+    stty "$SAVED_STTY" <&0 2>/dev/null || true
+  fi
+  if (( SCREEN_ACTIVE )); then
+    printf '%s' "$RESET"$'\033[?25h\033[?1049l'
+  fi
+  return "$status"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
+trap 'RESIZED=1' WINCH
+stty -echo -icanon min 1 time 0 <&0 || fail 'no se pudo configurar la terminal'
+update_size
+printf '%s' $'\033[?1049h\033[?25l'
+SCREEN_ACTIVE=1
+
+while (( RUNNING )); do
+  if (( RESIZED )); then
+    update_size
+    RESIZED=0
+  fi
+  build_rows
+  render
+  if [[ $FRAME != "$LAST_FRAME" ]]; then
+    printf '%s' "$FRAME"
+    LAST_FRAME=$FRAME
+  fi
+  read_key
+  case $KEY in
+    up)
+      MESSAGE=''
+      find_next_focus -1
+      ;;
+    down)
+      MESSAGE=''
+      find_next_focus 1
+      ;;
+    space) activate_space ;;
+    enter) activate_enter ;;
+    escape)
+      if [[ $SCREEN == PROFILE ]]; then RUNNING=0; else activate_back; fi
+      ;;
+  esac
+done
