@@ -38,6 +38,7 @@ hunspell-en-US
 hunspell-es
 trash-cli
 pulseaudio-utils
+wl-clipboard
 
 # Local development services
 wireguard-tools
