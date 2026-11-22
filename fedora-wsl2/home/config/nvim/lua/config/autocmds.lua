@@ -10,8 +10,8 @@
 ------------------------------------------------------------------------------
 -- Markdown: Override LazyVim's wrap_spell autocmd to disable wrap in markdown
 ------------------------------------------------------------------------------
-vim.api.nvim_create_autocmd('FileType', {
-  pattern = 'markdown',
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "markdown",
   callback = function()
     vim.opt_local.wrap = false
   end,

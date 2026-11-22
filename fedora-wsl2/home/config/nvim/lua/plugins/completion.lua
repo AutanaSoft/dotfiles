@@ -1,6 +1,6 @@
 return {
   {
-    'saghen/blink.cmp',
+    "saghen/blink.cmp",
     opts = {
       completion = {
         menu = { auto_show = true },
@@ -12,9 +12,9 @@ return {
         },
       },
       keymap = {
-        preset = 'enter',
-        ['<CR>'] = { 'accept', 'fallback' },
-        ['<C-e>'] = { 'cancel', 'fallback' },
+        preset = "enter",
+        ["<CR>"] = { "accept", "fallback" },
+        ["<C-e>"] = { "cancel", "fallback" },
       },
     },
   },

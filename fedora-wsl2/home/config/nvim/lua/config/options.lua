@@ -8,7 +8,7 @@ vim.g.autoformat = false
 -- Options: Display And Wrap
 ------------------------------------------------------------------------------
 vim.opt.textwidth = 100
-vim.opt.signcolumn = 'yes:2'
+vim.opt.signcolumn = "yes:2"
 vim.opt.smartindent = true
 vim.opt.wrap = false
 
@@ -21,6 +21,6 @@ vim.opt.scrolloff = 20
 -- Enables spell checking for the current window.
 vim.opt.spell = true
 -- Accepts words from Spanish and US English in the same buffer.
-vim.opt.spelllang = 'es,en_us'
+vim.opt.spelllang = "es,en_us"
 -- Stores personal accepted or rejected words added with `zg` and `zw`.
-vim.opt.spellfile = vim.fn.stdpath('config') .. '/spell/custom.utf-8.add'
+vim.opt.spellfile = vim.fn.stdpath("config") .. "/spell/custom.utf-8.add"
