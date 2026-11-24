@@ -2,18 +2,18 @@
 # Mise Config
 # ------------------------------------------------------------------------------
 [tools]
-claude = "latest"
+claude = { version = "latest", minimum_release_age = "0s" }
 codegraph = "latest"
-codex = "latest"
+codex = { version = "latest", minimum_release_age = "0s" }
 gh = "latest"
 go = "latest"
-herdr = "latest"
+herdr = { version = "latest", minimum_release_age = "0s" }
 lazydocker = "latest"
 lazygit = "latest"
 markdownlint-cli2 = "latest"
 neovim = "latest"
 node = "latest"
-opencode = { version = "latest", allow_builds = ["@opencode/cli"] }
+opencode = { version = "latest", allow_builds = ["@opencode/cli"], minimum_release_age = "0s" }
 pnpm = "latest"
 prettier = "latest"
 python = "latest"
