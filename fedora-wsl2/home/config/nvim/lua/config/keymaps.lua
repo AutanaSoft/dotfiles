@@ -41,6 +41,6 @@ local function copy_with_source_reference()
   vim.notify("Copied " .. reference)
 end
 
-vim.keymap.set({ "n", "x" }, "<leader>cy", copy_with_source_reference, {
+vim.keymap.set({ "n", "x" }, "<A-c>", copy_with_source_reference, {
   desc = "Copy with source reference",
 })
