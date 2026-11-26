@@ -65,6 +65,13 @@ return {
   selection_word_boundary = " \t\n\"'`.,;:{}()[]",
 
   -- ------------------------------------------------------------------------------
+  -- Keyboard
+  -- ------------------------------------------------------------------------------
+  enable_kitty_keyboard = true,
+  -- Explicit default: keep left Ctrl+Alt as Ctrl+Alt instead of aliasing it to AltGr.
+  treat_left_ctrlalt_as_altgr = false,
+
+  -- ------------------------------------------------------------------------------
   -- Key bindings
   -- ------------------------------------------------------------------------------
   disable_default_key_bindings = true,
